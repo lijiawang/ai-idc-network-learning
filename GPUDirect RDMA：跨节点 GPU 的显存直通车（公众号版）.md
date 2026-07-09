@@ -159,31 +159,13 @@ NVIDIA GPU 驱动会把 GPU 显存相关页面通过 BAR 映射等机制暴露�
 
 NCCL 不是 GPUDirect RDMA 本身。
 
-NCCL 更像 GPU 集群里的通信调度系统。
+它更像 GPU 集群里的通信调度系统，负责组织 AllReduce、AllGather、ReduceScatter 这类 collective 通信。
 
-如果你想进一步了解 NCCL 本身，可以回看前面几篇 NCCL 章节，比如 Ring AllReduce、Tree AllReduce、ReduceScatter / AllGather，以及 NCCL 是怎么给 GPU 安排通信路线的；这里先重点看它如何用到底层的 GPUDirect RDMA 路径。
-
-它负责组织：
-
-```text
-AllReduce
-AllGather
-ReduceScatter
-Broadcast
-All-to-All / send-recv
-```
+如果你想进一步了解 NCCL 本身，可以回看前面的 NCCL 章节。这里先重点看它如何用到底层的 GPUDirect RDMA 路径。
 
 跨节点时，NCCL 会进入 NET 路径。
 
 如果底层是 IB/RoCE，并且 GPU-NIC 拓扑、驱动和环境变量都允许，NCCL 就可能使用 GPUDirect RDMA。
-
-所以可以这样记：
-
-```text
-RDMA 回答：网卡能不能直接访问远端内存？
-GPUDirect RDMA 回答：网卡能不能直接访问 GPU 显存？
-NCCL 回答：多张 GPU 做 collective 时，应该怎么组织这些传输？
-```
 
 ---
 
