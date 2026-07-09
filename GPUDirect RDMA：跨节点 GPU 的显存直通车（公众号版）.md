@@ -145,6 +145,8 @@ RoCE 是 RDMA over Converged Ethernet，也就是在以太网上承载 RDMA。
 
 RDMA 是能力，IB/RoCE 是常见承载方式。
 
+RDMA 自己还有一整套队列、内存注册、QP、CQ、verbs、可靠传输和拥塞控制等机制。这里先不展开，后面有时间可以单独开一章讲 RDMA 本身，这篇先把它放在 GPUDirect RDMA 的语境里理解。
+
 ### 2. GPUDirect RDMA 让 GPU 显存进入 RDMA 数据路径
 
 普通 RDMA 访问的是主机内存。
