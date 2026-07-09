@@ -175,6 +175,8 @@ NCCL 不是 GPUDirect RDMA 本身。
 
 NCCL 更像 GPU 集群里的通信调度系统。
 
+如果你想进一步了解 NCCL 本身，可以回看前面几篇 NCCL 章节，比如 Ring AllReduce、Tree AllReduce、ReduceScatter / AllGather，以及 NCCL 是怎么给 GPU 安排通信路线的；这里先重点看它如何用到底层的 GPUDirect RDMA 路径。
+
 它负责组织：
 
 ```text
