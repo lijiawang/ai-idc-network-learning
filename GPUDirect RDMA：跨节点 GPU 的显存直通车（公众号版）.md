@@ -51,11 +51,11 @@ NIC -> IB / RoCE 网络 -> 对端 NIC
 NIC -> PCIe -> Host Memory -> PCIe -> GPU HBM
 ```
 
-这里的问题不是“CPU 会不会亲自计算这些数据”。
+问题不在于 CPU 会不会亲自计算这些数据。
 
-CPU 通常不会去逐字节处理梯度。
+CPU 通常不会逐字节处理梯度。
 
-真正的问题是：
+问题在于，数据路径绕了一圈：
 
 ```text
 Host Memory 变成了中转仓库
