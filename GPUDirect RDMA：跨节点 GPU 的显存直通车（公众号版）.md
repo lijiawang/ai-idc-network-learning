@@ -684,7 +684,7 @@ modprobe nvidia-peermem
 
 Docker 场景下，通常需要映射 `/dev/infiniband`，并配置合适的 `memlock`。
 
-Kubernetes 场景下，通常交给 RDMA device plugin、Network Operator 或 SR-IOV / host-device 方案来暴露设备。
+Kubernetes 场景下，通常交给 RDMA device plugin 或 SR-IOV / host-device 方案来暴露设备。
 
 所以排障时不要只看容器内的命令输出，也要同时看宿主机模块、容器设备映射和 NCCL 日志。
 
