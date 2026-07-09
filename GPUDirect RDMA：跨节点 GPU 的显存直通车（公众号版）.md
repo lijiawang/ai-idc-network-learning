@@ -666,9 +666,29 @@ modprobe nvidia-peermem
 
 如果系统里还残留旧的 `nv_peer_mem`，也要注意冲突。
 
-新环境优先使用 `nvidia-peermem`。
+传统 GPUDirect RDMA 路径常看 `nvidia-peermem`；较新的 DMA-BUF 路径下，NCCL 可能不再依赖它。
 
-### 3. 看 BAR1 使用情况
+### 3. 注意容器里的 RDMA 设备
+
+大模型训练通常跑在 Docker 或 Kubernetes 容器里。
+
+这里要注意：`nvidia-peermem` 是宿主机内核模块，应该在宿主机侧加载和排障；容器默认不能直接 `modprobe`，即使特权容器能执行，本质上也是在操作宿主机内核。
+
+容器里还要能访问 RDMA 设备，例如：
+
+```text
+/dev/infiniband/*
+```
+
+否则 NCCL、UCX、MPI 这类库可能看不到 mlx5 HCA。
+
+Docker 场景下，通常需要映射 `/dev/infiniband`，并配置合适的 `memlock`。
+
+Kubernetes 场景下，通常交给 RDMA device plugin、Network Operator 或 SR-IOV / host-device 方案来暴露设备。
+
+所以排障时不要只看容器内的命令输出，也要同时看宿主机模块、容器设备映射和 NCCL 日志。
+
+### 4. 看 BAR1 使用情况
 
 ```bash
 nvidia-smi -q
@@ -686,7 +706,7 @@ BAR1 是 GDRDMA 映射会消耗的重要资源之一。
 
 另外，IOMMU、虚拟化和 BIOS 相关配置也可能影响 peer DMA。遇到“理论上支持、实际却跑不起来”的情况时，这类平台配置也要一起查。
 
-### 4. 打开 NCCL 日志
+### 5. 打开 NCCL 日志
 
 使用 `nccl-tests` 的 `all_reduce_perf` 时，可以这样打开日志：
 
@@ -708,7 +728,7 @@ NET/IB 是否启用
 是否 fallback 到 Socket
 ```
 
-### 5. 做对照实验
+### 6. 做对照实验
 
 为了判断 GDRDMA 的影响，可以做对照。
 
