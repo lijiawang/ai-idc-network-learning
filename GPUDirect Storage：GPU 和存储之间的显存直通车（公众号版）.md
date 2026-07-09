@@ -246,88 +246,42 @@ CUDA / cuFile 提供入口
 
 ---
 
-## 四、一块 GPU buffer 是怎么从文件里读到的？
+## 四、一次 GDS 读取大概发生了什么？
 
 从开发者视角看，一次 GDS 读取大致可以这样理解。
 
 ![一次 cuFile 读数据流程](assets/gpudirect-storage/04-cufile-read-flow.png)
 
-### 第一步：打开文件
-
-应用先像普通文件 IO 一样打开一个文件。
-
-过去很多 GDS 场景会特别关注 `O_DIRECT`、文件 offset、IO size、buffer 对齐等条件。
-
-较新的 GDS / cuFile 版本对打开方式有更多兼容能力，但底层能不能走直接路径，仍然要看文件系统、配置和硬件条件。
-
-所以入门先记一句：
+流程可以先简化成五步：
 
 ```text
-GDS 适合 direct IO 思路，不要把普通 buffered IO 的行为直接套过来。
+1. 应用打开文件
+2. 把文件交给 cuFile 注册
+3. 准备一块 GPU 显存 buffer
+4. 调用 cuFileRead 发起读取
+5. 条件满足时，数据进入 GPU HBM
 ```
 
-### 第二步：注册 file handle
+从语义上看，这仍然像一次文件读取。
 
-接着用 `cuFileHandleRegister()` 把这个文件交给 cuFile。
+只是目标地址不再是普通 CPU 内存，而是 GPU 显存地址。
 
-这一步会检查文件、mount、文件系统能力等信息。
+如果文件系统、驱动、buffer、拓扑和运行时配置都满足要求，数据路径就可以尽量绕开 CPU bounce buffer，直接进入 GPU HBM。
 
-如果文件所在路径不支持 GDS，后面就可能失败，或者进入 compatibility mode。
-
-### 第三步：准备 GPU buffer
-
-应用在 GPU 显存里准备一块 buffer。
-
-比如 CUDA 程序里用 `cudaMalloc()` 分配一段 device memory。
-
-对高性能路径来说，通常会主动调用：
-
-```text
-cuFileBufRegister()
-```
-
-这可以让 cuFile 提前建立 buffer 相关状态。
-
-如果不主动注册，有些情况下 cuFile 也能使用内部注册缓冲，但小 IO 或高频 IO 可能性能不理想。
-
-还有一点很重要：
-
-```text
-注册和反注册不是免费操作
-```
-
-所以高性能程序一般不会每读一次就注册一次、反注册一次，而是尽量复用 buffer。
-
-### 第四步：调用 cuFileRead
-
-真正读数据时，应用调用：
-
-```text
-cuFileRead()
-```
-
-它会带上几类关键参数：
-
-```text
-读哪个 file handle
-从文件哪个 offset 开始读
-读多大
-写到哪个 GPU virtual address
-```
-
-从语义上看，这很像一次文件读。
-
-只是目标地址不是普通 CPU 内存，而是 GPU 显存地址。
-
-### 第五步：数据进入 GPU HBM
-
-如果所有条件都满足，数据路径就可以尽量绕开 CPU bounce buffer，直接进入 GPU HBM。
+如果条件不满足，cuFile 可能报错，也可能退回 compatibility mode，也就是重新通过 CPU 内存 staging 完成 IO。
 
 CPU 仍然发起 API。
 
 但大块数据搬运由靠近存储的 DMA engine 完成。
 
 这也是为什么官方文档会强调：cuFile API 是 CPU 发起的，不是 GPU kernel 自己在 GPU 上调用文件 IO。
+
+所以这一节只要记住：
+
+```text
+cuFile 把“读文件”这件事，改造成“读到 GPU 显存”这件事。
+GDS 负责尽量让数据面少绕 CPU 内存。
+```
 
 ---
 
