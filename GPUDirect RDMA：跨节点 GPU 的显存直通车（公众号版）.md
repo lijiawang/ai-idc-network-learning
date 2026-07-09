@@ -161,7 +161,7 @@ NCCL 不是 GPUDirect RDMA 本身。
 
 它更像 GPU 集群里的通信调度系统，负责组织 AllReduce、AllGather、ReduceScatter 这类 collective 通信。
 
-如果你想进一步了解 NCCL 本身，可以回看前面的 NCCL 章节。这里先重点看它如何用到底层的 GPUDirect RDMA 路径。
+如果你想进一步了解 NCCL 本身，可以回看前面的 NCCL 章节。这里先重点看 NCCL 如何用到底层的 GPUDirect RDMA 路径。
 
 跨节点时，NCCL 会进入 NET 路径。
 
@@ -171,7 +171,7 @@ NCCL 不是 GPUDirect RDMA 本身。
 
 ## 三、一块 GPU 显存缓冲区是怎么被网卡直接访问的？
 
-这里的 GPU Buffer，可以理解成 GPU 显存里的一块数据缓冲区，比如一个 CUDA tensor 背后的显存区域。
+这里的 GPU 显存缓冲区，也就是常说的 GPU Buffer，可以理解成 GPU 显存里的一块数据区域，比如一个 CUDA tensor 背后的显存区域。
 
 从应用视角看，我们只是把一个 GPU tensor 交给通信库。
 
