@@ -517,7 +517,7 @@ torchrun ...
 限制 NCCL 使用哪些 RDMA HCA：
 
 ```bash
-NCCL_IB_HCA==mlx5_0:1,=mlx5_1:1
+NCCL_IB_HCA==mlx5_0,=mlx5_1
 ```
 
 这里要注意，前一个 `=` 是 shell 赋值，后一个 `=` 是 NCCL 的精确匹配前缀。
