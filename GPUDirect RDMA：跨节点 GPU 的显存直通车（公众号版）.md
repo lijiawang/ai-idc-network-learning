@@ -688,13 +688,13 @@ BAR1 是 GDRDMA 映射会消耗的重要资源之一。
 
 ### 4. 打开 NCCL 日志
 
+使用 `nccl-tests` 的 `all_reduce_perf` 时，可以这样打开日志：
+
 ```bash
 NCCL_DEBUG=INFO \
 NCCL_DEBUG_SUBSYS=INIT,GRAPH,NET \
 all_reduce_perf -b 8 -e 4G -f 2 -g 8
 ```
-
-这里假设你用的是 `nccl-tests`。
 
 真实命令要按你的机器、容器和 GPU 数调整。
 
