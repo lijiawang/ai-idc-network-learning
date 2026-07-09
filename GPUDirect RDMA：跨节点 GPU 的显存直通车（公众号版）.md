@@ -623,6 +623,8 @@ IB/RoCE 网络质量决定第二段。
 
 原因可能在网络 fabric：
 
+这里的 rail，可以先理解成多网卡并行时的通信车道：每张 NIC 负责一组 rank 或一部分通信流量。
+
 ```text
 链路速率不一致
 交换机拥塞
@@ -690,6 +692,8 @@ modprobe nvidia-peermem
 如果系统里还残留旧的 `nv_peer_mem`，也要注意冲突。
 
 传统 GPUDirect RDMA 路径常看 `nvidia-peermem`；较新的 DMA-BUF 路径下，NCCL 可能不再依赖它。
+
+DMA-BUF 是 Linux 内核的共享缓冲框架，较新的 NVIDIA 驱动可以通过它为 NIC 提供 GPU 显存访问能力。
 
 ### 3. 注意容器里的 RDMA 设备
 
