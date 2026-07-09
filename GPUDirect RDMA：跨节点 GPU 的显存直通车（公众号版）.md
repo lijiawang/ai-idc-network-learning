@@ -64,7 +64,7 @@ Host Memory 变成了中转仓库
 GPU 和 NIC 之间的数据不能直接走
 ```
 
-有了 GPUDirect RDMA，理想路径会接近：
+有了 GPUDirect RDMA，数据路径大致会变成这样：
 
 ```text
 发送端：
