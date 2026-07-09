@@ -122,32 +122,16 @@ nvidia-peermem
 
 ### 1. RDMA 是一种网络内存访问能力
 
-RDMA 的全称是 Remote Direct Memory Access。
+RDMA 的全称是 Remote Direct Memory Access，核心意思是：一台机器的网卡，可以直接读写另一台机器上的一块内存。
 
-它的核心思想是：
-
-```text
-一台机器的网卡，可以直接读写另一台机器上的一块内存
-```
-
-这类操作尽量绕开传统 TCP/IP 栈里的多次拷贝和内核路径，降低 CPU 开销和延迟。
-
-AI 集群里常见的 RDMA 承载方式是：
+在 AI 集群里，常见承载方式主要是 InfiniBand 和 RoCE。
 
 ```text
-InfiniBand
-RoCE
+RDMA 是能力
+IB / RoCE 是常见承载方式
 ```
 
-InfiniBand 是专门的高性能互联网络。
-
-RoCE 是 RDMA over Converged Ethernet，也就是在以太网上承载 RDMA。
-
-所以不要把 RDMA 直接等同于某一种线缆或交换机。
-
-RDMA 是能力，IB/RoCE 是常见承载方式。
-
-RDMA 自己还有一整套队列、内存注册、QP、CQ、verbs、可靠传输和拥塞控制等机制。这里先不展开，后面有时间可以单独开一章讲 RDMA 本身，这篇先把它放在 GPUDirect RDMA 的语境里理解。
+所以不要把 RDMA 直接等同于某一种线缆、网卡或交换机。RDMA 自己还有很多机制，这篇先不展开，后面有时间可以单独开一章讲 RDMA 本身。
 
 ### 2. GPUDirect RDMA 让 GPU 显存进入 RDMA 数据路径
 
