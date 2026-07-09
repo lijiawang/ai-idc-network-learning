@@ -234,9 +234,9 @@ NCCL、MPI、UCX 这类通信库需要知道：
 
 如果它是 GPU buffer，通信库才会走 CUDA-aware / GPU-aware 的路径。
 
-### 第三步：注册和固定 GPU 显存
+### 第三步：注册并建立 GPU 显存映射
 
-要让网卡直接访问 GPU 显存，驱动需要把相关 GPU 页面固定下来，并建立可供对等 PCIe 设备使用的映射。
+要让网卡直接访问 GPU 显存，驱动需要为相关 GPU 显存建立可供对等 PCIe 设备使用的映射。
 
 这一步可以简单理解成：
 
@@ -245,11 +245,13 @@ NCCL、MPI、UCX 这类通信库需要知道：
 请把访问它所需的映射关系准备好
 ```
 
+有些文档和工具会把这类动作叫 memory registration / pin，但在 GPUDirect RDMA 语境里，更关键的是让 NIC 获得可访问 GPU 显存的映射关系。
+
 这里会涉及 GPU BAR space。
 
 BAR 可以粗略理解成 PCIe 设备暴露出来的一段地址窗口，其他 PCIe 设备可以通过这个窗口访问它的资源。
 
-GPUDirect RDMA 就会消耗这类映射资源。
+GPUDirect RDMA 就会消耗这类映射资源。Resizable BAR / 大 BAR1 窗口可以让系统暴露更大的 GPU 地址窗口，通常更适合大规模 GDRDMA 映射；如果 BAR1 窗口太小，可能更容易遇到注册失败、映射压力或性能异常。
 
 ### 第四步：RDMA NIC 获得可访问的映射
 
@@ -566,9 +568,18 @@ NCCL_NET_GDR_LEVEL=SYS
 
 这个变量控制发送方向是否让 NIC 直接从 GPU 显存读数据。
 
+它的取值是：
+
+```bash
+NCCL_NET_GDR_READ=0  # 发送时不让 NIC 直接读 GPU 显存
+NCCL_NET_GDR_READ=1  # 发送时允许 NIC 直接读 GPU 显存
+```
+
 为什么还要单独提？
 
 因为在某些 PCIe 平台上，网卡直接读 GPU 显存不一定比先写到 CPU 内存再发更快。
+
+这背后有一个 PCIe 细节：写请求通常是 posted write，可以更容易流水推进；读请求是 non-posted read，需要等返回数据，延迟和平台实现更容易影响性能。
 
 NCCL 文档里也提醒过：在一些平台上，直接从 GPU 显存读数据可能略慢。
 
@@ -652,6 +663,18 @@ lspci -t
 多 rail 是否有清晰的一一映射
 ```
 
+还要留意 PCIe ACS。
+
+ACS 是 Access Control Services。某些平台会把 PCIe peer-to-peer DMA 流量重定向到 CPU Root Complex，这会影响 GPU 和 NIC 之间的直通路径。
+
+可以先看设备上有没有 ACS 控制项：
+
+```bash
+lspci -vvv | grep -i ACSCtl
+```
+
+如果 ACS 把 P2P 流量拦走，即使 `nvidia-smi topo -m` 看起来不算太远，GDRDMA 性能也可能不理想。云主机、虚拟化环境和部分 BIOS / PCIe Switch 配置里尤其要注意这一点。
+
 ### 2. 看 nvidia-peermem 是否加载
 
 ```bash
@@ -688,10 +711,23 @@ Kubernetes 场景下，通常通过 RDMA device plugin 来暴露设备。
 
 所以排障时不要只看容器内的命令输出，也要同时看宿主机模块、容器设备映射和 NCCL 日志。
 
-### 4. 看 BAR1 使用情况
+### 4. 看 RDMA 设备状态
+
+先确认系统能看到 RDMA HCA：
 
 ```bash
-nvidia-smi -q
+ibstat
+ibv_devinfo
+```
+
+重点看 HCA 名称、端口状态、link layer 是 InfiniBand 还是 Ethernet，以及端口是不是 Active。
+
+如果容器里跑业务，也要在容器里看一遍，确认 `/dev/infiniband/*` 和 verbs 库都可用。
+
+### 5. 看 BAR1 使用情况
+
+```bash
+nvidia-smi -q -d MEMORY | grep -A 4 "BAR1 Memory Usage"
 ```
 
 找到类似：
@@ -704,9 +740,11 @@ BAR1 是 GDRDMA 映射会消耗的重要资源之一。
 
 如果出现 BAR 空间不足、注册失败、性能异常，BAR1 是值得看的地方。
 
+如果机器支持 Resizable BAR，BAR1 总量通常会更大。大 BAR1 不等于 GDRDMA 一定生效，但小 BAR1 更容易成为大规模映射和高并发通信时的限制因素。
+
 另外，IOMMU、虚拟化和 BIOS 相关配置也可能影响 peer DMA。遇到“理论上支持、实际却跑不起来”的情况时，这类平台配置也要一起查。
 
-### 5. 打开 NCCL 日志
+### 6. 打开 NCCL 日志
 
 使用 `nccl-tests` 的 `all_reduce_perf` 时，可以这样打开日志：
 
@@ -728,7 +766,7 @@ NET/IB 是否启用
 是否 fallback 到 Socket
 ```
 
-### 6. 做对照实验
+### 7. 做对照实验
 
 为了判断 GDRDMA 的影响，可以做对照。
 
@@ -818,6 +856,7 @@ rail 是否设计清楚
 
 - [NVIDIA GPUDirect 技术总览](https://developer.nvidia.com/gpudirect)
 - [NVIDIA CUDA GPUDirect RDMA 文档](https://docs.nvidia.com/cuda/gpudirect-rdma/index.html)
+- [NVIDIA NCCL 故障排查文档](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html)
 - [NVIDIA NCCL 环境变量文档：NCCL_NET_GDR_LEVEL / NCCL_NET_GDR_READ](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-net-gdr-level-formerly-nccl-ib-gdr-level)
 - [NVIDIA NCCL 环境变量文档：NCCL_IB_HCA](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-ib-hca)
 - [NVIDIA NCCL Tests](https://github.com/NVIDIA/nccl-tests)
