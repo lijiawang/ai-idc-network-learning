@@ -2,7 +2,7 @@
 
 ![GPUDirect RDMA 封面图](assets/gpudirect-rdma/00-cover-gpudirect-rdma.png)
 
-上一篇讲 GPUDirect P2P 时，我们把问题放在一台服务器内部：
+上一篇讲 GPUDirect P2P，关注的是同一台服务器里的 GPU 之间怎么传数据：
 
 **GPU0 的显存数据，怎么送到 GPU1 的显存？**
 
