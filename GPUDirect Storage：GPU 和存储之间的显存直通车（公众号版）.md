@@ -152,7 +152,7 @@ GPU 计算得很快，存储喂数据和写结果时，能不能少绕一点？
 
 ---
 
-## 三、GDS 到底是什么？先分清几层
+## 三、GDS 在系统里处在哪一层？
 
 GPUDirect Storage 里容易混在一起的词也不少：
 
@@ -161,7 +161,6 @@ GDS
 cuFile
 libcufile
 nvidia-fs
-O_DIRECT
 NVMe
 NVMe-oF
 Lustre / WekaFS / NFS / BeeGFS ...
@@ -171,20 +170,18 @@ Lustre / WekaFS / NFS / BeeGFS ...
 
 ![GDS 软件栈图](assets/gpudirect-storage/03-gds-software-stack.png)
 
-可以从上到下拆开。
+可以先用三层来理解。
 
-### 1. 应用 / 框架
+### 第一层：应用调用 cuFile
 
-最上面是应用。
+最上面是训练框架、数据加载器、checkpoint 系统、向量检索程序，或者自研 CUDA 应用。
 
-比如：
+`cuFile` 是应用使用 GDS 的主要 API 层。
+
+你可以把它理解成：
 
 ```text
-训练框架
-数据加载器
-checkpoint 系统
-向量检索或离线推理程序
-自研 CUDA 应用
+面向 GPU buffer 的文件 IO 入口
 ```
 
 应用真正关心的是：
@@ -194,89 +191,58 @@ checkpoint 系统
 我要把 GPU buffer 写回文件
 ```
 
-### 2. cuFile API
+至于底下到底能不能绕开 CPU 内存，不应该让应用自己去硬猜，而是交给 cuFile、驱动和文件系统一起判断。
 
-`cuFile` 是应用使用 GDS 的主要 API 层。
+### 第二层：libcufile / nvidia-fs 接上 GDS 路径
 
-你可以把它理解成：
+`libcufile` 是用户态库，应用链接或加载它之后，才能调用 cuFile API。
 
-```text
-面向 GPU buffer 的文件 IO 接口
-```
+很多 GDS 路径还会涉及 `nvidia-fs` 内核模块，也就是常见的 `nvidia-fs.ko` / `nvidia_fs`。
 
-常见 API 包括：
+这一层大致负责：
 
 ```text
-cuFileDriverOpen()
-cuFileHandleRegister()
-cuFileBufRegister()
-cuFileRead()
-cuFileWrite()
-cuFileBufDeregister()
-cuFileHandleDeregister()
-cuFileDriverClose()
+识别这是 GPU buffer
+判断文件和挂载点是否适合走 GDS
+建立必要的映射和注册状态
+决定走 direct path，还是退回 compatibility mode
 ```
 
-其中 `cuFileRead()` / `cuFileWrite()` 是真正发起读写的核心动作。
+这里不用先背一堆 API 名字。下一节讲一次读取流程时，再看 `cuFileHandleRegister()`、`cuFileBufRegister()` 和 `cuFileRead()` 会更自然。
 
-### 3. libcufile
+### 第三层：文件系统和存储设备决定底层能不能直通
 
-`libcufile` 是用户态库。
-
-应用链接或加载它之后，才能调用 `cuFile` API。
-
-它会处理很多事情：
-
-```text
-判断文件和 buffer 是否适合走 GDS
-管理注册状态
-读取 cufile.json 配置
-决定是否走兼容路径
-和内核路径 / 文件系统协作
-```
-
-### 4. nvidia-fs / GDS 内核路径
-
-很多 GDS 路径会涉及 `nvidia-fs` 内核模块，也就是常见的 `nvidia-fs.ko` / `nvidia_fs`。
-
-它负责和内核、文件系统、GPU 驱动协作，让存储 IO 能走到 GPU 显存。
-
-这里要补一句：不同 CUDA / GDS 版本、不同文件系统、不同本地 NVMe 路径，对 `nvidia-fs` 的依赖可能有差异。
-
-所以工程上不要只凭“我记得需要这个模块”来判断。
-
-更稳的办法是：
-
-```bash
-/usr/local/cuda-<x>.<y>/gds/tools/gdscheck.py -p
-```
-
-看当前机器、驱动、文件系统和配置到底怎么被识别。
-
-### 5. 文件系统 / NVMe / 存储系统
-
-GDS 不是文件系统本身。
+GDS 不是文件系统本身，也不是 NVMe SSD 本身。
 
 它需要底层存储和文件系统配合。
 
-这个底层可能是：
+这个底层可能是本地 NVMe，也可能是 NVMe-oF、并行文件系统，或者支持 GDS 的网络文件系统 / 用户态文件系统。
+
+真正能不能走直通，取决于：
 
 ```text
-本地 NVMe
-NVMe-oF
-并行文件系统
-支持 GDS 的网络文件系统或用户态文件系统
+CUDA / driver / libcufile 版本
+文件系统是否支持
+存储设备或存储网络是否支持
+GPU 和存储设备的 PCIe / NUMA 拓扑
+IO 对齐、buffer 注册和运行时配置
 ```
 
-具体哪些版本、哪些模式支持，变化会比较快。
-
-所以文章里不建议死背“某某文件系统一定支持”。
-
-更好的判断方式是：
+所以不要把 GDS 简化成：
 
 ```text
-以官方支持矩阵、厂商文档、gdscheck 输出和实测为准
+装了 CUDA，就一定所有文件都能直通 GPU
 ```
+
+更准确的说法是：
+
+```text
+CUDA / cuFile 提供入口
+驱动和 nvidia-fs 接上数据路径
+文件系统、存储设备和拓扑决定这条路能不能真的跑顺
+```
+
+工程上最后还是要看 `gdscheck`、日志和实测。
 
 ---
 
