@@ -32,11 +32,9 @@ Storage / NVMe -> CPU Memory -> GPU HBM
 
 GPUDirect Storage 要解决的，就是这段绕路。
 
-后面为了读起来顺一点，GPUDirect Storage 会简称为 GDS。
-
 一句话总结：
 
-> GPUDirect Storage 让存储 IO 可以通过 DMA 直接进出 GPU 显存，尽量避免通过 CPU 内存里的 bounce buffer 中转。
+> GPUDirect Storage，简称 GDS，是 NVIDIA 在 CUDA 生态中提供的一套 GPU 显存与存储之间的直接 IO 能力。应用通常通过 cuFile API 使用它，让存储数据尽量通过 DMA 直接进出 GPU 显存，减少 CPU 内存中转。
 
 这里的 bounce buffer，可以简单理解成“为了中转而临时借用的一块 CPU 内存缓冲区”。
 
