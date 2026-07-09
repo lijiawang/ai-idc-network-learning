@@ -169,31 +169,25 @@ NCCL 不是 GPUDirect RDMA 本身。
 
 ---
 
-## 三、一块 GPU Buffer 是怎么被网卡直接访问的？
+## 三、一块 GPU 显存缓冲区是怎么被网卡直接访问的？
+
+这里的 GPU Buffer，可以理解成 GPU 显存里的一块数据缓冲区，比如一个 CUDA tensor 背后的显存区域。
 
 从应用视角看，我们只是把一个 GPU tensor 交给通信库。
 
-但底下会发生一串事情。
+但底下大致会发生几步。
 
 ![GPU Buffer 被 RDMA NIC 访问的流程](assets/gpudirect-rdma/03-gpu-buffer-rdma-flow.png)
 
-可以简化成五步。
+### 第一步：框架在 GPU 显存里准备数据
 
-### 第一步：CUDA 分配 GPU 显存
+比如 PyTorch、TensorFlow、JAX 或 CUDA 程序里有一个 GPU tensor。
 
-比如框架里有一个 CUDA tensor，它背后是一段 GPU device memory。
-
-从 CUDA 层看，可能类似：
-
-```text
-cudaMalloc()
-```
-
-或者由 PyTorch、TensorFlow、JAX 等框架间接管理。
+它背后对应的是一段 GPU 显存。
 
 ### 第二步：通信库识别这是 GPU 指针
 
-NCCL、MPI、UCX 这类通信库需要知道：
+NCCL、MPI、UCX 这类通信库需要判断：
 
 ```text
 这个 buffer 在 CPU 内存里？
@@ -202,67 +196,28 @@ NCCL、MPI、UCX 这类通信库需要知道：
 
 如果它是 GPU buffer，通信库才会走 CUDA-aware / GPU-aware 的路径。
 
-### 第三步：注册并建立 GPU 显存映射
+### 第三步：驱动和 RDMA 栈建立映射
 
-要让网卡直接访问 GPU 显存，驱动需要为相关 GPU 显存建立可供对等 PCIe 设备使用的映射。
+要让网卡访问 GPU 显存，系统需要为这块 GPU 显存建立可供 RDMA NIC 使用的映射。
 
-这一步可以简单理解成：
+可以简单理解成：
 
 ```text
-告诉系统：这块 GPU 显存接下来要被网卡访问
+这块 GPU 显存接下来要被网卡访问
 请把访问它所需的映射关系准备好
 ```
 
-有些文档和工具会把这类动作叫 memory registration / pin，但在 GPUDirect RDMA 语境里，更关键的是让 NIC 获得可访问 GPU 显存的映射关系。
+具体机制可能涉及 `nvidia-peermem`、DMA-BUF、BAR1 等细节，后面的排障部分再展开。
 
-这里会涉及 GPU BAR space。
+### 第四步：RDMA NIC 直接 DMA 读写 GPU 显存
 
-BAR 可以粗略理解成 PCIe 设备暴露出来的一段地址窗口，其他 PCIe 设备可以通过这个窗口访问它的资源。
-
-GPUDirect RDMA 就会消耗这类映射资源。Resizable BAR / 大 BAR1 窗口可以让系统暴露更大的 GPU 地址窗口，通常更适合大规模 GDRDMA 映射；如果 BAR1 窗口太小，可能更容易遇到注册失败、映射压力或性能异常。
-
-### 第四步：RDMA NIC 获得可访问的映射
-
-NVIDIA 驱动提供的 `nvidia-peermem` 模块，可以让 Mellanox / NVIDIA InfiniBand HCA 这类 RDMA 网卡通过 peer memory 机制访问 GPU 显存。
-
-从 CUDA 11.4 开始，`nvidia-peermem` 作为 NVIDIA GPU 驱动包提供的内核模块出现。
-
-很多排障现场都会先看它：
-
-```bash
-lsmod | grep nvidia_peermem
-```
-
-如果没有加载，常见做法是：
-
-```bash
-modprobe nvidia-peermem
-```
-
-注意模块文件名里是连字符，`lsmod` 里通常会显示成下划线。
-
-### 第五步：NIC 直接 DMA 读写 GPU HBM
-
-当映射和队列都准备好后，网卡的 DMA engine 就可以直接搬数据。
+映射和队列准备好后，网卡的 DMA engine 就可以直接搬数据。
 
 发送时，网卡可以从 GPU 显存读数据。
 
 接收时，网卡可以把网络上收到的数据写入 GPU 显存。
 
-但这里还有一个重要细节：
-
-**同步和内存可见性仍然要认真处理。**
-
-网卡写完 GPU 显存，不代表某个正在运行的 GPU kernel 立刻就能按预期顺序看到这次写入。
-
-真实通信库会通过 CUDA stream、event、任务提交和完成队列等机制保证顺序。
-
-对普通训练用户来说，不需要手写这些细节；但排障时要知道：
-
-```text
-GDRDMA 是独立的数据路径
-不是“写进显存后所有 GPU 代码自动无条件立刻感知”
-```
+这里要注意，GPUDirect RDMA 优化的是数据路径；队列创建、映射建立、同步和错误处理，仍然需要驱动、通信库和 CPU 控制面一起配合。
 
 ---
 
