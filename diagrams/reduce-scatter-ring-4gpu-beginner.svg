@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1180" viewBox="0 0 1200 1180">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#111827; }
+    .title{font-size:30px;font-weight:800}.h{font-size:21px;font-weight:750}.sub{font-size:15px;fill:#4b5563}.tip{font-size:16px;font-weight:700}.small{font-size:13px;fill:#6b7280}.mono{font-family:Menlo,Monaco,Consolas,monospace;font-size:15px;font-weight:700}.bigmono{font-family:Menlo,Monaco,Consolas,monospace;font-size:19px;font-weight:800}.box{fill:#fff;stroke:#d1d5db;stroke-width:1.5}.panel{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.4}.orangePanel{fill:#fff7ed;stroke:#fed7aa;stroke-width:1.6}.greenPanel{fill:#f0fdf4;stroke:#bbf7d0;stroke-width:1.6}.bluePanel{fill:#eff6ff;stroke:#bfdbfe;stroke-width:1.6}.cell{stroke:#ffffff;stroke-width:1}.blue{stroke:#2563eb;fill:none;stroke-width:3}.purple{stroke:#9333ea;fill:none;stroke-width:3}.green{stroke:#16a34a;fill:none;stroke-width:3}.orange{stroke:#ea580c;fill:none;stroke-width:3}.gray{stroke:#94a3b8;fill:none;stroke-width:2}.badge{font-size:13px;font-weight:800;fill:#ffffff}.label{font-size:14px;font-weight:700}
+  </style>
+  <defs>
+    <marker id="ab" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0,0 12,4 0,8" fill="#2563eb"/></marker>
+    <marker id="ap" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0,0 12,4 0,8" fill="#9333ea"/></marker>
+    <marker id="ag" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0,0 12,4 0,8" fill="#16a34a"/></marker>
+    <marker id="ao" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0,0 12,4 0,8" fill="#ea580c"/></marker>
+    <marker id="gray" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0,0 12,4 0,8" fill="#94a3b8"/></marker>
+  </defs>
+  <rect width="1200" height="1180" fill="#ffffff"/>
+  <text x="60" y="52" class="title">小白版：Ring ReduceScatter 为什么 GPU0 先发 A3？</text>
+  <text x="60" y="86" class="sub">一句话：chunk3 最终要归 GPU3 管，所以 GPU0 第一轮先把 A3 推上环，让它一路走到 GPU3 并完成累加。</text>
+  <rect x="60" y="116" width="1080" height="86" rx="14" class="bluePanel"/>
+  <circle cx="98" cy="159" r="22" fill="#2563eb"/><text x="98" y="165" text-anchor="middle" class="badge">记</text>
+  <text x="138" y="148" class="tip">先别管 NCCL 内部优化，先抓住 3 个词：编号、目的地、沿环累加。</text>
+  <text x="138" y="178" class="sub">chunk0 → GPU0，chunk1 → GPU1，chunk2 → GPU2，chunk3 → GPU3。ReduceScatter 结束后，每张 GPU 只拿自己编号的全局和。</text>
+  <text x="60" y="252" class="h">1. 每个 chunk 有自己的“家”</text>
+  <rect x="60" y="278" width="1080" height="170" rx="14" class="panel"/>
+  <rect x="94" y="314" width="226" height="94" rx="12" fill="#dbeafe" stroke="#cbd5e1"/>
+  <text x="207" y="342" text-anchor="middle" class="label">chunk0</text>
+  <text x="207" y="371" text-anchor="middle" class="bigmono">S0</text>
+  <text x="207" y="398" text-anchor="middle" class="small">家：GPU0</text>
+  <rect x="358" y="314" width="226" height="94" rx="12" fill="#e9d5ff" stroke="#cbd5e1"/>
+  <text x="471" y="342" text-anchor="middle" class="label">chunk1</text>
+  <text x="471" y="371" text-anchor="middle" class="bigmono">S1</text>
+  <text x="471" y="398" text-anchor="middle" class="small">家：GPU1</text>
+  <rect x="622" y="314" width="226" height="94" rx="12" fill="#dcfce7" stroke="#cbd5e1"/>
+  <text x="735" y="342" text-anchor="middle" class="label">chunk2</text>
+  <text x="735" y="371" text-anchor="middle" class="bigmono">S2</text>
+  <text x="735" y="398" text-anchor="middle" class="small">家：GPU2</text>
+  <rect x="886" y="314" width="226" height="94" rx="12" fill="#fed7aa" stroke="#cbd5e1"/>
+  <text x="999" y="342" text-anchor="middle" class="label">chunk3</text>
+  <text x="999" y="371" text-anchor="middle" class="bigmono">S3</text>
+  <text x="999" y="398" text-anchor="middle" class="small">家：GPU3</text>
+  <text x="86" y="430" class="sub">所以：A3 不是 GPU0 要留下的东西，它是 chunk3 的一份，最终要去 GPU3 参与组成 S3。</text>
+  <text x="60" y="502" class="h">2. 只跟踪 A3：它从 GPU0 出发，最后在 GPU3 完成 S3</text>
+  <rect x="60" y="528" width="1080" height="260" rx="14" class="orangePanel"/>
+  <rect x="130" y="630" width="160" height="70" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="210" y="674" text-anchor="middle" class="h">GPU0</text>
+  <rect x="390" y="630" width="160" height="70" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="470" y="674" text-anchor="middle" class="h">GPU1</text>
+  <rect x="650" y="630" width="160" height="70" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="730" y="674" text-anchor="middle" class="h">GPU2</text>
+  <rect x="910" y="630" width="160" height="70" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="990" y="674" text-anchor="middle" class="h">GPU3</text>
+  <path d="M 290,665 L 382,665" class="orange" marker-end="url(#ao)"/>
+  <rect x="270.0" y="619" width="140" height="28" rx="6" fill="#fff7ed" opacity="0.98"/>
+  <text x="340.0" y="638" text-anchor="middle" class="small">第1轮：A3</text>
+  <path d="M 550,665 L 642,665" class="orange" marker-end="url(#ao)"/>
+  <rect x="530.0" y="619" width="140" height="28" rx="6" fill="#fff7ed" opacity="0.98"/>
+  <text x="600.0" y="638" text-anchor="middle" class="small">第2轮：A3+B3</text>
+  <path d="M 810,665 L 902,665" class="orange" marker-end="url(#ao)"/>
+  <rect x="790.0" y="619" width="140" height="28" rx="6" fill="#fff7ed" opacity="0.98"/>
+  <text x="860.0" y="638" text-anchor="middle" class="small">第3轮：A3+B3+C3</text>
+  <text x="470" y="734" text-anchor="middle" class="mono">GPU1 加 B3</text>
+  <text x="470" y="758" text-anchor="middle" class="small">得到 A3+B3</text>
+  <text x="730" y="734" text-anchor="middle" class="mono">GPU2 加 C3</text>
+  <text x="730" y="758" text-anchor="middle" class="small">得到 A3+B3+C3</text>
+  <text x="990" y="734" text-anchor="middle" class="mono">GPU3 加 D3</text>
+  <text x="990" y="758" text-anchor="middle" class="small">得到 S3</text>
+  <text x="86" y="564" class="sub">看这条线就够了：A3 走一站加一份，走满 3 站，GPU3 再加自己的 D3，chunk3 就归约完成。发送只是“读出来发走”，不会把 GPU0 本地 A3 清零。</text>
+  <text x="60" y="842" class="h">3. 但真实第 1 轮是四条边同时动，不是只有 A3</text>
+  <rect x="60" y="868" width="1080" height="172" rx="14" class="panel"/>
+  <text x="86" y="900" class="sub">为了让 4 个 chunk 都同时开始归约，四张 GPU 会错位发送：</text>
+  <rect x="100" y="930" width="210" height="74" rx="12" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="124" y="958" class="label">GPU0</text>
+  <text x="124" y="984" class="mono" fill="#2563eb">发 A3</text>
+  <text x="124" y="1008" class="small">给 GPU1：GPU1 加 B3</text>
+  <rect x="360" y="930" width="210" height="74" rx="12" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="384" y="958" class="label">GPU1</text>
+  <text x="384" y="984" class="mono" fill="#9333ea">发 B0</text>
+  <text x="384" y="1008" class="small">给 GPU2：GPU2 加 C0</text>
+  <rect x="620" y="930" width="210" height="74" rx="12" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="644" y="958" class="label">GPU2</text>
+  <text x="644" y="984" class="mono" fill="#16a34a">发 C1</text>
+  <text x="644" y="1008" class="small">给 GPU3：GPU3 加 D1</text>
+  <rect x="880" y="930" width="210" height="74" rx="12" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="904" y="958" class="label">GPU3</text>
+  <text x="904" y="984" class="mono" fill="#ea580c">发 D2</text>
+  <text x="904" y="1008" class="small">给 GPU0：GPU0 加 A2</text>
+  <text x="86" y="1024" class="small">这就是“错位流水”：每个 chunk 都在路上，大家并行加，不是先算完 S3 再算 S0。</text>
+  <text x="60" y="1092" class="h">4. 最终结果</text>
+  <rect x="60" y="1118" width="1080" height="44" rx="12" class="greenPanel"/>
+  <text x="86" y="1146" class="tip">ReduceScatter 结束：GPU0=S0，GPU1=S1，GPU2=S2，GPU3=S3。每张 GPU 只拿 1 个 chunk 的全局和。</text>
+</svg>

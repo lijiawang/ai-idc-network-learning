@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 840" width="1400" height="840">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+.title { font-size: 28px; font-weight: 800; letter-spacing: 0; }
+.subtitle { font-size: 15px; fill: #64748b; }
+.section { font-size: 17px; font-weight: 750; fill: #0f172a; }
+.label { font-size: 15px; font-weight: 700; fill: #111827; }
+.small { font-size: 13px; fill: #64748b; }
+.tiny { font-size: 12px; fill: #64748b; }
+.chip { font-size: 13px; font-weight: 800; fill: #111827; }
+</style>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#f8fbff"/>
+<stop offset="1" stop-color="#ffffff"/>
+</linearGradient>
+<filter id="shadow" x="-15%" y="-20%" width="130%" height="145%">
+<feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.10"/>
+</filter>
+<filter id="soft" x="-10%" y="-15%" width="120%" height="130%">
+<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.08"/>
+</filter>
+<marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+<marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
+<marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,4 L0,8 Z" fill="#9333ea"/></marker>
+<marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
+</defs>
+<rect width="1400" height="840" fill="url(#bg)"/>
+<text x="56" y="54" class="title" text-anchor="start">MoE 中的 All-to-All：token 去找 expert</text>
+<text x="56" y="86" class="subtitle" text-anchor="start">router 决定 token 去哪个 expert；dispatch 负责送过去；expert 算完后，combine 再把结果送回原位置。</text>
+<text x="180" y="146" class="section" text-anchor="middle">1. 输入 token</text>
+<text x="420" y="146" class="section" text-anchor="middle">2. Router 分桶</text>
+<text x="690" y="146" class="section" text-anchor="middle">3. Dispatch</text>
+<text x="960" y="146" class="section" text-anchor="middle">4. Expert 计算</text>
+<text x="1220" y="146" class="section" text-anchor="middle">5. Combine 送回</text>
+<rect x="86" y="192" width="188" height="98" rx="16" ry="16" fill="#eef6ff" stroke="#bfdbfe" stroke-width="1.8" filter="url(#soft)"/>
+<text x="180.0" y="224" class="label" text-anchor="middle">GPU0</text>
+<text x="180.0" y="246" class="tiny" text-anchor="middle">一批 token</text>
+<rect x="115.0" y="260" width="38" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#ffffff" stroke-width="1.2"/>
+<text x="134.0" y="279.0" class="chip" text-anchor="middle">t0a</text>
+<rect x="161.0" y="260" width="38" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="180.0" y="279.0" class="chip" text-anchor="middle">t0b</text>
+<rect x="207.0" y="260" width="38" height="28" rx="8" ry="8" fill="#fef3c7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="226.0" y="279.0" class="chip" text-anchor="middle">t0c</text>
+<rect x="86" y="310" width="188" height="98" rx="16" ry="16" fill="#eef6ff" stroke="#bfdbfe" stroke-width="1.8" filter="url(#soft)"/>
+<text x="180.0" y="342" class="label" text-anchor="middle">GPU1</text>
+<text x="180.0" y="364" class="tiny" text-anchor="middle">一批 token</text>
+<rect x="115.0" y="378" width="38" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#ffffff" stroke-width="1.2"/>
+<text x="134.0" y="397.0" class="chip" text-anchor="middle">t1a</text>
+<rect x="161.0" y="378" width="38" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="180.0" y="397.0" class="chip" text-anchor="middle">t1b</text>
+<rect x="207.0" y="378" width="38" height="28" rx="8" ry="8" fill="#fef3c7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="226.0" y="397.0" class="chip" text-anchor="middle">t1c</text>
+<rect x="86" y="428" width="188" height="98" rx="16" ry="16" fill="#eef6ff" stroke="#bfdbfe" stroke-width="1.8" filter="url(#soft)"/>
+<text x="180.0" y="460" class="label" text-anchor="middle">GPU2</text>
+<text x="180.0" y="482" class="tiny" text-anchor="middle">一批 token</text>
+<rect x="115.0" y="496" width="38" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#ffffff" stroke-width="1.2"/>
+<text x="134.0" y="515.0" class="chip" text-anchor="middle">t2a</text>
+<rect x="161.0" y="496" width="38" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="180.0" y="515.0" class="chip" text-anchor="middle">t2b</text>
+<rect x="207.0" y="496" width="38" height="28" rx="8" ry="8" fill="#fef3c7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="226.0" y="515.0" class="chip" text-anchor="middle">t2c</text>
+<rect x="86" y="546" width="188" height="98" rx="16" ry="16" fill="#eef6ff" stroke="#bfdbfe" stroke-width="1.8" filter="url(#soft)"/>
+<text x="180.0" y="578" class="label" text-anchor="middle">GPU3</text>
+<text x="180.0" y="600" class="tiny" text-anchor="middle">一批 token</text>
+<rect x="115.0" y="614" width="38" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#ffffff" stroke-width="1.2"/>
+<text x="134.0" y="633.0" class="chip" text-anchor="middle">t3a</text>
+<rect x="161.0" y="614" width="38" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="180.0" y="633.0" class="chip" text-anchor="middle">t3b</text>
+<rect x="207.0" y="614" width="38" height="28" rx="8" ry="8" fill="#fef3c7" stroke="#ffffff" stroke-width="1.2"/>
+<text x="226.0" y="633.0" class="chip" text-anchor="middle">t3c</text>
+<rect x="336" y="190" width="170" height="462" rx="20" ry="20" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8" filter="url(#shadow)"/>
+<text x="421" y="232" class="section" text-anchor="middle" style="fill:#ea580c">Router</text>
+<text x="421" y="256" class="tiny" text-anchor="middle">逻辑示意，非中央服务</text>
+<text x="421" y="286" class="small" text-anchor="middle">各 rank 本地路由</text>
+<text x="421" y="316" class="small" text-anchor="middle">按 token 分桶到 expert</text>
+<rect x="366" y="360" width="110" height="36" rx="12" ry="12" fill="#dbeafe" stroke="#ffffff" stroke-width="1.3"/>
+<text x="421.0" y="383.0" class="small" text-anchor="middle" style="fill:#475569;font-weight:750">去 E0</text>
+<rect x="366" y="416" width="110" height="36" rx="12" ry="12" fill="#dcfce7" stroke="#ffffff" stroke-width="1.3"/>
+<text x="421.0" y="439.0" class="small" text-anchor="middle" style="fill:#475569;font-weight:750">去 E1</text>
+<rect x="366" y="472" width="110" height="36" rx="12" ry="12" fill="#fef3c7" stroke="#ffffff" stroke-width="1.3"/>
+<text x="421.0" y="495.0" class="small" text-anchor="middle" style="fill:#475569;font-weight:750">去 E2</text>
+<rect x="366" y="528" width="110" height="36" rx="12" ry="12" fill="#fce7f3" stroke="#ffffff" stroke-width="1.3"/>
+<text x="421.0" y="551.0" class="small" text-anchor="middle" style="fill:#475569;font-weight:750">去 E3</text>
+<rect x="608" y="270" width="176" height="300" rx="20" ry="20" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8" filter="url(#shadow)"/>
+<text x="696" y="318" class="section" text-anchor="middle" style="fill:#2563eb">Dispatch</text>
+<text x="696" y="372" class="small" text-anchor="middle">第一次 All-to-All</text>
+<text x="696" y="408" class="small" text-anchor="middle">把 token 送到</text>
+<text x="696" y="438" class="small" text-anchor="middle">expert 所在 GPU</text>
+<rect x="880" y="192" width="188" height="98" rx="16" ry="16" fill="#eefdf5" stroke="#bbf7d0" stroke-width="1.8" filter="url(#soft)"/>
+<text x="974.0" y="224" class="label" text-anchor="middle">GPU0</text>
+<text x="974.0" y="246" class="tiny" text-anchor="middle">Expert 0</text>
+<rect x="925" y="250" width="98" height="30" rx="12" ry="12" fill="#ffffff" stroke="#86efac" stroke-width="1.3"/>
+<text x="974.0" y="270.0" class="small" text-anchor="middle" style="fill:#16a34a;font-weight:750">算 expert</text>
+<rect x="880" y="310" width="188" height="98" rx="16" ry="16" fill="#eefdf5" stroke="#bbf7d0" stroke-width="1.8" filter="url(#soft)"/>
+<text x="974.0" y="342" class="label" text-anchor="middle">GPU1</text>
+<text x="974.0" y="364" class="tiny" text-anchor="middle">Expert 1</text>
+<rect x="925" y="368" width="98" height="30" rx="12" ry="12" fill="#ffffff" stroke="#86efac" stroke-width="1.3"/>
+<text x="974.0" y="388.0" class="small" text-anchor="middle" style="fill:#16a34a;font-weight:750">算 expert</text>
+<rect x="880" y="428" width="188" height="98" rx="16" ry="16" fill="#eefdf5" stroke="#bbf7d0" stroke-width="1.8" filter="url(#soft)"/>
+<text x="974.0" y="460" class="label" text-anchor="middle">GPU2</text>
+<text x="974.0" y="482" class="tiny" text-anchor="middle">Expert 2</text>
+<rect x="925" y="486" width="98" height="30" rx="12" ry="12" fill="#ffffff" stroke="#86efac" stroke-width="1.3"/>
+<text x="974.0" y="506.0" class="small" text-anchor="middle" style="fill:#16a34a;font-weight:750">算 expert</text>
+<rect x="880" y="546" width="188" height="98" rx="16" ry="16" fill="#eefdf5" stroke="#bbf7d0" stroke-width="1.8" filter="url(#soft)"/>
+<text x="974.0" y="578" class="label" text-anchor="middle">GPU3</text>
+<text x="974.0" y="600" class="tiny" text-anchor="middle">Expert 3</text>
+<rect x="925" y="604" width="98" height="30" rx="12" ry="12" fill="#ffffff" stroke="#86efac" stroke-width="1.3"/>
+<text x="974.0" y="624.0" class="small" text-anchor="middle" style="fill:#16a34a;font-weight:750">算 expert</text>
+<rect x="1162" y="270" width="176" height="300" rx="20" ry="20" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8" filter="url(#shadow)"/>
+<text x="1250" y="318" class="section" text-anchor="middle" style="fill:#9333ea">Combine</text>
+<text x="1250" y="372" class="small" text-anchor="middle">第二次 All-to-All</text>
+<text x="1250" y="408" class="small" text-anchor="middle">把 expert 结果</text>
+<text x="1250" y="438" class="small" text-anchor="middle">送回原 token 位置</text>
+<line x1="274" y1="241" x2="336" y2="241" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+<line x1="274" y1="359" x2="336" y2="359" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+<line x1="274" y1="477" x2="336" y2="477" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+<line x1="274" y1="595" x2="336" y2="595" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+<text x="304" y="334" class="tiny" text-anchor="middle" style="fill:#64748b">路由</text>
+<line x1="506" y1="378" x2="608" y2="378" stroke="#2563eb" stroke-width="2.7" fill="none" marker-end="url(#arrow-blue)"/>
+<line x1="506" y1="434" x2="608" y2="434" stroke="#2563eb" stroke-width="2.7" fill="none" marker-end="url(#arrow-blue)"/>
+<line x1="506" y1="490" x2="608" y2="490" stroke="#2563eb" stroke-width="2.7" fill="none" marker-end="url(#arrow-blue)"/>
+<path d="M 784 350 C 820 350, 836 241, 880 241" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+<path d="M 784 395 C 820 395, 836 359, 880 359" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+<path d="M 784 445 C 820 445, 836 477, 880 477" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+<path d="M 784 490 C 820 490, 836 595, 880 595" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+<path d="M 1068 241 C 1110 241, 1124 328, 1162 328" stroke="#9333ea" stroke-width="2.1" fill="none" marker-end="url(#arrow-purple)"/>
+<path d="M 1068 359 C 1110 359, 1124 390, 1162 390" stroke="#9333ea" stroke-width="2.1" fill="none" marker-end="url(#arrow-purple)"/>
+<path d="M 1068 477 C 1110 477, 1124 452, 1162 452" stroke="#9333ea" stroke-width="2.1" fill="none" marker-end="url(#arrow-purple)"/>
+<path d="M 1068 595 C 1110 595, 1124 514, 1162 514" stroke="#9333ea" stroke-width="2.1" fill="none" marker-end="url(#arrow-purple)"/>
+<path d="M 1250 570 C 1110 742, 330 742, 180 670" stroke="#9333ea" stroke-width="2.5" fill="none" marker-end="url(#arrow-purple)" stroke-dasharray="8,6"/>
+<rect x="374" y="756" width="652" height="54" rx="16" ry="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.3" filter="url(#soft)"/>
+<text x="700" y="790" class="label" text-anchor="middle">一层 MoE 的节奏：路由分桶 -&gt; 派送 token -&gt; expert 计算 -&gt; 结果送回</text>
+<rect x="56" y="724" width="260" height="92" rx="16" ry="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2"/>
+<text x="76" y="748" class="small" text-anchor="start" style="font-weight:750">图例</text>
+<line x1="78" y1="770" x2="120" y2="770" stroke="#ea580c" stroke-width="2.3" fill="none" marker-end="url(#arrow-orange)"/>
+<text x="134" y="775" class="tiny" text-anchor="start">router 控制</text>
+<line x1="78" y1="792" x2="120" y2="792" stroke="#2563eb" stroke-width="2.3" fill="none" marker-end="url(#arrow-blue)"/>
+<text x="134" y="797" class="tiny" text-anchor="start">dispatch 派送</text>
+<line x1="78" y1="814" x2="120" y2="814" stroke="#9333ea" stroke-width="2.3" fill="none" marker-end="url(#arrow-purple)" stroke-dasharray="8,6"/>
+<text x="134" y="819" class="tiny" text-anchor="start">combine 送回</text>
+</svg>

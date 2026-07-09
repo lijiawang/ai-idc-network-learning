@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.small { font-size: 14px; fill: #6b7280; }
+</style>
+
+<defs>
+  <marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#2563eb"/></marker>
+  <marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#16a34a"/></marker>
+  <marker id="arrow-purple" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#9333ea"/></marker>
+  <marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#ea580c"/></marker>
+  <marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#dc2626"/></marker>
+</defs>
+
+<rect width="1440" height="900" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" font-size="30" font-weight="700" fill="#111827" opacity="1">存储性能规划：不要只看容量，还要看读写吞吐</text>
+<text x="60" y="92" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">参考架构给出 Standard 与 Enhanced 两档聚合读写能力</text>
+<line x1="60" y1="118" x2="1380" y2="118" stroke="#e5e7eb" stroke-width="2" fill="none" opacity="1"/>
+<rect x="105" y="170" width="1220" height="600" rx="14" ry="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" opacity="1"/>
+<text x="150" y="225" text-anchor="start" font-size="22" font-weight="700" fill="#111827" opacity="1">聚合吞吐（GBps）</text>
+<line x1="190" y1="700.0" x2="1200" y2="700.0" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="706.0" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">0</text>
+<line x1="190" y1="617.3076923076923" x2="1200" y2="617.3076923076923" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="623.3076923076923" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">100</text>
+<line x1="190" y1="534.6153846153846" x2="1200" y2="534.6153846153846" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="540.6153846153846" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">200</text>
+<line x1="190" y1="451.9230769230769" x2="1200" y2="451.9230769230769" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="457.9230769230769" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">300</text>
+<line x1="190" y1="369.2307692307692" x2="1200" y2="369.2307692307692" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="375.2307692307692" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">400</text>
+<line x1="190" y1="286.53846153846155" x2="1200" y2="286.53846153846155" stroke="#e5e7eb" stroke-width="1" fill="none" opacity="1"/>
+<text x="175" y="292.53846153846155" text-anchor="end" font-size="13" font-weight="400" fill="#6b7280" opacity="1">500</text>
+<rect x="220" y="666.9230769230769" width="70" height="33.07692307692308" rx="8" ry="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="305" y="596.6346153846154" width="70" height="103.36538461538461" rx="8" ry="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<text x="255" y="654.9230769230769" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb" opacity="1">40</text>
+<text x="340" y="584.6346153846154" text-anchor="middle" font-size="16" font-weight="700" fill="#16a34a" opacity="1">125</text>
+<text x="298" y="735" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">单 SU 读</text>
+<rect x="445" y="683.4615384615385" width="70" height="16.53846153846154" rx="8" ry="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="530" y="648.7307692307693" width="70" height="51.269230769230774" rx="8" ry="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<text x="480" y="671.4615384615385" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb" opacity="1">20</text>
+<text x="565" y="636.7307692307693" text-anchor="middle" font-size="16" font-weight="700" fill="#16a34a" opacity="1">62</text>
+<text x="523" y="735" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">单 SU 写</text>
+<rect x="670" y="567.6923076923076" width="70" height="132.30769230769232" rx="8" ry="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="755" y="286.53846153846155" width="70" height="413.46153846153845" rx="8" ry="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<text x="705" y="555.6923076923076" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb" opacity="1">160</text>
+<text x="790" y="274.53846153846155" text-anchor="middle" font-size="16" font-weight="700" fill="#16a34a" opacity="1">500</text>
+<text x="748" y="735" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">4 SU 读</text>
+<rect x="895" y="633.8461538461538" width="70" height="66.15384615384616" rx="8" ry="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="980" y="493.2692307692308" width="70" height="206.73076923076923" rx="8" ry="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<text x="930" y="621.8461538461538" text-anchor="middle" font-size="16" font-weight="700" fill="#2563eb" opacity="1">80</text>
+<text x="1015" y="481.2692307692308" text-anchor="middle" font-size="16" font-weight="700" fill="#16a34a" opacity="1">250</text>
+<text x="973" y="735" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">4 SU 写</text>
+<rect x="1010" y="250" width="270" height="95" rx="14" ry="14" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="1010" y="250" width="10" height="95" rx="14" ry="14" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<circle cx="1044" cy="297.5" r="19" fill="#2563eb" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1044" y="304.5" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">S</text>
+<text x="1074" y="293.5" text-anchor="start" font-size="19" font-weight="700" fill="#111827" opacity="1">Standard</text>
+<text x="1074" y="322.5" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">计算主导 / 数据可缓存</text>
+<rect x="1010" y="380" width="270" height="95" rx="14" ry="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="1010" y="380" width="10" height="95" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="1044" cy="427.5" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1044" y="434.5" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">E</text>
+<text x="1074" y="423.5" text-anchor="start" font-size="19" font-weight="700" fill="#111827" opacity="1">Enhanced</text>
+<text x="1074" y="452.5" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">多模态 / 大数据集 / I/O 敏感</text>
+<rect x="1010" y="510" width="270" height="105" rx="14" ry="14" fill="#fff7ed" stroke="#fed7aa" stroke-width="2" opacity="1"/>
+<rect x="1010" y="510" width="10" height="105" rx="14" ry="14" fill="#ea580c" stroke="#ea580c" stroke-width="0" opacity="1"/>
+<circle cx="1044" cy="562.5" r="19" fill="#ea580c" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1044" y="569.5" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">CKPT</text>
+<text x="1074" y="558.5" text-anchor="start" font-size="19" font-weight="700" fill="#111827" opacity="1">Checkpoint</text>
+<text x="1074" y="587.5" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">TB 级写入会阻塞训练进度</text>
+</svg>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0891b2"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="rdma-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#eff6ff"/>
+    </linearGradient>
+    <linearGradient id="cover-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07132d"/>
+      <stop offset="56%" stop-color="#102a5c"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">RDMA、GPUDirect RDMA、IB/RoCE、NCCL 不是同一层</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">先把这些词放回各自的位置，后面看日志和排障才不会乱。</text>
+  <rect x="105" y="132" width="990" height="72" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="139" y="175" font-size="18" fill="#111827" text-anchor="start" font-weight="700">应用 / 框架</text>
+  <text x="335" y="175" font-size="14" fill="#6b7280" text-anchor="start" font-weight="400">PyTorch、Megatron、vLLM、训练脚本发起 collective 或 send/recv</text>
+  <rect x="105" y="226" width="990" height="72" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="139" y="269" font-size="18" fill="#111827" text-anchor="start" font-weight="700">通信库</text>
+  <text x="335" y="269" font-size="14" fill="#6b7280" text-anchor="start" font-weight="400">NCCL / MPI / UCX 负责选路、拆包、调度和调用网络后端</text>
+  <rect x="105" y="320" width="990" height="72" rx="12" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="139" y="363" font-size="18" fill="#111827" text-anchor="start" font-weight="700">GPUDirect RDMA</text>
+  <text x="335" y="363" font-size="14" fill="#6b7280" text-anchor="start" font-weight="400">让 RDMA NIC 直接 DMA 访问 GPU memory，减少 Host Memory 中转</text>
+  <rect x="105" y="414" width="990" height="72" rx="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="139" y="457" font-size="18" fill="#111827" text-anchor="start" font-weight="700">RDMA 网络</text>
+  <text x="335" y="457" font-size="14" fill="#6b7280" text-anchor="start" font-weight="400">InfiniBand 或 RoCE 承载远端内存访问，普通 TCP 不等于 RDMA</text>
+  <rect x="105" y="508" width="990" height="72" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="139" y="551" font-size="18" fill="#111827" text-anchor="start" font-weight="700">硬件拓扑</text>
+  <text x="335" y="551" font-size="14" fill="#6b7280" text-anchor="start" font-weight="400">GPU、PCIe Switch、CPU/NUMA、NIC、交换机和线缆决定物理路径</text>
+  <path d="M 600 204 L 600 224" stroke="#6b7280" stroke-width="1.8" fill="none" marker-end="url(#arrow-gray)"/>
+  <path d="M 600 298 L 600 318" stroke="#6b7280" stroke-width="1.8" fill="none" marker-end="url(#arrow-gray)"/>
+  <path d="M 600 392 L 600 412" stroke="#6b7280" stroke-width="1.8" fill="none" marker-end="url(#arrow-gray)"/>
+  <path d="M 600 486 L 600 506" stroke="#6b7280" stroke-width="1.8" fill="none" marker-end="url(#arrow-gray)"/>
+  <text x="878" y="360" font-size="16" fill="#0891b2" text-anchor="middle" font-weight="700">GDRDMA 是数据路径优化</text>
+  <text x="878" y="386" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">不是一种交换机，也不是 NCCL 本身</text>
+</svg>

@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 690" width="1200" height="690">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="blue-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="690" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">P2P 能不能快，关键看拓扑</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">同样支持 GPUDirect P2P，NVLink/NVSwitch、同 PCIe Switch、跨 Socket 的体验会完全不同。</text>
+  <rect x="50" y="105" width="1100" height="152" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="78" y="137" font-size="17" fill="#111827" text-anchor="start" font-weight="700">最快：NVLink / NVSwitch</text>
+  <rect x="126" y="158" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="189" y="186" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="144" y="205" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="189" y="218" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="189" y="236" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="402" y="158" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="465" y="186" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="420" y="205" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="465" y="218" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="465" y="236" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="780" y="158" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="843" y="186" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU2</text>
+  <rect x="798" y="205" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="843" y="218" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="843" y="236" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="575" y="164" width="130" height="76" rx="10" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="640" y="195" font-size="16" fill="#0891b2" text-anchor="middle" font-weight="700">NVSwitch</text>
+  <text x="640" y="218" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">Scale-up Fabric</text>
+  <path d="M 252 202 L 396 202" stroke="#16a34a" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 528 202 L 571 202" stroke="#16a34a" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 705 202 L 774 202" stroke="#16a34a" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="973" y="197" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">带宽高，延迟低</text>
+  <text x="973" y="223" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">单机大模型训练的黄金路线</text>
+  <rect x="50" y="286" width="520" height="285" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="78" y="320" font-size="17" fill="#111827" text-anchor="start" font-weight="700">较常见：同一个 PCIe Switch</text>
+  <rect x="246" y="356" width="128" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="310" y="387" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU0</text>
+  <text x="310" y="409" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <rect x="222" y="454" width="176" height="52" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="310" y="486" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">PCIe Switch</text>
+  <rect x="88" y="462" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="151" y="490" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="106" y="509" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="151" y="522" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="151" y="540" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="432" y="462" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="495" y="490" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="450" y="509" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="495" y="522" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="495" y="540" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <path d="M 214 506 L 218 506" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 398 506 L 428 506" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 151 462 L 151 420 L 310 420 L 310 450" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 495 462 L 495 420 L 310 420 L 310 450" stroke="#2563eb" stroke-width="2.4" fill="none" marker-end="url(#arrow-blue)"/>
+  <text x="310" y="546" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">通常可 P2P，但带宽受 PCIe 代际和链路宽度限制</text>
+  <rect x="630" y="286" width="520" height="285" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="658" y="320" font-size="17" fill="#111827" text-anchor="start" font-weight="700">更远：跨 CPU Socket / NUMA</text>
+  <rect x="702" y="360" width="128" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="766" y="391" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU0</text>
+  <text x="766" y="413" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <rect x="980" y="360" width="128" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="1044" y="391" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU1</text>
+  <text x="1044" y="413" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <text x="904" y="397" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">UPI / IF</text>
+  <path d="M 830 394 L 976 394" stroke="#6b7280" stroke-width="2.5" fill="none" marker-end="url(#arrow-gray)" stroke-dasharray="7,5"/>
+  <rect x="686" y="458" width="160" height="48" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="968" y="458" width="160" height="48" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="766" y="488" font-size="14" fill="#6b7280" text-anchor="middle" font-weight="700">PCIe Switch</text>
+  <text x="1048" y="488" font-size="14" fill="#6b7280" text-anchor="middle" font-weight="700">PCIe Switch</text>
+  <rect x="650" y="526" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="713" y="554" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="668" y="573" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="713" y="586" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="713" y="604" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="1002" y="526" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="1065" y="554" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="1020" y="573" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="1065" y="586" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="1065" y="604" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <path d="M 776 570 L 999 570" stroke="#dc2626" stroke-width="2.3" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,5"/>
+  <rect x="855" y="532" width="70" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="890" y="548" font-size="13" fill="#dc2626" text-anchor="middle" font-weight="600">路径更长</text>
+  <text x="890" y="628" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">可能能通，但延迟/带宽通常不如近端路径</text>
+  <line x1="78" y1="638" x2="112" y2="638" stroke="#16a34a" stroke-width="2.2" marker-end="url(#arrow-green)"/>
+  <text x="122" y="642" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">NVLink/NVSwitch</text>
+  <line x1="246" y1="638" x2="280" y2="638" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+  <text x="290" y="642" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">PCIe P2P</text>
+  <line x1="372" y1="638" x2="406" y2="638" stroke="#dc2626" stroke-width="2.2" marker-end="url(#arrow-red)"/>
+  <text x="416" y="642" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">跨 Socket 远路径</text>
+</svg>

@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" width="1200" height="940">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    .title { fill: #111827; font-size: 28px; font-weight: 700; }
+    .subtitle { fill: #6b7280; font-size: 15px; }
+    .section-title { fill: #111827; font-size: 18px; font-weight: 700; }
+    .label { fill: #111827; font-size: 14px; font-weight: 600; }
+    .small { fill: #6b7280; font-size: 13px; }
+    .tiny { fill: #6b7280; font-size: 12px; }
+    .gpu { fill: #111827; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    .role { fill: #111827; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#111827" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="#ffffff"/>
+  <text x="600.0" y="42" text-anchor="middle" class="title">8 GPU Double Binary Tree：两棵互补二叉树</text>
+  <text x="600.0" y="72" text-anchor="middle" class="subtitle">G0-G7 组成两棵树：Tree0 忙的 rank，在 Tree1 里尽量变成叶子</text>
+  <rect x="56" y="104" width="1088" height="118" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="76" y="134" class="section-title">1. 先把 tensor 切成两半，并行分发给两棵树</text>
+  <rect x="96" y="150" width="1008" height="50" rx="8" ry="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="126" y="181" class="label">Tensor buffer</text>
+  <rect x="330" y="160" width="270" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="465" y="180" text-anchor="middle" class="small">Chunk A → Tree 0</text>
+  <path d="M 600 175 C 640 175, 664 175, 704 175" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)" stroke-dasharray="5,4"/>
+  <rect x="620" y="145" width="72" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="656.0" y="162.0" text-anchor="middle" class="small">并行</text>
+  <rect x="704" y="160" width="270" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
+  <text x="839" y="180" text-anchor="middle" class="small">Chunk B → Tree 1</text>
+  <rect x="56" y="250" width="520" height="370" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="76" y="280" class="section-title">2. Tree 0：Chunk A 走蓝色树</text>
+  <rect x="624" y="250" width="520" height="370" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="644" y="280" class="section-title">3. Tree 1：Chunk B 走紫色树</text>
+  <text x="92" y="304" class="small">内部节点：G0 / G1 / G2 / G3</text>
+  <text x="660" y="304" class="small">内部节点：G7 / G6 / G5 / G4</text>
+  <line x1="316" y1="390" x2="206" y2="428" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="316" y1="390" x2="426" y2="428" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="206" y1="476" x2="126" y2="524" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="206" y1="476" x2="286" y2="524" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="426" y1="476" x2="366" y2="524" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="426" y1="476" x2="526" y2="524" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="126" y1="572" x2="72" y2="578" stroke="#2563eb" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <circle cx="316" cy="366" r="24" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="316" y="366" class="gpu">G0</text>
+  <circle cx="206" cy="452" r="24" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="206" y="452" class="gpu">G1</text>
+  <circle cx="426" cy="452" r="24" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="426" y="452" class="gpu">G2</text>
+  <circle cx="126" cy="548" r="24" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="126" y="548" class="gpu">G3</text>
+  <circle cx="286" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="286" y="548" class="gpu">G4</text>
+  <circle cx="366" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="366" y="548" class="gpu">G5</text>
+  <circle cx="526" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="526" y="548" class="gpu">G6</text>
+  <circle cx="72" cy="602" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="72" y="602" class="gpu">G7</text>
+  <rect x="260" y="320" width="116" height="26" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
+  <text x="318.0" y="337.0" text-anchor="middle" class="tiny">G0: root/内部</text>
+  <rect x="480" y="512" width="84" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="522.0" y="529.0" text-anchor="middle" class="tiny">G6: 叶子</text>
+  <rect x="92" y="592" width="82" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="133.0" y="609.0" text-anchor="middle" class="tiny">G7: 叶子</text>
+  <text x="316" y="645" text-anchor="middle" class="small">Tree 0 中，G0-G3 承担内部节点角色</text>
+  <line x1="884" y1="390" x2="774" y2="428" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="884" y1="390" x2="994" y2="428" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="774" y1="476" x2="694" y2="524" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="774" y1="476" x2="854" y2="524" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="994" y1="476" x2="934" y2="524" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="994" y1="476" x2="1094" y2="524" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="694" y1="572" x2="640" y2="578" stroke="#9333ea" stroke-width="2.7" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <circle cx="884" cy="366" r="24" fill="#ede9fe" stroke="#c084fc" stroke-width="2"/>
+  <text x="884" y="366" class="gpu">G7</text>
+  <circle cx="774" cy="452" r="24" fill="#ede9fe" stroke="#c084fc" stroke-width="2"/>
+  <text x="774" y="452" class="gpu">G6</text>
+  <circle cx="994" cy="452" r="24" fill="#ede9fe" stroke="#c084fc" stroke-width="2"/>
+  <text x="994" y="452" class="gpu">G5</text>
+  <circle cx="694" cy="548" r="24" fill="#ede9fe" stroke="#c084fc" stroke-width="2"/>
+  <text x="694" y="548" class="gpu">G4</text>
+  <circle cx="854" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="854" y="548" class="gpu">G3</text>
+  <circle cx="934" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="934" y="548" class="gpu">G2</text>
+  <circle cx="1094" cy="548" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="1094" y="548" class="gpu">G1</text>
+  <circle cx="640" cy="602" r="24" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="640" y="602" class="gpu">G0</text>
+  <rect x="826" y="320" width="116" height="26" rx="5" ry="5" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.2"/>
+  <text x="884.0" y="337.0" text-anchor="middle" class="tiny">G7: root/内部</text>
+  <rect x="662" y="592" width="82" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="703.0" y="609.0" text-anchor="middle" class="tiny">G0: 叶子</text>
+  <rect x="1052" y="512" width="84" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="1094.0" y="529.0" text-anchor="middle" class="tiny">G1: 叶子</text>
+  <text x="884" y="645" text-anchor="middle" class="small">Tree 1 中，G7-G4 承担内部节点角色</text>
+  <rect x="432" y="666" width="336" height="58" rx="10" ry="10" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+  <text x="600" y="689" text-anchor="middle" class="label">互补的意思</text>
+  <text x="600" y="711" text-anchor="middle" class="small">每个 rank 恰好在一棵树里忙，在另一棵树里闲</text>
+  <rect x="56" y="744" width="1088" height="142" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="76" y="774" class="section-title">4. rank 角色表：8 GPU 时互补关系最清楚</text>
+  <rect x="74" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="134.0" y="808" text-anchor="middle" class="label">Rank</text>
+  <rect x="194" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="254.0" y="808" text-anchor="middle" class="label">G0</text>
+  <rect x="314" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="374.0" y="808" text-anchor="middle" class="label">G1</text>
+  <rect x="434" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="494.0" y="808" text-anchor="middle" class="label">G2</text>
+  <rect x="554" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="614.0" y="808" text-anchor="middle" class="label">G3</text>
+  <rect x="674" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="734.0" y="808" text-anchor="middle" class="label">G4</text>
+  <rect x="794" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="854.0" y="808" text-anchor="middle" class="label">G5</text>
+  <rect x="914" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="974.0" y="808" text-anchor="middle" class="label">G6</text>
+  <rect x="1034" y="788" width="120" height="30" rx="0" ry="0" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="1094.0" y="808" text-anchor="middle" class="label">G7</text>
+  <rect x="74" y="818" width="120" height="30" rx="0" ry="0" fill="#eff6ff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="134.0" y="838" text-anchor="middle" class="label">Tree 0</text>
+  <rect x="194" y="818" width="120" height="30" rx="0" ry="0" fill="#dbeafe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="254.0" y="834" class="role">内部/root</text>
+  <rect x="314" y="818" width="120" height="30" rx="0" ry="0" fill="#dbeafe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="374.0" y="834" class="role">内部</text>
+  <rect x="434" y="818" width="120" height="30" rx="0" ry="0" fill="#dbeafe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="494.0" y="834" class="role">内部</text>
+  <rect x="554" y="818" width="120" height="30" rx="0" ry="0" fill="#dbeafe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="614.0" y="834" class="role">内部</text>
+  <rect x="674" y="818" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="734.0" y="834" class="role">叶子</text>
+  <rect x="794" y="818" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="854.0" y="834" class="role">叶子</text>
+  <rect x="914" y="818" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="974.0" y="834" class="role">叶子</text>
+  <rect x="1034" y="818" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="1094.0" y="834" class="role">叶子</text>
+  <rect x="74" y="848" width="120" height="30" rx="0" ry="0" fill="#faf5ff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="134.0" y="868" text-anchor="middle" class="label">Tree 1</text>
+  <rect x="194" y="848" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="254.0" y="864" class="role">叶子</text>
+  <rect x="314" y="848" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="374.0" y="864" class="role">叶子</text>
+  <rect x="434" y="848" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="494.0" y="864" class="role">叶子</text>
+  <rect x="554" y="848" width="120" height="30" rx="0" ry="0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="614.0" y="864" class="role">叶子</text>
+  <rect x="674" y="848" width="120" height="30" rx="0" ry="0" fill="#ede9fe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="734.0" y="864" class="role">内部</text>
+  <rect x="794" y="848" width="120" height="30" rx="0" ry="0" fill="#ede9fe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="854.0" y="864" class="role">内部</text>
+  <rect x="914" y="848" width="120" height="30" rx="0" ry="0" fill="#ede9fe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="974.0" y="864" class="role">内部</text>
+  <rect x="1034" y="848" width="120" height="30" rx="0" ry="0" fill="#ede9fe" stroke="#d1d5db" stroke-width="1.2"/>
+  <text x="1094.0" y="864" class="role">内部/root</text>
+  <g transform="translate(96, 904)">
+    <line x1="0" y1="8" x2="34" y2="8" stroke="#2563eb" stroke-width="2.7" marker-end="url(#arrow-blue)"/>
+    <text x="44" y="12" class="small">Tree0 / Chunk A</text>
+    <line x1="210" y1="8" x2="244" y2="8" stroke="#9333ea" stroke-width="2.7" marker-end="url(#arrow-purple)"/>
+    <text x="254" y="12" class="small">Tree1 / Chunk B</text>
+    <line x1="420" y1="8" x2="454" y2="8" stroke="#ea580c" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+    <text x="464" y="12" class="small">chunk 并行切分</text>
+  </g>
+</svg>

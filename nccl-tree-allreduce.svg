@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    .title { fill: #111827; font-size: 26px; font-weight: 700; }
+    .subtitle { fill: #6b7280; font-size: 14px; }
+    .section-title { fill: #111827; font-size: 17px; font-weight: 700; }
+    .label { fill: #111827; font-size: 13px; font-weight: 600; }
+    .small { fill: #6b7280; font-size: 12px; }
+    .tiny { fill: #6b7280; font-size: 11px; }
+    .gpu { fill: #111827; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#111827" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="#ffffff"/>
+  <text x="600" y="38" text-anchor="middle" class="title">NCCL Tree AllReduce 图解</text>
+  <text x="600" y="66" text-anchor="middle" class="subtitle">逻辑上是 Reduce + Broadcast；工程上用 double binary tree 降低延迟并分摊内部节点压力</text>
+  <rect x="48" y="96" width="1104" height="326" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="66" y="124" class="section-title">1. 单棵树视角：AllReduce = Reduce up + Broadcast down</text>
+  <rect x="74" y="144" width="500" height="250" rx="8" ry="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="324.0" y="169" text-anchor="middle" class="label">Reduce 阶段</text>
+  <text x="324.0" y="190" text-anchor="middle" class="small">叶子向 root 汇聚，中间节点边收边做 sum</text>
+  <rect x="626" y="144" width="500" height="250" rx="8" ry="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="876.0" y="169" text-anchor="middle" class="label">Broadcast 阶段</text>
+  <text x="876.0" y="190" text-anchor="middle" class="small">root 把完整结果沿树发给所有 rank</text>
+  <line x1="144" y1="336" x2="224" y2="314" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="264" y1="336" x2="224" y2="314" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="384" y1="336" x2="424" y2="314" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="504" y1="336" x2="424" y2="314" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="224" y1="270" x2="324" y2="240" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="424" y1="270" x2="324" y2="240" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <circle cx="324" cy="218" r="22" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.7"/>
+  <text x="324" y="218" class="gpu">G0</text>
+  <circle cx="224" cy="292" r="22" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.7"/>
+  <text x="224" y="292" class="gpu">G1</text>
+  <circle cx="424" cy="292" r="22" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.7"/>
+  <text x="424" y="292" class="gpu">G2</text>
+  <circle cx="144" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="144" y="358" class="gpu">G3</text>
+  <circle cx="264" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="264" y="358" class="gpu">G4</text>
+  <circle cx="384" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="384" y="358" class="gpu">G5</text>
+  <circle cx="504" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="504" y="358" class="gpu">G6</text>
+  <rect x="286" y="255" width="78" height="24" rx="5" ry="5" fill="#ffffff" opacity="0.96" stroke="#e5e7eb"/>
+  <text x="325.0" y="271.0" text-anchor="middle" class="small">局部 sum</text>
+  <text x="324" y="383" text-anchor="middle" class="tiny">root 得到 a0+...+a6</text>
+  <line x1="876" y1="240" x2="776" y2="270" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <line x1="876" y1="240" x2="976" y2="270" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <line x1="776" y1="314" x2="696" y2="336" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <line x1="776" y1="314" x2="816" y2="336" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <line x1="976" y1="314" x2="936" y2="336" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <line x1="976" y1="314" x2="1056" y2="336" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <circle cx="876" cy="218" r="22" fill="#f0fdf4" stroke="#86efac" stroke-width="1.7"/>
+  <text x="876" y="218" class="gpu">G0</text>
+  <circle cx="776" cy="292" r="22" fill="#f0fdf4" stroke="#86efac" stroke-width="1.7"/>
+  <text x="776" y="292" class="gpu">G1</text>
+  <circle cx="976" cy="292" r="22" fill="#f0fdf4" stroke="#86efac" stroke-width="1.7"/>
+  <text x="976" y="292" class="gpu">G2</text>
+  <circle cx="696" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="696" y="358" class="gpu">G3</text>
+  <circle cx="816" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="816" y="358" class="gpu">G4</text>
+  <circle cx="936" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="936" y="358" class="gpu">G5</text>
+  <circle cx="1056" cy="358" r="22" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="1056" y="358" class="gpu">G6</text>
+  <rect x="828" y="255" width="96" height="24" rx="5" ry="5" fill="#ffffff" opacity="0.96" stroke="#e5e7eb"/>
+  <text x="876.0" y="271.0" text-anchor="middle" class="small">完整结果</text>
+  <text x="876" y="383" text-anchor="middle" class="tiny">每个 GPU 都拿到相同 sum</text>
+  <path d="M 584 270 C 600 270, 609 270, 620 270" fill="none" stroke="#ea580c" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+  <rect x="578" y="241" width="58" height="24" rx="5" ry="5" fill="#ffffff" opacity="0.96" stroke="#e5e7eb"/>
+  <text x="607.0" y="257.0" text-anchor="middle" class="small">然后</text>
+  <rect x="48" y="452" width="1104" height="396" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="66" y="480" class="section-title">2. NCCL double binary tree：切 chunk，两棵互补树并行</text>
+  <rect x="80" y="496" width="1040" height="54" rx="8" ry="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="116" y="529" class="label">Tensor 梯度 buffer</text>
+  <rect x="300" y="508" width="246" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="423" y="528" text-anchor="middle" class="small">Chunk A 走 Tree 0</text>
+  <rect x="654" y="508" width="246" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#d8b4fe"/>
+  <text x="777" y="528" text-anchor="middle" class="small">Chunk B 走 Tree 1</text>
+  <path d="M 546 523 C 590 523, 610 523, 654 523" fill="none" stroke="#ea580c" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)" stroke-dasharray="5,4"/>
+  <rect x="558" y="494" width="86" height="24" rx="5" ry="5" fill="#ffffff" opacity="0.96" stroke="#e5e7eb"/>
+  <text x="601.0" y="510.0" text-anchor="middle" class="small">切分并行</text>
+  <rect x="80" y="578" width="470" height="222" rx="8" ry="8" fill="#f8fbff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="100" y="606" class="label">Tree 0: 处理 Chunk A</text>
+  <text x="100" y="628" class="tiny">G0/G1/G2 是内部节点，负责汇聚和转发</text>
+  <line x1="315" y1="682" x2="225" y2="702" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="315" y1="682" x2="405" y2="702" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="225" y1="738" x2="145" y2="756" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="225" y1="738" x2="265" y2="756" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="405" y1="738" x2="365" y2="756" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <line x1="405" y1="738" x2="485" y2="756" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+  <circle cx="315" cy="664" r="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="1.7"/>
+  <text x="315" y="664" class="gpu">G0</text>
+  <circle cx="225" cy="720" r="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="1.7"/>
+  <text x="225" y="720" class="gpu">G1</text>
+  <circle cx="405" cy="720" r="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="1.7"/>
+  <text x="405" y="720" class="gpu">G2</text>
+  <circle cx="145" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="145" y="774" class="gpu">G3</text>
+  <circle cx="265" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="265" y="774" class="gpu">G4</text>
+  <circle cx="365" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="365" y="774" class="gpu">G5</text>
+  <circle cx="485" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="485" y="774" class="gpu">G6</text>
+  <rect x="568" y="635" width="64" height="64" rx="32" ry="32" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5" filter="url(#soft-shadow)"/>
+  <text x="600" y="657" text-anchor="middle" class="label">角色</text>
+  <text x="600" y="677" text-anchor="middle" class="label">互补</text>
+  <text x="600" y="724" text-anchor="middle" class="tiny">分摊内部节点热点</text>
+  <text x="600" y="744" text-anchor="middle" class="tiny">降低通信深度</text>
+  <rect x="650" y="578" width="470" height="222" rx="8" ry="8" fill="#fbf8ff" stroke="#d8b4fe" stroke-width="1.5"/>
+  <text x="670" y="606" class="label">Tree 1: 处理 Chunk B</text>
+  <text x="670" y="628" class="tiny">G0 在这里变成叶子，G6/G4/G5 承担内部节点</text>
+  <line x1="885" y1="682" x2="795" y2="702" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="885" y1="682" x2="975" y2="702" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="795" y1="738" x2="715" y2="756" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="795" y1="738" x2="835" y2="756" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="975" y1="738" x2="935" y2="756" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <line x1="975" y1="738" x2="1055" y2="756" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" marker-end="url(#arrow-purple)"/>
+  <circle cx="885" cy="664" r="18" fill="#ede9fe" stroke="#c084fc" stroke-width="1.7"/>
+  <text x="885" y="664" class="gpu">G6</text>
+  <circle cx="795" cy="720" r="18" fill="#ede9fe" stroke="#c084fc" stroke-width="1.7"/>
+  <text x="795" y="720" class="gpu">G4</text>
+  <circle cx="975" cy="720" r="18" fill="#ede9fe" stroke="#c084fc" stroke-width="1.7"/>
+  <text x="975" y="720" class="gpu">G5</text>
+  <circle cx="715" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="715" y="774" class="gpu">G0</text>
+  <circle cx="835" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="835" y="774" class="gpu">G1</text>
+  <circle cx="935" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="935" y="774" class="gpu">G2</text>
+  <circle cx="1055" cy="774" r="18" fill="#ffffff" stroke="#d1d5db" stroke-width="1.7"/>
+  <text x="1055" y="774" class="gpu">G3</text>
+  <rect x="80" y="814" width="650" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="100" y="834" class="small">性能直觉：Tree 约 2*log2(N) 步，Ring 约 2*(N-1) 步</text>
+  <text x="100" y="852" class="tiny">实际生产中通常让 NCCL 按消息大小、链路拓扑和协议自动选择</text>
+  <g transform="translate(780, 815)">
+    <line x1="0" y1="9" x2="34" y2="9" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+    <text x="44" y="13" class="small">Reduce / Tree0</text>
+    <line x1="0" y1="28" x2="34" y2="28" stroke="#16a34a" stroke-width="2.2" marker-end="url(#arrow-green)"/>
+    <text x="44" y="32" class="small">Broadcast</text>
+    <line x1="188" y1="9" x2="222" y2="9" stroke="#9333ea" stroke-width="2.2" marker-end="url(#arrow-purple)"/>
+    <text x="232" y="13" class="small">Tree1</text>
+    <line x1="188" y1="28" x2="222" y2="28" stroke="#ea580c" stroke-width="2.0" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+    <text x="232" y="32" class="small">Chunk 切分</text>
+  </g>
+</svg>

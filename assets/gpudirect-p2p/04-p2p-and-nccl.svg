@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="blue-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="620" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">P2P 与 NCCL 的关系</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">P2P 是底层通信能力；NCCL 会基于拓扑，把 AllReduce 等 collective 组织成 ring/tree/channel。</text>
+  <rect x="55" y="110" width="480" height="420" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="85" y="146" font-size="17" fill="#111827" text-anchor="start" font-weight="700">底层：GPU 对 GPU 的数据通道</text>
+  <rect x="100" y="250" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="163" y="278" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="118" y="297" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="163" y="310" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="163" y="328" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="355" y="250" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="418" y="278" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="373" y="297" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="418" y="310" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="418" y="328" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="100" y="390" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="163" y="418" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU2</text>
+  <rect x="118" y="437" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="163" y="450" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="163" y="468" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="355" y="390" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="418" y="418" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU3</text>
+  <rect x="373" y="437" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="418" y="450" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="418" y="468" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <path d="M 226 294 L 349 294" stroke="#2563eb" stroke-width="2.8" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 226 434 L 349 434" stroke="#2563eb" stroke-width="2.8" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 163 338 L 163 386" stroke="#16a34a" stroke-width="2.8" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 418 338 L 418 386" stroke="#16a34a" stroke-width="2.8" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="291" y="221" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">P2P / NVLink / PCIe</text>
+  <text x="291" y="501" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">这一层回答：两张 GPU 能不能直接搬？</text>
+  <text x="291" y="519" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">路径近不近？带宽高不高？</text>
+  <rect x="625" y="110" width="520" height="420" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="655" y="146" font-size="17" fill="#111827" text-anchor="start" font-weight="700">上层：NCCL 组织 collective</text>
+  <rect x="690" y="205" width="390" height="72" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="885" y="235" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">NCCL 初始化：探测拓扑</text>
+  <text x="885" y="258" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">NVLink / PCIe / NUMA / P2P 能力</text>
+  <rect x="690" y="328" width="390" height="72" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="885" y="358" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">生成通信图</text>
+  <text x="885" y="381" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">Ring / Tree / Channel / Chunk</text>
+  <rect x="690" y="451" width="390" height="72" rx="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="885" y="481" font-size="17" fill="#ea580c" text-anchor="middle" font-weight="700">传输时优先走近路</text>
+  <text x="885" y="504" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">可用时使用 P2P；不可用时选择其他单机路径</text>
+  <path d="M 885 277 L 885 324" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 885 400 L 885 447" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 535 320 C 575 320 585 238 686 238" stroke="#9333ea" stroke-width="2.5" fill="none" marker-end="url(#arrow-purple)"/>
+  <rect x="575" y="275" width="70" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="610" y="291" font-size="13" fill="#9333ea" text-anchor="middle" font-weight="600">拓扑输入</text>
+  <line x1="85" y1="574" x2="119" y2="574" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+  <text x="129" y="578" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">P2P 传输</text>
+  <line x1="211" y1="574" x2="245" y2="574" stroke="#16a34a" stroke-width="2.2" marker-end="url(#arrow-green)"/>
+  <text x="255" y="578" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">高速近端链路</text>
+  <line x1="361" y1="574" x2="395" y2="574" stroke="#9333ea" stroke-width="2.2" marker-end="url(#arrow-purple)"/>
+  <text x="405" y="578" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">拓扑信息进入 NCCL</text>
+</svg>

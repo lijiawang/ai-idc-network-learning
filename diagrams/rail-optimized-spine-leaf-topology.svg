@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780">
+<style><![CDATA[
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.muted { fill: #6b7280; }
+]]></style>
+<defs>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#111827" flood-opacity="0.10"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="1200" height="780" rx="0" ry="0" fill="#ffffff" stroke="none" stroke-width="0" />
+<text x="32" y="38" font-size="23" font-weight="700" fill="#111827" text-anchor="start" >Rail-Optimized Spine-Leaf 架构拓扑设计</text>
+<text x="32" y="62" font-size="13" font-weight="400" fill="#4b5563" text-anchor="start" >同编号 NIC/GPU 进入同一条 Rail；每条 Rail 是独立的 Spine-Leaf Clos，用 ECMP 扩展带宽，训练网与管理/存储网分离。</text>
+<rect x="32" y="86" width="1136" height="486" rx="12" ry="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4" />
+<text x="54" y="114" font-size="16" font-weight="700" fill="#111827" text-anchor="start" >训练 RDMA Fabric：多条并行 Rail Plane</text>
+<text x="54" y="136" font-size="12.5" font-weight="400" fill="#6b7280" text-anchor="start" >示例画 4 条 Rail；8-GPU / 8-NIC 服务器可按同样模式扩展为 8 条 Rail。</text>
+<rect x="54" y="154" width="256" height="386" rx="10" ry="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5" />
+<text x="74" y="182" font-size="17" font-weight="700" fill="#2563eb" text-anchor="start" >Rail 0</text>
+<text x="74" y="203" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >NIC0 / GPU0 Lane</text>
+<rect x="78" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="198" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="106" y1="243" x2="138" y2="243" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<line x1="122" y1="233" x2="122" y2="253" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="106" cy="243" r="2.6" fill="#2563eb"/>
+<circle cx="138" cy="243" r="2.6" fill="#2563eb"/>
+<circle cx="122" cy="233" r="2.6" fill="#2563eb"/>
+<circle cx="122" cy="253" r="2.6" fill="#2563eb"/>
+<line x1="226" y1="243" x2="258" y2="243" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<line x1="242" y1="233" x2="242" y2="253" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="226" cy="243" r="2.6" fill="#2563eb"/>
+<circle cx="258" cy="243" r="2.6" fill="#2563eb"/>
+<circle cx="242" cy="233" r="2.6" fill="#2563eb"/>
+<circle cx="242" cy="253" r="2.6" fill="#2563eb"/>
+<text x="122" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine A</text>
+<text x="242" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine B</text>
+<rect x="78" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="198" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="106" y1="363" x2="138" y2="363" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<line x1="122" y1="353" x2="122" y2="373" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="106" cy="363" r="2.6" fill="#2563eb"/>
+<circle cx="138" cy="363" r="2.6" fill="#2563eb"/>
+<circle cx="122" cy="353" r="2.6" fill="#2563eb"/>
+<circle cx="122" cy="373" r="2.6" fill="#2563eb"/>
+<line x1="226" y1="363" x2="258" y2="363" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<line x1="242" y1="353" x2="242" y2="373" stroke="#2563eb" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="226" cy="363" r="2.6" fill="#2563eb"/>
+<circle cx="258" cy="363" r="2.6" fill="#2563eb"/>
+<circle cx="242" cy="353" r="2.6" fill="#2563eb"/>
+<circle cx="242" cy="373" r="2.6" fill="#2563eb"/>
+<text x="122" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf A</text>
+<text x="242" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf B</text>
+<line x1="122" y1="274" x2="122" y2="346" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" />
+<line x1="242" y1="274" x2="242" y2="346" stroke="#2563eb" stroke-width="2.0" stroke-linecap="round" />
+<path d="M 122,346 C 146,318 218,302 242,274" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M 242,346 C 218,318 146,302 122,274" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="126" y="302" width="112" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="182.0" y="316" font-size="11" font-weight="400" fill="#2563eb" text-anchor="middle" >Leaf-Spine 全互联</text>
+<rect x="82" y="456" width="200" height="56" rx="8" ry="8" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.2" />
+<text x="182" y="478" font-size="12.5" font-weight="600" fill="#111827" text-anchor="middle" >Node01..NodeNN</text>
+<text x="182" y="498" font-size="12" font-weight="400" fill="#4b5563" text-anchor="middle" >所有服务器的 NIC0</text>
+<line x1="122" y1="394" x2="150" y2="456" stroke="#2563eb" stroke-width="1.7" stroke-linecap="round" />
+<line x1="242" y1="394" x2="214" y2="456" stroke="#2563eb" stroke-width="1.7" stroke-linecap="round" />
+<rect x="133" y="416" width="100" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="183.0" y="430" font-size="11" font-weight="400" fill="#2563eb" text-anchor="middle" >400/800G RDMA</text>
+<rect x="332" y="154" width="256" height="386" rx="10" ry="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" />
+<text x="352" y="182" font-size="17" font-weight="700" fill="#16a34a" text-anchor="start" >Rail 1</text>
+<text x="352" y="203" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >NIC1 / GPU1 Lane</text>
+<line x1="318" y1="164" x2="318" y2="532" stroke="#ef4444" stroke-width="1.1" stroke-dasharray="5 5" stroke-linecap="round" />
+<text x="315" y="350" font-size="10.5" font-weight="400" fill="#b91c1c" text-anchor="middle" transform="rotate(-90 315 350)">无训练流量跨 Rail 转发</text>
+<rect x="356" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="476" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="384" y1="243" x2="416" y2="243" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<line x1="400" y1="233" x2="400" y2="253" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="384" cy="243" r="2.6" fill="#16a34a"/>
+<circle cx="416" cy="243" r="2.6" fill="#16a34a"/>
+<circle cx="400" cy="233" r="2.6" fill="#16a34a"/>
+<circle cx="400" cy="253" r="2.6" fill="#16a34a"/>
+<line x1="504" y1="243" x2="536" y2="243" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<line x1="520" y1="233" x2="520" y2="253" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="504" cy="243" r="2.6" fill="#16a34a"/>
+<circle cx="536" cy="243" r="2.6" fill="#16a34a"/>
+<circle cx="520" cy="233" r="2.6" fill="#16a34a"/>
+<circle cx="520" cy="253" r="2.6" fill="#16a34a"/>
+<text x="400" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine A</text>
+<text x="520" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine B</text>
+<rect x="356" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="476" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="384" y1="363" x2="416" y2="363" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<line x1="400" y1="353" x2="400" y2="373" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="384" cy="363" r="2.6" fill="#16a34a"/>
+<circle cx="416" cy="363" r="2.6" fill="#16a34a"/>
+<circle cx="400" cy="353" r="2.6" fill="#16a34a"/>
+<circle cx="400" cy="373" r="2.6" fill="#16a34a"/>
+<line x1="504" y1="363" x2="536" y2="363" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<line x1="520" y1="353" x2="520" y2="373" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="504" cy="363" r="2.6" fill="#16a34a"/>
+<circle cx="536" cy="363" r="2.6" fill="#16a34a"/>
+<circle cx="520" cy="353" r="2.6" fill="#16a34a"/>
+<circle cx="520" cy="373" r="2.6" fill="#16a34a"/>
+<text x="400" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf A</text>
+<text x="520" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf B</text>
+<line x1="400" y1="274" x2="400" y2="346" stroke="#16a34a" stroke-width="2.0" stroke-linecap="round" />
+<line x1="520" y1="274" x2="520" y2="346" stroke="#16a34a" stroke-width="2.0" stroke-linecap="round" />
+<path d="M 400,346 C 424,318 496,302 520,274" fill="none" stroke="#16a34a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M 520,346 C 496,318 424,302 400,274" fill="none" stroke="#16a34a" stroke-width="1.6" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="404" y="302" width="112" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="460.0" y="316" font-size="11" font-weight="400" fill="#16a34a" text-anchor="middle" >Leaf-Spine 全互联</text>
+<rect x="360" y="456" width="200" height="56" rx="8" ry="8" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.2" />
+<text x="460" y="478" font-size="12.5" font-weight="600" fill="#111827" text-anchor="middle" >Node01..NodeNN</text>
+<text x="460" y="498" font-size="12" font-weight="400" fill="#4b5563" text-anchor="middle" >所有服务器的 NIC1</text>
+<line x1="400" y1="394" x2="428" y2="456" stroke="#16a34a" stroke-width="1.7" stroke-linecap="round" />
+<line x1="520" y1="394" x2="492" y2="456" stroke="#16a34a" stroke-width="1.7" stroke-linecap="round" />
+<rect x="411" y="416" width="100" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="461.0" y="430" font-size="11" font-weight="400" fill="#16a34a" text-anchor="middle" >400/800G RDMA</text>
+<rect x="610" y="154" width="256" height="386" rx="10" ry="10" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.5" />
+<text x="630" y="182" font-size="17" font-weight="700" fill="#9333ea" text-anchor="start" >Rail 2</text>
+<text x="630" y="203" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >NIC2 / GPU2 Lane</text>
+<line x1="596" y1="164" x2="596" y2="532" stroke="#ef4444" stroke-width="1.1" stroke-dasharray="5 5" stroke-linecap="round" />
+<text x="593" y="350" font-size="10.5" font-weight="400" fill="#b91c1c" text-anchor="middle" transform="rotate(-90 593 350)">无训练流量跨 Rail 转发</text>
+<rect x="634" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#9333ea" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="754" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#9333ea" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="662" y1="243" x2="694" y2="243" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<line x1="678" y1="233" x2="678" y2="253" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="662" cy="243" r="2.6" fill="#9333ea"/>
+<circle cx="694" cy="243" r="2.6" fill="#9333ea"/>
+<circle cx="678" cy="233" r="2.6" fill="#9333ea"/>
+<circle cx="678" cy="253" r="2.6" fill="#9333ea"/>
+<line x1="782" y1="243" x2="814" y2="243" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<line x1="798" y1="233" x2="798" y2="253" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="782" cy="243" r="2.6" fill="#9333ea"/>
+<circle cx="814" cy="243" r="2.6" fill="#9333ea"/>
+<circle cx="798" cy="233" r="2.6" fill="#9333ea"/>
+<circle cx="798" cy="253" r="2.6" fill="#9333ea"/>
+<text x="678" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine A</text>
+<text x="798" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine B</text>
+<rect x="634" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#9333ea" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="754" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#9333ea" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="662" y1="363" x2="694" y2="363" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<line x1="678" y1="353" x2="678" y2="373" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="662" cy="363" r="2.6" fill="#9333ea"/>
+<circle cx="694" cy="363" r="2.6" fill="#9333ea"/>
+<circle cx="678" cy="353" r="2.6" fill="#9333ea"/>
+<circle cx="678" cy="373" r="2.6" fill="#9333ea"/>
+<line x1="782" y1="363" x2="814" y2="363" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<line x1="798" y1="353" x2="798" y2="373" stroke="#9333ea" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="782" cy="363" r="2.6" fill="#9333ea"/>
+<circle cx="814" cy="363" r="2.6" fill="#9333ea"/>
+<circle cx="798" cy="353" r="2.6" fill="#9333ea"/>
+<circle cx="798" cy="373" r="2.6" fill="#9333ea"/>
+<text x="678" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf A</text>
+<text x="798" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf B</text>
+<line x1="678" y1="274" x2="678" y2="346" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" />
+<line x1="798" y1="274" x2="798" y2="346" stroke="#9333ea" stroke-width="2.0" stroke-linecap="round" />
+<path d="M 678,346 C 702,318 774,302 798,274" fill="none" stroke="#9333ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M 798,346 C 774,318 702,302 678,274" fill="none" stroke="#9333ea" stroke-width="1.6" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="682" y="302" width="112" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="738.0" y="316" font-size="11" font-weight="400" fill="#9333ea" text-anchor="middle" >Leaf-Spine 全互联</text>
+<rect x="638" y="456" width="200" height="56" rx="8" ry="8" fill="#ffffff" stroke="#e9d5ff" stroke-width="1.2" />
+<text x="738" y="478" font-size="12.5" font-weight="600" fill="#111827" text-anchor="middle" >Node01..NodeNN</text>
+<text x="738" y="498" font-size="12" font-weight="400" fill="#4b5563" text-anchor="middle" >所有服务器的 NIC2</text>
+<line x1="678" y1="394" x2="706" y2="456" stroke="#9333ea" stroke-width="1.7" stroke-linecap="round" />
+<line x1="798" y1="394" x2="770" y2="456" stroke="#9333ea" stroke-width="1.7" stroke-linecap="round" />
+<rect x="689" y="416" width="100" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="739.0" y="430" font-size="11" font-weight="400" fill="#9333ea" text-anchor="middle" >400/800G RDMA</text>
+<rect x="888" y="154" width="256" height="386" rx="10" ry="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5" />
+<text x="908" y="182" font-size="17" font-weight="700" fill="#ea580c" text-anchor="start" >Rail 3</text>
+<text x="908" y="203" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >NIC3 / GPU3 Lane</text>
+<line x1="874" y1="164" x2="874" y2="532" stroke="#ef4444" stroke-width="1.1" stroke-dasharray="5 5" stroke-linecap="round" />
+<text x="871" y="350" font-size="10.5" font-weight="400" fill="#b91c1c" text-anchor="middle" transform="rotate(-90 871 350)">无训练流量跨 Rail 转发</text>
+<rect x="912" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#ea580c" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="1032" y="226" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#ea580c" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="940" y1="243" x2="972" y2="243" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<line x1="956" y1="233" x2="956" y2="253" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="940" cy="243" r="2.6" fill="#ea580c"/>
+<circle cx="972" cy="243" r="2.6" fill="#ea580c"/>
+<circle cx="956" cy="233" r="2.6" fill="#ea580c"/>
+<circle cx="956" cy="253" r="2.6" fill="#ea580c"/>
+<line x1="1060" y1="243" x2="1092" y2="243" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<line x1="1076" y1="233" x2="1076" y2="253" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="1060" cy="243" r="2.6" fill="#ea580c"/>
+<circle cx="1092" cy="243" r="2.6" fill="#ea580c"/>
+<circle cx="1076" cy="233" r="2.6" fill="#ea580c"/>
+<circle cx="1076" cy="253" r="2.6" fill="#ea580c"/>
+<text x="956" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine A</text>
+<text x="1076" y="266" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Spine B</text>
+<rect x="912" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#ea580c" stroke-width="1.5" filter="url(#softShadow)"/>
+<rect x="1032" y="346" width="88" height="48" rx="7" ry="7" fill="#ffffff" stroke="#ea580c" stroke-width="1.5" filter="url(#softShadow)"/>
+<line x1="940" y1="363" x2="972" y2="363" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<line x1="956" y1="353" x2="956" y2="373" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="940" cy="363" r="2.6" fill="#ea580c"/>
+<circle cx="972" cy="363" r="2.6" fill="#ea580c"/>
+<circle cx="956" cy="353" r="2.6" fill="#ea580c"/>
+<circle cx="956" cy="373" r="2.6" fill="#ea580c"/>
+<line x1="1060" y1="363" x2="1092" y2="363" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<line x1="1076" y1="353" x2="1076" y2="373" stroke="#ea580c" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="1060" cy="363" r="2.6" fill="#ea580c"/>
+<circle cx="1092" cy="363" r="2.6" fill="#ea580c"/>
+<circle cx="1076" cy="353" r="2.6" fill="#ea580c"/>
+<circle cx="1076" cy="373" r="2.6" fill="#ea580c"/>
+<text x="956" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf A</text>
+<text x="1076" y="386" font-size="12" font-weight="600" fill="#111827" text-anchor="middle" >Leaf B</text>
+<line x1="956" y1="274" x2="956" y2="346" stroke="#ea580c" stroke-width="2.0" stroke-linecap="round" />
+<line x1="1076" y1="274" x2="1076" y2="346" stroke="#ea580c" stroke-width="2.0" stroke-linecap="round" />
+<path d="M 956,346 C 980,318 1052,302 1076,274" fill="none" stroke="#ea580c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M 1076,346 C 1052,318 980,302 956,274" fill="none" stroke="#ea580c" stroke-width="1.6" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="960" y="302" width="112" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="1016.0" y="316" font-size="11" font-weight="400" fill="#ea580c" text-anchor="middle" >Leaf-Spine 全互联</text>
+<rect x="916" y="456" width="200" height="56" rx="8" ry="8" fill="#ffffff" stroke="#fed7aa" stroke-width="1.2" />
+<text x="1016" y="478" font-size="12.5" font-weight="600" fill="#111827" text-anchor="middle" >Node01..NodeNN</text>
+<text x="1016" y="498" font-size="12" font-weight="400" fill="#4b5563" text-anchor="middle" >所有服务器的 NIC3</text>
+<line x1="956" y1="394" x2="984" y2="456" stroke="#ea580c" stroke-width="1.7" stroke-linecap="round" />
+<line x1="1076" y1="394" x2="1048" y2="456" stroke="#ea580c" stroke-width="1.7" stroke-linecap="round" />
+<rect x="967" y="416" width="100" height="20" rx="4" ry="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" opacity="0.96"/>
+<text x="1017.0" y="430" font-size="11" font-weight="400" fill="#ea580c" text-anchor="middle" >400/800G RDMA</text>
+<rect x="32" y="600" width="1136" height="142" rx="12" ry="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.4" />
+<text x="54" y="628" font-size="16" font-weight="700" fill="#111827" text-anchor="start" >服务器接入模板</text>
+<text x="54" y="650" font-size="12.5" font-weight="400" fill="#6b7280" text-anchor="start" >每台训练服务器保持相同映射：NIC i 只接入 Rail i；GPU/NIC 亲和关系用于 NCCL channel 与 rank 规划。</text>
+<rect x="70" y="672" width="562" height="46" rx="8" ry="8" fill="#f9fafb" stroke="#cbd5e1" stroke-width="1.2" />
+<text x="90" y="701" font-size="13" font-weight="700" fill="#111827" text-anchor="start" >8-GPU Server</text>
+<rect x="210" y="673" width="80" height="44" rx="7" ry="7" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" />
+<rect x="219" y="681" width="62" height="10" rx="3" ry="3" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="0.16"/>
+<text x="250" y="702" font-size="12" font-weight="600" fill="#2563eb" text-anchor="middle" >NIC0</text>
+<text x="250" y="735" font-size="11.5" font-weight="400" fill="#2563eb" text-anchor="middle" >→ Rail 0</text>
+<rect x="306" y="673" width="80" height="44" rx="7" ry="7" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" />
+<rect x="315" y="681" width="62" height="10" rx="3" ry="3" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="0.16"/>
+<text x="346" y="702" font-size="12" font-weight="600" fill="#16a34a" text-anchor="middle" >NIC1</text>
+<text x="346" y="735" font-size="11.5" font-weight="400" fill="#16a34a" text-anchor="middle" >→ Rail 1</text>
+<rect x="402" y="673" width="80" height="44" rx="7" ry="7" fill="#ffffff" stroke="#9333ea" stroke-width="1.5" />
+<rect x="411" y="681" width="62" height="10" rx="3" ry="3" fill="#9333ea" stroke="#9333ea" stroke-width="0" opacity="0.16"/>
+<text x="442" y="702" font-size="12" font-weight="600" fill="#9333ea" text-anchor="middle" >NIC2</text>
+<text x="442" y="735" font-size="11.5" font-weight="400" fill="#9333ea" text-anchor="middle" >→ Rail 2</text>
+<rect x="498" y="673" width="80" height="44" rx="7" ry="7" fill="#ffffff" stroke="#ea580c" stroke-width="1.5" />
+<rect x="507" y="681" width="62" height="10" rx="3" ry="3" fill="#ea580c" stroke="#ea580c" stroke-width="0" opacity="0.16"/>
+<text x="538" y="702" font-size="12" font-weight="600" fill="#ea580c" text-anchor="middle" >NIC3</text>
+<text x="538" y="735" font-size="11.5" font-weight="400" fill="#ea580c" text-anchor="middle" >→ Rail 3</text>
+<rect x="705" y="668" width="178" height="50" rx="8" ry="8" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.3" />
+<line x1="716" y1="692" x2="748" y2="692" stroke="#6b7280" stroke-width="1.4" stroke-linecap="round" />
+<line x1="732" y1="682" x2="732" y2="702" stroke="#6b7280" stroke-width="1.4" stroke-linecap="round" />
+<circle cx="716" cy="692" r="2.6" fill="#6b7280"/>
+<circle cx="748" cy="692" r="2.6" fill="#6b7280"/>
+<circle cx="732" cy="682" r="2.6" fill="#6b7280"/>
+<circle cx="732" cy="702" r="2.6" fill="#6b7280"/>
+<text x="760" y="689" font-size="13" font-weight="700" fill="#111827" text-anchor="start" >OAM / Storage</text>
+<text x="760" y="707" font-size="11.5" font-weight="400" fill="#6b7280" text-anchor="start" >独立以太网 Fabric</text>
+<line x1="632" y1="695" x2="705" y2="695" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4" stroke-linecap="round" />
+<text x="930" y="676" font-size="13.5" font-weight="700" fill="#111827" text-anchor="start" >关键约束</text>
+<circle cx="934" cy="693" r="3" fill="#111827"/>
+<text x="944" y="697" font-size="11.5" font-weight="400" fill="#374151" text-anchor="start" >训练流量不经管理/存储网</text>
+<circle cx="934" cy="709" r="3" fill="#111827"/>
+<text x="944" y="713" font-size="11.5" font-weight="400" fill="#374151" text-anchor="start" >Rail 间不做流量搬运</text>
+<circle cx="934" cy="725" r="3" fill="#111827"/>
+<text x="944" y="729" font-size="11.5" font-weight="400" fill="#374151" text-anchor="start" >每条 Rail 独立 ECMP 与 QoS</text>
+<circle cx="934" cy="741" r="3" fill="#111827"/>
+<text x="944" y="745" font-size="11.5" font-weight="400" fill="#374151" text-anchor="start" >Leaf 下/上行按目标收敛比规划</text>
+<rect x="54" y="520" width="360" height="34" rx="6" ry="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" />
+<line x1="72" y1="537" x2="112" y2="537" stroke="#2563eb" stroke-width="2" stroke-linecap="round" />
+<text x="122" y="541" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >Rail 内 RDMA 链路</text>
+<line x1="232" y1="537" x2="272" y2="537" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="5 4" stroke-linecap="round" />
+<text x="282" y="541" font-size="11.5" font-weight="400" fill="#4b5563" text-anchor="start" >OAM/存储链路</text>
+<text x="32" y="766" font-size="11.5" font-weight="400" fill="#6b7280" text-anchor="start" >Topology note: Rail 数量通常与每服务器训练 NIC 数一致；图中 4 Rail 为阅读简化。</text>
+</svg>

@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+</style>
+<defs>
+<marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+<polygon points="0 0, 12 4, 0 8" fill="#0b55d9"/>
+</marker>
+<marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+<polygon points="0 0, 12 4, 0 8" fill="#159438"/>
+</marker>
+<marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+<polygon points="0 0, 12 4, 0 8" fill="#dc2626"/>
+</marker>
+<marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+<polygon points="0 0, 12 4, 0 8" fill="#f97316"/>
+</marker>
+<marker id="arrow-gray" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+<polygon points="0 0, 12 4, 0 8" fill="#5f6680"/>
+</marker>
+</defs>
+<rect width="1600" height="900" fill="#ffffff"/>
+<text x="800.0" y="72" fill="#07143d" font-size="58" font-weight="800" text-anchor="middle">NCCL 不是逐包路由，而是先生成通信图</text>
+<rect x="230" y="120" width="1140" height="106" rx="20" ry="20" fill="#ffffff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="280" cy="173" r="26" fill="#0b55d9"/>
+<text x="280" y="184" fill="#ffffff" font-size="34" font-weight="800" text-anchor="middle">1</text>
+<rect x="390" y="143" width="60" height="60" rx="8" ry="8" fill="#eff6ff" stroke="#0b55d9" stroke-width="4"/>
+<rect x="403" y="156" width="34" height="34" rx="4" ry="4" fill="#ffffff" stroke="#0b55d9" stroke-width="4"/>
+<line x1="376" y1="153" x2="376" y2="193" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="382" y1="153" x2="382" y2="193" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="458" y1="153" x2="458" y2="193" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="464" y1="153" x2="464" y2="193" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="400" y1="129" x2="440" y2="129" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="400" y1="135" x2="440" y2="135" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="400" y1="211" x2="440" y2="211" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="400" y1="217" x2="440" y2="217" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<text x="790" y="165" fill="#07143d" font-size="40" font-weight="800" text-anchor="middle">硬件拓扑探测</text>
+<text x="790" y="198" fill="#0b55d9" font-size="24" font-weight="600" text-anchor="middle">GPU / NVLink / PCIe / CPU / NIC</text>
+<line x1="800" y1="226" x2="800" y2="248" stroke="#0b55d9" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<rect x="230" y="245" width="1140" height="106" rx="20" ry="20" fill="#ffffff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="280" cy="298" r="26" fill="#0b55d9"/>
+<text x="280" y="309" fill="#ffffff" font-size="34" font-weight="800" text-anchor="middle">2</text>
+<line x1="385" y1="286" x2="448" y2="270" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="448" y1="270" x2="468" y2="320" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="468" y1="320" x2="388" y2="333" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="388" y1="333" x2="385" y2="286" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="385" y1="286" x2="468" y2="320" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="448" y1="270" x2="388" y2="333" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<circle cx="385" cy="286" r="10" fill="#0b55d9"/>
+<circle cx="448" cy="270" r="10" fill="#0b55d9"/>
+<circle cx="468" cy="320" r="10" fill="#0b55d9"/>
+<circle cx="388" cy="333" r="10" fill="#0b55d9"/>
+<text x="790" y="290" fill="#07143d" font-size="40" font-weight="800" text-anchor="middle">路径距离判断</text>
+<text x="790" y="323" fill="#0b55d9" font-size="24" font-weight="600" text-anchor="middle">NVL / PIX / PXB / PHB / SYS</text>
+<line x1="800" y1="351" x2="800" y2="373" stroke="#0b55d9" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<rect x="230" y="370" width="1140" height="106" rx="20" ry="20" fill="#ffffff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="280" cy="423" r="26" fill="#0b55d9"/>
+<text x="280" y="434" fill="#ffffff" font-size="34" font-weight="800" text-anchor="middle">3</text>
+<path d="M 420 385 L 448 413 L 420 441 L 392 413 Z" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="420" y1="441" x2="420" y2="451" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<line x1="420" y1="451" x2="372" y2="451" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<line x1="372" y1="451" x2="372" y2="459" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<circle cx="372" cy="466" r="8" fill="#f97316"/>
+<line x1="420" y1="451" x2="420" y2="451" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<line x1="420" y1="451" x2="420" y2="459" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<circle cx="420" cy="466" r="8" fill="#f97316"/>
+<line x1="420" y1="451" x2="468" y2="451" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<line x1="468" y1="451" x2="468" y2="459" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+<circle cx="468" cy="466" r="8" fill="#f97316"/>
+<text x="790" y="415" fill="#07143d" font-size="40" font-weight="800" text-anchor="middle">传输方式选择</text>
+<text x="790" y="448" fill="#0b55d9" font-size="24" font-weight="600" text-anchor="middle">P2P / SHM / NET（NET 可启用 GDRDMA）</text>
+<rect x="1155" y="403" width="170" height="44" rx="20" ry="20" fill="#ffffff" stroke="#f97316" stroke-width="2"/>
+<text x="1240" y="434" fill="#f97316" font-size="22" font-weight="700" text-anchor="middle">选择 / 决策</text>
+<line x1="800" y1="476" x2="800" y2="498" stroke="#0b55d9" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<rect x="230" y="495" width="1140" height="106" rx="20" ry="20" fill="#ffffff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="280" cy="548" r="26" fill="#0b55d9"/>
+<text x="280" y="559" fill="#ffffff" font-size="34" font-weight="800" text-anchor="middle">4</text>
+<circle cx="410.0" cy="550.0" r="8" fill="#0b55d9"/>
+<circle cx="374.99987143782135" cy="584.9999999997639" r="8" fill="#0b55d9"/>
+<circle cx="340.00000000094445" cy="549.9997428756428" r="8" fill="#0b55d9"/>
+<circle cx="375.0003856865358" cy="515.000000002125" r="8" fill="#0b55d9"/>
+<path d="M 410 516 C 445 518 445 584 410 582" fill="none" stroke="#0b55d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<circle cx="470" cy="513" r="8" fill="#0b55d9"/>
+<line x1="470" y1="521" x2="470" y2="558" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="470" y1="558" x2="444" y2="586" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="470" y1="558" x2="496" y2="586" stroke="#0b55d9" stroke-width="3" stroke-linecap="round"/>
+<circle cx="444" cy="590" r="8" fill="#0b55d9"/>
+<circle cx="496" cy="590" r="8" fill="#0b55d9"/>
+<text x="790" y="540" fill="#07143d" font-size="40" font-weight="800" text-anchor="middle">生成通信图</text>
+<text x="790" y="573" fill="#0b55d9" font-size="24" font-weight="600" text-anchor="middle">Ring / Tree / Channel</text>
+<line x1="800" y1="601" x2="800" y2="623" stroke="#0b55d9" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<rect x="230" y="620" width="1140" height="106" rx="20" ry="20" fill="#ffffff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="280" cy="673" r="26" fill="#0b55d9"/>
+<text x="280" y="684" fill="#ffffff" font-size="34" font-weight="800" text-anchor="middle">5</text>
+<line x1="365" y1="658" x2="460" y2="658" stroke="#0b55d9" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<line x1="475" y1="693" x2="380" y2="693" stroke="#0b55d9" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<text x="790" y="665" fill="#07143d" font-size="40" font-weight="800" text-anchor="middle">执行 Collective</text>
+<text x="790" y="698" fill="#0b55d9" font-size="24" font-weight="600" text-anchor="middle">AllReduce / AllGather / ReduceScatter</text>
+<line x1="360" y1="846" x2="470" y2="846" stroke="#5f6680" stroke-width="2" stroke-linecap="round"/>
+<text x="800" y="854" fill="#5f6680" font-size="24" font-weight="600" text-anchor="middle">这张放在文章前半部分，让读者先建立全局框架。</text>
+<line x1="1130" y1="846" x2="1240" y2="846" stroke="#5f6680" stroke-width="2" stroke-linecap="round"/>
+</svg>

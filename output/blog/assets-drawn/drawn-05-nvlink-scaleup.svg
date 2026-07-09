@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.small { font-size: 14px; fill: #6b7280; }
+</style>
+
+<defs>
+  <marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#2563eb"/></marker>
+  <marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#16a34a"/></marker>
+  <marker id="arrow-purple" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#9333ea"/></marker>
+  <marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#ea580c"/></marker>
+  <marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#dc2626"/></marker>
+</defs>
+
+<rect width="1440" height="900" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" font-size="30" font-weight="700" fill="#111827" opacity="1">机柜内 NVLink scale-up：72 GPU 共享一个高速域</text>
+<text x="60" y="92" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">简化为 18 个 compute tray × 4 GPU，连接到 NVLink Switch 层</text>
+<line x1="60" y1="118" x2="1380" y2="118" stroke="#e5e7eb" stroke-width="2" fill="none" opacity="1"/>
+<rect x="70" y="170" width="1300" height="600" rx="14" ry="14" fill="#faf5ff" stroke="#e9d5ff" stroke-width="2" opacity="1" stroke-dasharray="12 8"/>
+<text x="100" y="210" text-anchor="start" font-size="23" font-weight="700" fill="#9333ea" opacity="1">DGX GB200 NVL72 Rack</text>
+<rect x="125" y="270" width="170" height="120" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="210" y="255" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">Tray 1</text>
+<rect x="143" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="157" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G1</text>
+<rect x="179" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="193" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G2</text>
+<rect x="215" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="229" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G3</text>
+<rect x="251" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="265" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G4</text>
+<rect x="365" y="270" width="170" height="120" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="450" y="255" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">Tray 2</text>
+<rect x="383" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="397" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G1</text>
+<rect x="419" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="433" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G2</text>
+<rect x="455" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="469" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G3</text>
+<rect x="491" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="505" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G4</text>
+<rect x="605" y="270" width="170" height="120" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="690" y="255" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">Tray 3</text>
+<rect x="623" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="637" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G1</text>
+<rect x="659" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="673" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G2</text>
+<rect x="695" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="709" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G3</text>
+<rect x="731" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="745" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G4</text>
+<rect x="845" y="270" width="170" height="120" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="930" y="255" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">Tray 4</text>
+<rect x="863" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="877" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G1</text>
+<rect x="899" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="913" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G2</text>
+<rect x="935" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="949" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G3</text>
+<rect x="971" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="985" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G4</text>
+<rect x="1085" y="270" width="170" height="120" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="1170" y="255" text-anchor="middle" font-size="16" font-weight="700" fill="#111827" opacity="1">Tray 5</text>
+<rect x="1103" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="1117" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G1</text>
+<rect x="1139" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="1153" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G2</text>
+<rect x="1175" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="1189" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G3</text>
+<rect x="1211" y="305" width="28" height="44" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<text x="1225" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb" opacity="1">G4</text>
+<text x="1265" y="335" text-anchor="start" font-size="42" font-weight="700" fill="#6b7280" opacity="1">...</text>
+<text x="705" y="435" text-anchor="middle" font-size="20" font-weight="400" fill="#6b7280" opacity="1">18 个 compute tray，合计 72 张 GPU</text>
+<rect x="150" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="192.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW1</text>
+<rect x="280" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="322.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW2</text>
+<rect x="410" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="452.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW3</text>
+<rect x="540" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="582.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW4</text>
+<rect x="670" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="712.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW5</text>
+<rect x="800" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="842.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW6</text>
+<rect x="930" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="972.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW7</text>
+<rect x="1060" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="1102.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW8</text>
+<rect x="1190" y="555" width="85" height="72" rx="8" ry="8" fill="#312e81" stroke="#818cf8" stroke-width="2" opacity="1"/>
+<text x="1232.5" y="598" text-anchor="middle" font-size="15" font-weight="700" fill="#e0e7ff" opacity="1">SW9</text>
+<text x="705" y="680" text-anchor="middle" font-size="20" font-weight="400" fill="#9333ea" opacity="1">9 个 NVLink Switch Tray / 18 个 NVLink Switch Chip</text>
+<line x1="210" y1="390" x2="190" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="210" y1="390" x2="450" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="210" y1="390" x2="710" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="210" y1="390" x2="970" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="210" y1="390" x2="1230" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="450" y1="390" x2="190" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="450" y1="390" x2="450" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="450" y1="390" x2="710" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="450" y1="390" x2="970" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="450" y1="390" x2="1230" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="690" y1="390" x2="190" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="690" y1="390" x2="450" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="690" y1="390" x2="710" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="690" y1="390" x2="970" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="690" y1="390" x2="1230" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="930" y1="390" x2="190" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="930" y1="390" x2="450" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="930" y1="390" x2="710" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="930" y1="390" x2="970" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="930" y1="390" x2="1230" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="1170" y1="390" x2="190" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="1170" y1="390" x2="450" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="1170" y1="390" x2="710" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="1170" y1="390" x2="970" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<line x1="1170" y1="390" x2="1230" y2="555" stroke="#9333ea" stroke-width="1.4" fill="none" opacity="0.32"/>
+<path d="M125 735 C380 805, 1040 805, 1285 735" stroke="#9333ea" stroke-width="4" fill="none" opacity="1" marker-end="url(#arrow-purple)"/>
+<text x="705" y="820" text-anchor="middle" font-size="22" font-weight="700" fill="#111827" opacity="1">目标：让 tensor/model/expert 并行中的高频通信尽量在机柜内完成</text>
+</svg>

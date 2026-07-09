@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.small { font-size: 14px; fill: #6b7280; }
+</style>
+
+<defs>
+  <marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#2563eb"/></marker>
+  <marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#16a34a"/></marker>
+  <marker id="arrow-purple" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#9333ea"/></marker>
+  <marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#ea580c"/></marker>
+  <marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#dc2626"/></marker>
+</defs>
+
+<rect width="1440" height="900" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" font-size="30" font-weight="700" fill="#111827" opacity="1">Run:ai：控制面与集群侧分离</text>
+<text x="60" y="92" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">研究人员通过 Console / CLI / API 提交作业，平台在 Kubernetes 集群内完成调度与资源管理</text>
+<line x1="60" y1="118" x2="1380" y2="118" stroke="#e5e7eb" stroke-width="2" fill="none" opacity="1"/>
+<rect x="100" y="220" width="500" height="420" rx="14" ry="14" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1" stroke-dasharray="10 7"/>
+<text x="130" y="260" text-anchor="start" font-size="24" font-weight="700" fill="#2563eb" opacity="1">Run:ai Control Plane</text>
+<rect x="155" y="310" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="155" y="310" width="10" height="80" rx="14" ry="14" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<circle cx="189" cy="350.0" r="19" fill="#2563eb" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="189" y="357.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">ID</text>
+<text x="219" y="346.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">IAM</text>
+<text x="219" y="375.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">身份与权限</text>
+<rect x="375" y="310" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="375" y="310" width="10" height="80" rx="14" ry="14" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<circle cx="409" cy="350.0" r="19" fill="#2563eb" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="409" y="357.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">API</text>
+<text x="439" y="346.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">API Gateway</text>
+<text x="439" y="375.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">入口与鉴权</text>
+<rect x="155" y="455" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="155" y="455" width="10" height="80" rx="14" ry="14" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<circle cx="189" cy="495.0" r="19" fill="#2563eb" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="189" y="502.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">RM</text>
+<text x="219" y="491.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">Resource Mgmt</text>
+<text x="219" y="520.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">配额与资源池</text>
+<rect x="375" y="455" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="375" y="455" width="10" height="80" rx="14" ry="14" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<circle cx="409" cy="495.0" r="19" fill="#2563eb" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="409" y="502.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">MON</text>
+<text x="439" y="491.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">Monitoring</text>
+<text x="439" y="520.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">指标与分析</text>
+<rect x="820" y="220" width="500" height="420" rx="14" ry="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1" stroke-dasharray="10 7"/>
+<text x="850" y="260" text-anchor="start" font-size="24" font-weight="700" fill="#16a34a" opacity="1">Run:ai Cluster / Kubernetes</text>
+<rect x="875" y="310" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="875" y="310" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="909" cy="350.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="909" y="357.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">SCH</text>
+<text x="939" y="346.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">Scheduler</text>
+<text x="939" y="375.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">GPU 调度</text>
+<rect x="1095" y="310" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="1095" y="310" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="1129" cy="350.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1129" y="357.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">JOB</text>
+<text x="1159" y="346.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">Workload Mgmt</text>
+<text x="1159" y="375.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">训练/推理作业</text>
+<rect x="875" y="455" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="875" y="455" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="909" cy="495.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="909" y="502.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">MET</text>
+<text x="939" y="491.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">Metrics</text>
+<text x="939" y="520.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">指标汇聚</text>
+<rect x="1095" y="455" width="170" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="1095" y="455" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="1129" cy="495.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1129" y="502.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">GPU</text>
+<text x="1159" y="491.0" text-anchor="start" font-size="16" font-weight="700" fill="#111827" opacity="1">GPU Pods</text>
+<text x="1159" y="520.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">GPU / 存储 / 网络</text>
+<rect x="260" y="720" width="220" height="80" rx="14" ry="14" fill="#faf5ff" stroke="#e9d5ff" stroke-width="2" opacity="1"/>
+<rect x="260" y="720" width="10" height="80" rx="14" ry="14" fill="#9333ea" stroke="#9333ea" stroke-width="0" opacity="1"/>
+<circle cx="294" cy="760.0" r="19" fill="#9333ea" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="294" y="767.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">USER</text>
+<text x="324" y="756.0" text-anchor="start" font-size="19" font-weight="700" fill="#111827" opacity="1">研究人员</text>
+<text x="324" y="785.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">Console / CLI / API</text>
+<line x1="370" y1="720" x2="460" y2="535" stroke="#9333ea" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-purple)"/>
+<line x1="545" y1="350" x2="875" y2="350" stroke="#2563eb" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-blue)"/>
+<line x1="545" y1="495" x2="875" y2="495" stroke="#16a34a" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-green)"/>
+<line x1="1180" y1="535" x2="1180" y2="680" stroke="#16a34a" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-green)"/>
+<rect x="1060" y="680" width="240" height="80" rx="14" ry="14" fill="#fff7ed" stroke="#fed7aa" stroke-width="2" opacity="1"/>
+<rect x="1060" y="680" width="10" height="80" rx="14" ry="14" fill="#ea580c" stroke="#ea580c" stroke-width="0" opacity="1"/>
+<circle cx="1094" cy="720.0" r="19" fill="#ea580c" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1094" y="727.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">UTIL</text>
+<text x="1124" y="716.0" text-anchor="start" font-size="19" font-weight="700" fill="#111827" opacity="1">GPU 资源利用率</text>
+<text x="1124" y="745.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">减少空转，提升吞吐</text>
+</svg>

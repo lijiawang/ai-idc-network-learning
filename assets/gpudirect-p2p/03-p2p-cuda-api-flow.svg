@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="blue-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">应用如何使用 P2P：先判断，再启用，再拷贝</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">不要只看 GPU 型号，程序应该用 CUDA Runtime API 对每一对 GPU 做能力判断。</text>
+  <rect x="70" y="185" width="160" height="142" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="86" y="203" width="34" height="34" rx="17" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="103" y="227" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">1</text>
+  <text x="150" y="229" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">枚举 GPU</text>
+  <text x="150" y="267" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">cudaGetDeviceCount</text>
+  <text x="150" y="287" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">确认多卡进程</text>
+  <rect x="275" y="185" width="160" height="142" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="291" y="203" width="34" height="34" rx="17" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="308" y="227" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">2</text>
+  <text x="355" y="229" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">逐对询问</text>
+  <text x="355" y="267" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">cudaDeviceCanAccessPeer</text>
+  <text x="355" y="287" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">能不能互访</text>
+  <rect x="505" y="185" width="160" height="142" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="521" y="203" width="34" height="34" rx="17" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="538" y="227" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">3</text>
+  <text x="585" y="229" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">启用 Peer</text>
+  <text x="585" y="267" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">cudaDeviceEnablePeerAccess</text>
+  <text x="585" y="287" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">为目标 GPU 开门</text>
+  <rect x="735" y="185" width="160" height="142" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="751" y="203" width="34" height="34" rx="17" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="768" y="227" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">4</text>
+  <text x="815" y="229" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">发起传输</text>
+  <text x="815" y="267" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">cudaMemcpyPeerAsync</text>
+  <text x="815" y="287" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">或 kernel 读写 peer HBM</text>
+  <rect x="970" y="185" width="160" height="142" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="986" y="203" width="34" height="34" rx="17" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="1003" y="227" font-size="17" fill="#2563eb" text-anchor="middle" font-weight="700">5</text>
+  <text x="1050" y="229" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">验证性能</text>
+  <text x="1050" y="267" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">nvidia-smi topo -m</text>
+  <text x="1050" y="287" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">p2pBandwidthLatencyTest</text>
+  <path d="M 230 256 L 270 256" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 460 256 L 500 256" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 690 256 L 730 256" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 925 256 L 965 256" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <rect x="275" y="385" width="160" height="72" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="355" y="415" font-size="15" fill="#dc2626" text-anchor="middle" font-weight="700">如果返回 0</text>
+  <text x="355" y="439" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">不要强行假设 P2P</text>
+  <path d="M 355 327 L 355 381" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="5,4"/>
+  <rect x="735" y="385" width="395" height="72" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="758" y="416" font-size="15" fill="#6b7280" text-anchor="start" font-weight="700">注意</text>
+  <text x="758" y="440" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">CPU 仍负责提交命令和同步；P2P 只是让大块数据少绕 Host Memory。</text>
+  <path d="M 810 327 L 810 381" stroke="#6b7280" stroke-width="2.5" fill="none" marker-end="url(#arrow-gray)" stroke-dasharray="5,4"/>
+</svg>

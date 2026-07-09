@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 690" width="1200" height="690">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0891b2"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="rdma-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#eff6ff"/>
+    </linearGradient>
+    <linearGradient id="cover-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07132d"/>
+      <stop offset="56%" stop-color="#102a5c"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="690" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">传统 Host 中转 vs GPUDirect RDMA</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">跨节点通信时，GDRDMA 的核心价值是减少 GPU 显存与 CPU 内存之间的 staging copy。</text>
+  <rect x="48" y="108" width="520" height="500" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <rect x="632" y="108" width="520" height="500" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="74" y="145" font-size="18" fill="#111827" text-anchor="start" font-weight="700">没有 GPUDirect RDMA</text>
+  <text x="658" y="145" font-size="18" fill="#111827" text-anchor="start" font-weight="700">GPUDirect RDMA 可用</text>
+  <text x="74" y="173" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">GPU 数据先拷到 Host Memory</text>
+  <text x="74" y="191" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">NIC 再从 CPU 内存发到网络</text>
+  <text x="658" y="173" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">NIC 可以直接 DMA 读写 GPU 显存</text>
+  <text x="658" y="191" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">CPU 仍负责控制面，不当大货仓</text>
+  <rect x="82" y="360" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="145" y="388" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU A</text>
+  <rect x="100" y="407" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="145" y="420" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="145" y="438" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="240" y="350" width="138" height="92" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="309" y="380" font-size="17" fill="#ea580c" text-anchor="middle" font-weight="700">Host</text>
+  <text x="309" y="402" font-size="15" fill="#ea580c" text-anchor="middle" font-weight="600">Memory</text>
+  <text x="309" y="425" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">CPU 内存</text>
+  <rect x="430" y="360" width="128" height="72" rx="9" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="494" y="390" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">NIC A</text>
+  <text x="494" y="412" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">RDMA 网卡</text>
+  <path d="M 208 404 L 236 404" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M 382 404 L 426 404" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <rect x="195" y="364" width="58" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="224" y="380" font-size="13" fill="#ea580c" text-anchor="middle" font-weight="600">拷贝 1</text>
+  <rect x="376" y="364" width="58" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="405" y="380" font-size="13" fill="#ea580c" text-anchor="middle" font-weight="600">拷贝 2</text>
+  <text x="310" y="496" font-size="14" fill="#ea580c" text-anchor="middle" font-weight="700">Host Memory staging</text>
+  <text x="310" y="522" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">多一次显存 ↔ CPU 内存搬运</text>
+  <text x="310" y="540" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">PCIe、NUMA、内存带宽都会被卷入</text>
+  <rect x="692" y="360" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="755" y="388" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU A</text>
+  <rect x="710" y="407" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="755" y="420" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="755" y="438" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="996" y="360" width="128" height="72" rx="9" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="1060" y="390" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">NIC A</text>
+  <text x="1060" y="412" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">RDMA 网卡</text>
+  <rect x="846" y="244" width="126" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="909" y="275" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU</text>
+  <text x="909" y="297" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <path d="M 818 404 L 990 404" stroke="#0891b2" stroke-width="3.8" fill="none" marker-end="url(#arrow-cyan)"/>
+  <rect x="842" y="364" width="126" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="905" y="380" font-size="13" fill="#0891b2" text-anchor="middle" font-weight="600">DMA 直接读写 HBM</text>
+  <path d="M 909 314 L 909 354" stroke="#6b7280" stroke-width="1.7" fill="none" marker-end="url(#arrow-gray)" stroke-dasharray="5,4"/>
+  <text x="906" y="493" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制面：CPU 发起、注册、同步</text>
+  <text x="906" y="511" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">数据面：NIC ↔ GPU HBM 直接搬</text>
+  <text x="600" y="638" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">注意：这里画的是本机 GPU 到本机 NIC 的一段；完整跨节点路径还要经过网络和对端 NIC/GPU。</text>
+</svg>

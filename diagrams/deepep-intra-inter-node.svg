@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+<style>
+text { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; fill: #111827; }
+.title { font-size: 28px; font-weight: 700; }
+.subtitle { font-size: 15px; fill: #6b7280; }
+.section { font-size: 17px; font-weight: 700; }
+.label { font-size: 15px; font-weight: 650; }
+.body { font-size: 14px; fill: #374151; }
+.small { font-size: 12px; fill: #6b7280; }
+.tiny { font-size: 11px; fill: #6b7280; }
+.mono { font-size: 13px; fill: #374151; }
+</style>
+<defs>
+<marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+<marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
+<marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
+<marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#7c3aed"/></marker>
+<marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#dc2626"/></marker>
+<marker id="arrow-teal" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#0d9488"/></marker>
+<marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#6b7280"/></marker>
+<marker id="arrow-gray-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#6b7280"/></marker>
+<marker id="arrow-green-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#16a34a"/></marker>
+<marker id="arrow-purple-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#7c3aed"/></marker>
+</defs>
+<rect x="0" y="0" width="1280" height="720" rx="0" ry="0" fill="#ffffff" stroke="none" stroke-width="1.5"/>
+<rect x="18" y="18" width="1244" height="684" rx="18" ry="18" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+<text x="640.0" y="56" class="title" text-anchor="middle">DeepEP：机内 NVLink 与跨机 RDMA 分开优化</text>
+<text x="640.0" y="86" class="subtitle" text-anchor="middle">节点内走 NVLink / NVSwitch；节点间走 IB / RDMA，瓶颈路径按拓扑分别处理</text>
+<rect x="52" y="144" width="500" height="440" rx="18" ry="18" fill="#f8fafc" stroke="#d1d5db" stroke-width="1.7"/>
+<rect x="76" y="170" width="452" height="46" rx="10" ry="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+<text x="302" y="200" class="section" text-anchor="middle">节点 1  (Node 1)</text>
+<rect x="96" y="246" width="340" height="294" rx="16" ry="16" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.6"/>
+<text x="118" y="276" class="small" text-anchor="start">NVLink / NVSwitch 域</text>
+<rect x="132" y="276" width="268" height="64" rx="13" ry="13" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+<text x="266" y="306" class="label" text-anchor="middle" fill="#15803d">NVSwitch Fabric</text>
+<text x="266" y="328" class="tiny" text-anchor="middle">节点内高带宽互联</text>
+<rect x="170" y="356" width="192" height="5" rx="3" ry="3" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="0.55"/>
+<rect x="134" y="382" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+<rect x="148" y="395" width="92" height="17" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.0"/>
+<text x="194" y="434" class="label" text-anchor="middle" fill="#2563eb">GPU0</text>
+<circle cx="177" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<circle cx="194" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<circle cx="211" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<rect x="278" y="382" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+<rect x="292" y="395" width="92" height="17" rx="5" ry="5" fill="#fef2f2" stroke="#fecaca" stroke-width="1.0"/>
+<text x="338" y="434" class="label" text-anchor="middle" fill="#dc2626">GPU1</text>
+<circle cx="321" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<circle cx="338" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<circle cx="355" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<rect x="134" y="466" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+<rect x="148" y="479" width="92" height="17" rx="5" ry="5" fill="#fffbeb" stroke="#fde68a" stroke-width="1.0"/>
+<text x="194" y="518" class="label" text-anchor="middle" fill="#d97706">GPU2</text>
+<circle cx="177" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<circle cx="194" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<circle cx="211" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<rect x="278" y="466" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.5"/>
+<rect x="292" y="479" width="92" height="17" rx="5" ry="5" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.0"/>
+<text x="338" y="518" class="label" text-anchor="middle" fill="#7c3aed">GPU3</text>
+<circle cx="321" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="338" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="355" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<rect x="458" y="388" width="76" height="104" rx="12" ry="12" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.6"/>
+<rect x="474" y="402" width="44" height="20" rx="5" ry="5" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.0"/>
+<text x="496" y="442" class="label" text-anchor="middle" fill="#7c3aed">HCA</text>
+<text x="496" y="466" class="tiny" text-anchor="middle">RDMA 出口</text>
+<circle cx="534" cy="440" r="4.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<rect x="728" y="144" width="500" height="440" rx="18" ry="18" fill="#f8fafc" stroke="#d1d5db" stroke-width="1.7"/>
+<rect x="752" y="170" width="452" height="46" rx="10" ry="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+<text x="978" y="200" class="section" text-anchor="middle">节点 2  (Node 2)</text>
+<rect x="844" y="246" width="340" height="294" rx="16" ry="16" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.6"/>
+<text x="866" y="276" class="small" text-anchor="start">NVLink / NVSwitch 域</text>
+<rect x="880" y="276" width="268" height="64" rx="13" ry="13" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+<text x="1014" y="306" class="label" text-anchor="middle" fill="#15803d">NVSwitch Fabric</text>
+<text x="1014" y="328" class="tiny" text-anchor="middle">节点内高带宽互联</text>
+<rect x="918" y="356" width="192" height="5" rx="3" ry="3" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="0.55"/>
+<rect x="882" y="382" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+<rect x="896" y="395" width="92" height="17" rx="5" ry="5" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.0"/>
+<text x="942" y="434" class="label" text-anchor="middle" fill="#2563eb">GPU0</text>
+<circle cx="925" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<circle cx="942" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<circle cx="959" cy="445" r="3.2" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<rect x="1026" y="382" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+<rect x="1040" y="395" width="92" height="17" rx="5" ry="5" fill="#fef2f2" stroke="#fecaca" stroke-width="1.0"/>
+<text x="1086" y="434" class="label" text-anchor="middle" fill="#dc2626">GPU1</text>
+<circle cx="1069" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<circle cx="1086" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<circle cx="1103" cy="445" r="3.2" fill="#dc2626" stroke="#dc2626" stroke-width="1"/>
+<rect x="882" y="466" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+<rect x="896" y="479" width="92" height="17" rx="5" ry="5" fill="#fffbeb" stroke="#fde68a" stroke-width="1.0"/>
+<text x="942" y="518" class="label" text-anchor="middle" fill="#d97706">GPU2</text>
+<circle cx="925" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<circle cx="942" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<circle cx="959" cy="529" r="3.2" fill="#d97706" stroke="#d97706" stroke-width="1"/>
+<rect x="1026" y="466" width="120" height="72" rx="10" ry="10" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.5"/>
+<rect x="1040" y="479" width="92" height="17" rx="5" ry="5" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.0"/>
+<text x="1086" y="518" class="label" text-anchor="middle" fill="#7c3aed">GPU3</text>
+<circle cx="1069" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="1086" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="1103" cy="529" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<rect x="746" y="388" width="76" height="104" rx="12" ry="12" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.6"/>
+<rect x="762" y="402" width="44" height="20" rx="5" ry="5" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.0"/>
+<text x="784" y="442" class="label" text-anchor="middle" fill="#7c3aed">HCA</text>
+<text x="784" y="466" class="tiny" text-anchor="middle">RDMA 出口</text>
+<circle cx="746" cy="440" r="4.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<line x1="534" y1="440" x2="574" y2="440" stroke="#7c3aed" stroke-width="3.0" stroke-linecap="round"/>
+<line x1="706" y1="440" x2="746" y2="440" stroke="#7c3aed" stroke-width="3.0" stroke-linecap="round"/>
+<rect x="574" y="390" width="132" height="100" rx="14" ry="14" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.6"/>
+<text x="640" y="424" class="label" text-anchor="middle" fill="#7c3aed">IB / RDMA</text>
+<text x="640" y="449" class="label" text-anchor="middle" fill="#7c3aed">Fabric</text>
+<text x="640" y="472" class="tiny" text-anchor="middle">跨节点网络</text>
+<circle cx="534" cy="440" r="4" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="574" cy="440" r="4" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="706" cy="440" r="4" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="746" cy="440" r="4" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<rect x="244" y="608" width="792" height="56" rx="12" ry="12" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<line x1="308" y1="636" x2="358" y2="636" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"/>
+<text x="540" y="641" class="label" text-anchor="middle" fill="#ea580c">节点内 NVLink：153 / 160 GB/s ≈ 95.6%</text>
+<line x1="714" y1="636" x2="764" y2="636" stroke="#7c3aed" stroke-width="2.8" stroke-linecap="round"/>
+<text x="900" y="641" class="label" text-anchor="middle" fill="#ea580c">跨节点 RDMA：43 / 50 GB/s = 86%</text>
+</svg>

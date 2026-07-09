@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 383" width="900" height="383">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0891b2"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="rdma-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#eff6ff"/>
+    </linearGradient>
+    <linearGradient id="cover-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07132d"/>
+      <stop offset="56%" stop-color="#102a5c"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="383" fill="#ffffff"/>
+  <rect width="900" height="383" fill="url(#cover-dark)"/>
+  <text x="60" y="78" font-size="38" fill="#ffffff" text-anchor="start" font-weight="800">GPUDirect RDMA</text>
+  <text x="60" y="121" font-size="24" fill="#dbeafe" text-anchor="start" font-weight="700">跨节点 GPU 的显存直通车</text>
+  <text x="60" y="155" font-size="15" fill="#b6e3ff" text-anchor="start" font-weight="400">GPU HBM ↔ RDMA NIC ↔ 网络 ↔ RDMA NIC ↔ GPU HBM</text>
+  <rect x="82" y="224" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="145" y="252" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU A</text>
+  <rect x="100" y="271" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="145" y="284" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="145" y="302" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="258" y="232" width="128" height="72" rx="9" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="322" y="262" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">NIC A</text>
+  <text x="322" y="284" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">RDMA 网卡</text>
+  <rect x="410" y="235" width="96" height="64" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="458" y="261" font-size="14" fill="#e0f2fe" text-anchor="middle" font-weight="700">IB / RoCE</text>
+  <text x="458" y="284" font-size="12" fill="#bae6fd" text-anchor="middle" font-weight="400">RDMA 网络</text>
+  <rect x="534" y="232" width="128" height="72" rx="9" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="598" y="262" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">NIC B</text>
+  <text x="598" y="284" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">RDMA 网卡</text>
+  <rect x="710" y="224" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="773" y="252" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU B</text>
+  <rect x="728" y="271" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="773" y="284" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="773" y="302" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <path d="M 208 268 L 254 268" stroke="#0891b2" stroke-width="4.2" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 386 268 L 406 268" stroke="#0891b2" stroke-width="4.2" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 506 268 L 530 268" stroke="#0891b2" stroke-width="4.2" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 662 268 L 706 268" stroke="#0891b2" stroke-width="4.2" fill="none" marker-end="url(#arrow-cyan)"/>
+  <text x="450" y="336" font-size="13" fill="#dbeafe" text-anchor="middle" font-weight="400">CPU 负责建路和同步，大块数据尽量不进 Host Memory</text>
+</svg>

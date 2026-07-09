@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepEP WeChat Cover</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 1800px;
+      height: 766px;
+      overflow: hidden;
+      background: #020618;
+    }
+
+    .cover {
+      position: relative;
+      width: 1800px;
+      height: 766px;
+      overflow: hidden;
+      background: #020618;
+      isolation: isolate;
+    }
+
+    .backdrop {
+      position: absolute;
+      inset: -60px;
+      width: calc(100% + 120px);
+      height: calc(100% + 120px);
+      object-fit: cover;
+      filter: blur(28px) saturate(1.35) brightness(0.68);
+      transform: scale(1.06);
+      opacity: 0.92;
+    }
+
+    .wash {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 26%, rgba(56, 189, 248, 0.20), transparent 32%),
+        linear-gradient(90deg, rgba(2, 6, 24, 0.56), transparent 18%, transparent 82%, rgba(2, 6, 24, 0.56)),
+        linear-gradient(180deg, rgba(2, 6, 24, 0.08), rgba(2, 6, 24, 0.26));
+    }
+
+    .main {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      height: 766px;
+      width: auto;
+      transform: translate(-50%, -50%);
+      object-fit: contain;
+      filter: drop-shadow(0 22px 38px rgba(0, 0, 0, 0.34));
+    }
+  </style>
+</head>
+<body>
+  <main class="cover">
+    <img class="backdrop" src="deepep-wechat-cover-dark-source.png" alt="">
+    <div class="wash"></div>
+    <img class="main" src="deepep-wechat-cover-dark-source.png" alt="一文搞懂 DeepEP">
+  </main>
+</body>
+</html>

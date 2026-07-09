@@ -1,0 +1,22 @@
+.DS_Store
+Thumbs.db
+
+# Local editor and agent state
+.workbuddy/
+
+# Build and runtime caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.clang-module-cache/
+.swift-module-cache/
+
+# Temporary working files
+tmp/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example

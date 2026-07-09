@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0891b2"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="rdma-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#eff6ff"/>
+    </linearGradient>
+    <linearGradient id="cover-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07132d"/>
+      <stop offset="56%" stop-color="#102a5c"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">一块 GPU Buffer 是怎么被 RDMA NIC 访问的</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">真实实现有驱动和内核细节，入门先抓住：识别、注册、映射、DMA、同步。</text>
+  <rect x="68" y="170" width="170" height="138" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="84" y="188" width="34" height="34" rx="17" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="101" y="212" font-size="17" fill="#0891b2" text-anchor="middle" font-weight="700">1</text>
+  <text x="153" y="214" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">CUDA 分配显存</text>
+  <text x="153" y="252" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">cudaMalloc 得到</text>
+  <text x="153" y="272" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">GPU device pointer</text>
+  <rect x="282" y="170" width="170" height="138" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="298" y="188" width="34" height="34" rx="17" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="315" y="212" font-size="17" fill="#0891b2" text-anchor="middle" font-weight="700">2</text>
+  <text x="367" y="214" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">通信库识别</text>
+  <text x="367" y="252" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">判断这是 GPU buffer</text>
+  <text x="367" y="272" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">不是普通 Host 指针</text>
+  <rect x="496" y="170" width="170" height="138" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="512" y="188" width="34" height="34" rx="17" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="529" y="212" font-size="17" fill="#0891b2" text-anchor="middle" font-weight="700">3</text>
+  <text x="581" y="214" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">注册 / pin</text>
+  <text x="581" y="252" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">驱动固定显存页</text>
+  <text x="581" y="272" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">建立 peer mapping</text>
+  <rect x="710" y="170" width="170" height="138" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="726" y="188" width="34" height="34" rx="17" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="743" y="212" font-size="17" fill="#0891b2" text-anchor="middle" font-weight="700">4</text>
+  <text x="795" y="214" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">NIC 获得映射</text>
+  <text x="795" y="252" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">通过 peer memory</text>
+  <text x="795" y="272" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">访问 GPU 页面</text>
+  <rect x="924" y="170" width="170" height="138" rx="12" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="940" y="188" width="34" height="34" rx="17" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.5"/>
+  <text x="957" y="212" font-size="17" fill="#0891b2" text-anchor="middle" font-weight="700">5</text>
+  <text x="1009" y="214" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">DMA 传输</text>
+  <text x="1009" y="252" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">NIC 直接读写 HBM</text>
+  <text x="1009" y="272" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">完成后做同步</text>
+  <path d="M 238 239 L 276 239" stroke="#0891b2" stroke-width="2.5" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 452 239 L 490 239" stroke="#0891b2" stroke-width="2.5" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 666 239 L 704 239" stroke="#0891b2" stroke-width="2.5" fill="none" marker-end="url(#arrow-cyan)"/>
+  <path d="M 880 239 L 918 239" stroke="#0891b2" stroke-width="2.5" fill="none" marker-end="url(#arrow-cyan)"/>
+  <rect x="110" y="390" width="300" height="112" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <rect x="142" y="410" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="205" y="438" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU</text>
+  <rect x="160" y="457" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="205" y="470" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="205" y="488" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="278" y="422" width="98" height="38" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="327" y="446" font-size="13" fill="#2563eb" text-anchor="middle" font-weight="700">GPU Buffer</text>
+  <rect x="452" y="390" width="300" height="112" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="602" y="426" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">nvidia-peermem / 驱动协作</text>
+  <text x="602" y="456" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">把 GPU 显存页暴露给 peer device</text>
+  <text x="602" y="474" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">通常还会使用 registration cache</text>
+  <rect x="794" y="390" width="300" height="112" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <rect x="850" y="410" width="128" height="72" rx="9" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="914" y="440" font-size="17" fill="#16a34a" text-anchor="middle" font-weight="700">RDMA NIC</text>
+  <text x="914" y="462" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">RDMA 网卡</text>
+  <text x="1006" y="447" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="700">DMA Engine</text>
+  <path d="M 410 446 L 448 446" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 752 446 L 790 446" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="600" y="566" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">pin/register 不是免费操作，所以高性能通信库会尽量缓存注册结果，而不是每次传输都从头来一遍。</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+<style>text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }</style>
+<defs>
+<marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 12 4, 0 8" fill="#0b55d9"/></marker>
+<marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 12 4, 0 8" fill="#159438"/></marker>
+<marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 12 4, 0 8" fill="#f97316"/></marker>
+<marker id="arrow-gray" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 12 4, 0 8" fill="#5f6680"/></marker>
+</defs>
+<rect width="1600" height="900" fill="#ffffff"/>
+<text x="800" y="76" fill="#07143d" font-size="58" font-weight="850" text-anchor="middle">NCCL 先画出一张拓扑地图</text>
+<text x="800" y="124" fill="#5f6680" font-size="28" font-weight="600" text-anchor="middle">GPU、NVLink/NVSwitch、PCIe、CPU/NUMA、NIC、网络都会变成图上的节点和边</text>
+<rect x="90" y="165" width="1060" height="610" rx="24" ry="24" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<text x="620" y="210" fill="#0b55d9" font-size="30" font-weight="800" text-anchor="middle">单机内部拓扑</text>
+<rect x="1195" y="250" width="315" height="410" rx="20" ry="20" fill="#fff" stroke="#f97316" stroke-width="3" stroke-dasharray="8 8"/>
+<text x="1352" y="295" fill="#f97316" font-size="28" font-weight="800" text-anchor="middle">跨节点侧</text>
+<rect x="245" y="260" width="210" height="86" rx="14" ry="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<rect x="263" y="278" width="48" height="48" rx="8" ry="8" fill="#eff6ff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="287" cy="302" r="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<text x="380" y="314" fill="#07143d" font-size="28" font-weight="800" text-anchor="middle">GPU0</text>
+<rect x="745" y="260" width="210" height="86" rx="14" ry="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<rect x="763" y="278" width="48" height="48" rx="8" ry="8" fill="#eff6ff" stroke="#0b55d9" stroke-width="3"/>
+<circle cx="787" cy="302" r="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<text x="880" y="314" fill="#07143d" font-size="28" font-weight="800" text-anchor="middle">GPU1</text>
+<line x1="455" y1="303" x2="745" y2="303" stroke="#159438" stroke-width="8" stroke-linecap="round"/>
+<line x1="745" y1="303" x2="455" y2="303" stroke="#159438" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+<text x="600" y="284" fill="#159438" font-size="25" font-weight="800" text-anchor="middle">NVLink / NVSwitch</text>
+<rect x="220" y="430" width="260" height="72" rx="12" ry="12" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<text x="350" y="476" fill="#0b55d9" font-size="24" font-weight="800" text-anchor="middle">PCIe Switch</text>
+<rect x="760" y="430" width="260" height="72" rx="12" ry="12" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<text x="890" y="476" fill="#0b55d9" font-size="24" font-weight="800" text-anchor="middle">PCIe Switch</text>
+<line x1="350" y1="346" x2="350" y2="430" stroke="#0b55d9" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<line x1="850" y1="346" x2="890" y2="430" stroke="#0b55d9" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<text x="180" y="398" fill="#0b55d9" font-size="22" font-weight="700" text-anchor="middle">PCIe</text>
+<text x="960" y="398" fill="#0b55d9" font-size="22" font-weight="700" text-anchor="middle">PCIe</text>
+<rect x="490" y="570" width="220" height="82" rx="14" ry="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<rect x="510" y="590" width="42" height="42" rx="7" ry="7" fill="#eff6ff" stroke="#0b55d9" stroke-width="3"/>
+<text x="622" y="622" fill="#07143d" font-size="26" font-weight="800" text-anchor="middle">CPU / NUMA</text>
+<line x1="350" y1="502" x2="570" y2="570" stroke="#0b55d9" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<line x1="890" y1="502" x2="710" y2="570" stroke="#0b55d9" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<rect x="835" y="574" width="150" height="74" rx="14" ry="14" fill="#fff" stroke="#f97316" stroke-width="3"/>
+<text x="910" y="621" fill="#f97316" font-size="25" font-weight="800" text-anchor="middle">NIC</text>
+<line x1="710" y1="611" x2="835" y2="611" stroke="#f97316" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+<text x="780" y="595" fill="#f97316" font-size="20" font-weight="700" text-anchor="middle">PCIe</text>
+<path d="M 1115 550 C 1060 550 1050 610 1095 630 C 1050 675 1110 735 1170 700 C 1228 735 1295 688 1260 632 C 1310 602 1278 538 1220 550 C 1200 508 1140 510 1115 550 Z" fill="#fff" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1165" y="625" fill="#f97316" font-size="30" font-weight="850" text-anchor="middle">网络</text>
+<line x1="985" y1="611" x2="1095" y2="611" stroke="#f97316" stroke-width="6" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+<rect x="1225" y="392" width="150" height="74" rx="14" ry="14" fill="#fff" stroke="#f97316" stroke-width="3"/>
+<text x="1300" y="439" fill="#f97316" font-size="25" font-weight="800" text-anchor="middle">NIC</text>
+<rect x="1245" y="520" width="220" height="82" rx="14" ry="14" fill="#fff" stroke="#0b55d9" stroke-width="3"/>
+<rect x="1265" y="540" width="42" height="42" rx="7" ry="7" fill="#eff6ff" stroke="#0b55d9" stroke-width="3"/>
+<text x="1377" y="572" fill="#07143d" font-size="26" font-weight="800" text-anchor="middle">CPU / NUMA</text>
+<line x1="1165" y1="611" x2="1225" y2="429" stroke="#f97316" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+<line x1="1300" y1="466" x2="1355" y2="520" stroke="#f97316" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+<rect x="195" y="700" width="245" height="50" rx="18" ry="18" fill="#f0fdf4" stroke="#159438" stroke-width="2"/>
+<text x="318" y="734" fill="#159438" font-size="22" font-weight="800" text-anchor="middle">高速直连：低成本</text>
+<rect x="500" y="700" width="255" height="50" rx="18" ry="18" fill="#eff6ff" stroke="#0b55d9" stroke-width="2"/>
+<text x="628" y="734" fill="#0b55d9" font-size="22" font-weight="800" text-anchor="middle">PCIe/CPU：中等成本</text>
+<rect x="815" y="700" width="285" height="50" rx="18" ry="18" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+<text x="958" y="734" fill="#f97316" font-size="22" font-weight="800" text-anchor="middle">跨节点网络：另算成本</text>
+<rect x="245" y="812" width="1110" height="58" rx="14" ry="14" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+<line x1="300" y1="841" x2="385" y2="841" stroke="#159438" stroke-width="5" stroke-linecap="round"/>
+<text x="475" y="849" fill="#5f6680" font-size="21" font-weight="600" text-anchor="middle">GPU 高速互联</text>
+<line x1="600" y1="841" x2="685" y2="841" stroke="#0b55d9" stroke-width="5" stroke-linecap="round"/>
+<text x="775" y="849" fill="#5f6680" font-size="21" font-weight="600" text-anchor="middle">本机 PCIe/CPU 路径</text>
+<line x1="930" y1="841" x2="1015" y2="841" stroke="#f97316" stroke-width="5" stroke-linecap="round"/>
+<text x="1135" y="849" fill="#5f6680" font-size="21" font-weight="600" text-anchor="middle">NIC / 网络 / 跨节点路径</text>
+</svg>

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="blue-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="650" fill="#ffffff"/>
+  <text x="42" y="42" font-size="24" fill="#111827" text-anchor="start" font-weight="700">传统中转 vs GPUDirect P2P</text>
+  <text x="42" y="72" font-size="13" fill="#6b7280" text-anchor="start" font-weight="400">P2P 的核心价值：让同一台服务器内的 GPU 显存尽量直接交换数据。</text>
+  <rect x="48" y="110" width="520" height="470" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <rect x="632" y="110" width="520" height="470" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="74" y="145" font-size="18" fill="#111827" text-anchor="start" font-weight="700">没有 P2P / P2P 不可用</text>
+  <text x="658" y="145" font-size="18" fill="#111827" text-anchor="start" font-weight="700">GPUDirect P2P 可用</text>
+  <text x="74" y="173" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">数据先落到 Host Memory，再写入另一张 GPU</text>
+  <text x="74" y="191" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">路径更长，CPU 内存带宽也会被卷入</text>
+  <text x="658" y="173" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">数据从 GPU0 HBM 直接到 GPU1 HBM</text>
+  <text x="658" y="191" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">CPU 负责发起/同步，不当大货仓中转</text>
+  <rect x="80" y="330" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="143" y="358" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="98" y="377" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="143" y="390" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="143" y="408" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="242" y="320" width="138" height="92" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="311" y="350" font-size="17" fill="#ea580c" text-anchor="middle" font-weight="700">Host</text>
+  <text x="311" y="372" font-size="15" fill="#ea580c" text-anchor="middle" font-weight="600">Memory</text>
+  <text x="311" y="395" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">CPU 内存</text>
+  <rect x="430" y="330" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="493" y="358" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="448" y="377" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="493" y="390" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="493" y="408" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <path d="M 206 374 L 238 374" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M 380 374 L 426 374" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <rect x="195" y="334" width="58" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="224" y="350" font-size="13" fill="#ea580c" text-anchor="middle" font-weight="600">拷贝 1</text>
+  <rect x="376" y="334" width="58" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="405" y="350" font-size="13" fill="#ea580c" text-anchor="middle" font-weight="600">拷贝 2</text>
+  <text x="306" y="466" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">两段搬运</text>
+  <text x="306" y="484" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">Host Memory 中转</text>
+  <text x="306" y="502" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">延迟和带宽压力更高</text>
+  <rect x="700" y="330" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="763" y="358" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="718" y="377" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="763" y="390" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="763" y="408" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="996" y="330" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="1059" y="358" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="1014" y="377" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="1059" y="390" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="1059" y="408" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="850" y="230" width="128" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="914" y="261" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU</text>
+  <text x="914" y="283" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <path d="M 826 374 L 990 374" stroke="#2563eb" stroke-width="3.5" fill="none" marker-end="url(#arrow-blue)"/>
+  <rect x="856" y="332" width="105" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="908" y="348" font-size="13" fill="#2563eb" text-anchor="middle" font-weight="600">一次 P2P 搬运</text>
+  <path d="M 914 300 L 914 327" stroke="#6b7280" stroke-width="1.8" fill="none" marker-end="url(#arrow-gray)" stroke-dasharray="5,4"/>
+  <text x="914" y="466" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">CPU 仍会发起 API / 同步任务</text>
+  <text x="914" y="484" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">但大块数据不再经 CPU 内存倒一手</text>
+  <line x1="74" y1="548" x2="108" y2="548" stroke="#ea580c" stroke-width="2.2" marker-end="url(#arrow-orange)"/>
+  <text x="118" y="552" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">Host 中转路径</text>
+  <line x1="230" y1="548" x2="264" y2="548" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+  <text x="274" y="552" font-size="12" fill="#6b7280" text-anchor="start" font-weight="400">P2P 显存直连路径</text>
+</svg>

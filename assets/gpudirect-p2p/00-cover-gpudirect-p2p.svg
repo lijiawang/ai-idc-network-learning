@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 383" width="900" height="383">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <linearGradient id="blue-fade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="383" fill="#ffffff"/>
+  <text x="60" y="72" font-size="36" fill="#111827" text-anchor="start" font-weight="800">GPUDirect P2P</text>
+  <text x="60" y="112" font-size="24" fill="#111827" text-anchor="start" font-weight="700">单机多 GPU 的显存直通车</text>
+  <text x="60" y="146" font-size="15" fill="#6b7280" text-anchor="start" font-weight="400">GPU HBM ↔ GPU HBM，不再把数据绕到 CPU 内存中转</text>
+  <rect x="116" y="214" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="179" y="242" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU0</text>
+  <rect x="134" y="261" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="179" y="274" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="179" y="292" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="658" y="214" width="126" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="721" y="242" font-size="18" fill="#111827" text-anchor="middle" font-weight="700">GPU1</text>
+  <rect x="676" y="261" width="90" height="18" rx="4" fill="#ffffff" stroke="#93c5fd" stroke-width="1"/>
+  <text x="721" y="274" font-size="11" fill="#2563eb" text-anchor="middle" font-weight="700">HBM</text>
+  <text x="721" y="292" font-size="11" fill="#6b7280" text-anchor="middle" font-weight="400">显存</text>
+  <rect x="386" y="174" width="128" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="450" y="205" font-size="17" fill="#111827" text-anchor="middle" font-weight="700">CPU</text>
+  <text x="450" y="227" font-size="12" fill="#6b7280" text-anchor="middle" font-weight="400">控制 / 调度</text>
+  <rect x="338" y="255" width="220" height="52" rx="26" fill="url(#blue-fade)" stroke="#93c5fd" stroke-width="1.5"/>
+  <path d="M 252 281 L 642 281" stroke="#2563eb" stroke-width="5" fill="none" marker-end="url(#arrow-blue)"/>
+  <rect x="365" y="235" width="171" height="23" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="450" y="251" font-size="13" fill="#2563eb" text-anchor="middle" font-weight="600">P2P 直接拷贝 / 直接访问</text>
+  <path d="M 450 244 L 450 218" stroke="#6b7280" stroke-width="1.7" fill="none" marker-end="url(#arrow-gray)" stroke-dasharray="5,4"/>
+  <text x="450" y="334" font-size="13" fill="#6b7280" text-anchor="middle" font-weight="400">PCIe / NVLink / NVSwitch 是可能的物理路径</text>
+</svg>

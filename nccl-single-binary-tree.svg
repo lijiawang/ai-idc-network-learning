@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" width="1200" height="790">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    .title { fill: #111827; font-size: 28px; font-weight: 700; }
+    .subtitle { fill: #6b7280; font-size: 15px; }
+    .section-title { fill: #111827; font-size: 18px; font-weight: 700; }
+    .label { fill: #111827; font-size: 14px; font-weight: 600; }
+    .small { fill: #6b7280; font-size: 13px; }
+    .tiny { fill: #6b7280; font-size: 12px; }
+    .gpu { fill: #111827; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    .role { fill: #111827; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#111827" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="790" fill="#ffffff"/>
+  <text x="600.0" y="42" text-anchor="middle" class="title">8 GPU 单二叉树 AllReduce</text>
+  <text x="600.0" y="72" text-anchor="middle" class="subtitle">一棵树处理全部 tensor：Reduce 向上汇聚，Broadcast 向下分发</text>
+  <rect x="56" y="104" width="1088" height="500" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="76" y="134" class="section-title">一棵二叉树承担全部通信（G0-G7）</text>
+  <rect x="96" y="150" width="1008" height="56" rx="8" ry="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="126" y="185" class="label">Tensor 梯度 buffer</text>
+  <rect x="338" y="162" width="526" height="32" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="601" y="183" text-anchor="middle" class="small">全部数据都走同一棵 8 GPU 树</text>
+  <path d="M 864 178 C 920 178, 958 194, 988 234" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)" stroke-dasharray="5,4"/>
+  <rect x="908" y="148" width="96" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="956.0" y="165.0" text-anchor="middle" class="small">单路承载</text>
+  <line x1="600" y1="300" x2="410" y2="356" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="600" y1="300" x2="790" y2="356" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="410" y1="408" x2="300" y2="470" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="410" y1="408" x2="510" y2="470" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="790" y1="408" x2="690" y2="470" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="790" y1="408" x2="900" y2="470" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <line x1="300" y1="522" x2="216" y2="552" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+  <path d="M 207 553 L 291 521" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 291 471 L 401 407" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 501 471 L 401 407" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 681 471 L 781 407" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 891 471 L 781 407" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 401 357 L 591 299" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 781 357 L 591 299" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+  <path d="M 609 299 L 419 357" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 609 299 L 799 357" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 419 407 L 309 471" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 419 407 L 519 471" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 799 407 L 699 471" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 799 407 L 909 471" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <path d="M 309 521 L 225 553" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <circle cx="600" cy="274" r="27" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+  <text x="600" y="274" class="gpu">G0</text>
+  <circle cx="410" cy="382" r="27" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+  <text x="410" y="382" class="gpu">G1</text>
+  <circle cx="790" cy="382" r="27" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+  <text x="790" y="382" class="gpu">G2</text>
+  <circle cx="300" cy="496" r="27" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+  <text x="300" y="496" class="gpu">G3</text>
+  <circle cx="510" cy="496" r="27" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="510" y="496" class="gpu">G4</text>
+  <circle cx="690" cy="496" r="27" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="690" y="496" class="gpu">G5</text>
+  <circle cx="900" cy="496" r="27" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="900" y="496" class="gpu">G6</text>
+  <circle cx="216" cy="578" r="27" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="216" y="578" class="gpu">G7</text>
+  <rect x="432" y="304" width="116" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="490.0" y="321.0" text-anchor="middle" class="small">Reduce up</text>
+  <rect x="650" y="304" width="138" height="26" rx="5" ry="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="719.0" y="321.0" text-anchor="middle" class="small">Broadcast down</text>
+  <text x="600" y="245" text-anchor="middle" class="tiny">root / 汇聚点</text>
+  <text x="410" y="352" text-anchor="middle" class="tiny">内部节点</text>
+  <text x="790" y="352" text-anchor="middle" class="tiny">内部节点</text>
+  <text x="300" y="466" text-anchor="middle" class="tiny">内部节点</text>
+  <rect x="92" y="252" width="236" height="144" rx="8" ry="8" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="110" y="280" class="label">热点在哪里？</text>
+  <text x="110" y="304" class="small">G0/G1/G2/G3 是内部节点</text>
+  <text x="110" y="326" class="small">既要收数据，又要做 reduce</text>
+  <text x="110" y="348" class="small">还要继续向上或向下转发</text>
+  <path d="M 328 322 C 382 300, 460 286, 570 276" fill="none" stroke="#dc2626" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-red)"/>
+  <rect x="872" y="252" width="236" height="144" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="890" y="280" class="label">8 GPU 的细节</text>
+  <text x="890" y="304" class="small">G3 多带一个孩子 G7</text>
+  <text x="890" y="326" class="small">最深路径有 3 跳</text>
+  <text x="890" y="348" class="small">Reduce + Broadcast 共约 6 轮</text>
+  <path d="M 872 346 C 840 374, 816 392, 786 410" fill="none" stroke="#ea580c" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+  <rect x="56" y="628" width="1088" height="104" rx="12" ry="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="76" y="658" class="section-title">单二叉树 AllReduce 的两个阶段</text>
+  <rect x="132" y="666" width="360" height="36" rx="8" ry="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="312" y="689" text-anchor="middle" class="label">1. Reduce：叶子 → root</text>
+  <path d="M 508 684 C 560 684, 600 684, 652 684" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+  <rect x="668" y="666" width="360" height="36" rx="8" ry="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="848" y="689" text-anchor="middle" class="label">2. Broadcast：root → 叶子</text>
+  <text x="600" y="724" text-anchor="middle" class="small">核心问题：只有一棵树，所有 chunk 都压在同一套内部节点上</text>
+  <g transform="translate(90, 748)">
+    <line x1="0" y1="8" x2="34" y2="8" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+    <text x="44" y="12" class="small">Reduce up</text>
+    <line x1="170" y1="8" x2="204" y2="8" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="214" y="12" class="small">Broadcast down</text>
+    <circle cx="408" cy="8" r="9" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+    <text x="426" y="12" class="small">内部节点热点</text>
+  </g>
+</svg>

@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+<style>
+text { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; fill: #111827; }
+.title { font-size: 28px; font-weight: 700; }
+.subtitle { font-size: 15px; fill: #6b7280; }
+.section { font-size: 17px; font-weight: 700; }
+.label { font-size: 15px; font-weight: 650; }
+.body { font-size: 14px; fill: #374151; }
+.small { font-size: 12px; fill: #6b7280; }
+.tiny { font-size: 11px; fill: #6b7280; }
+.mono { font-size: 13px; fill: #374151; }
+</style>
+<defs>
+<marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+<marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
+<marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
+<marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#7c3aed"/></marker>
+<marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#dc2626"/></marker>
+<marker id="arrow-teal" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#0d9488"/></marker>
+<marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#6b7280"/></marker>
+<marker id="arrow-gray-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#6b7280"/></marker>
+<marker id="arrow-green-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#16a34a"/></marker>
+<marker id="arrow-purple-start" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,4 L10,8 Z" fill="#7c3aed"/></marker>
+</defs>
+<rect x="0" y="0" width="1280" height="720" rx="0" ry="0" fill="#ffffff" stroke="none" stroke-width="1.5"/>
+<rect x="18" y="18" width="1244" height="684" rx="18" ry="18" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+<text x="640.0" y="56" class="title" text-anchor="middle">不用 DeepEP 的普通 MoE All-to-All 11 步</text>
+<text x="640.0" y="86" class="subtitle" text-anchor="middle">真正的网络传输只占其中几步，很多时间花在分桶、拷贝、重排、等待和合并</text>
+<line x1="218" y1="220" x2="252" y2="220" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="408" y1="220" x2="442" y2="220" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="598" y1="220" x2="632" y2="220" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="788" y1="220" x2="822" y2="220" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="978" y1="220" x2="1012" y2="220" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<path d="M1168,220 C1196,260 1196,360 1168,414" fill="none" stroke="gray" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-gray)"/>
+<line x1="1024" y1="444" x2="990" y2="444" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="834" y1="444" x2="800" y2="444" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="644" y1="444" x2="610" y2="444" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<line x1="454" y1="444" x2="420" y2="444" stroke="gray" stroke-width="2.1" stroke-linecap="round" marker-end="url(#arrow-gray)"/>
+<rect x="74" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+<circle cx="99" cy="194" r="15" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.3"/>
+<text x="99" y="199" class="small" text-anchor="middle" fill="#2563eb" font-weight="700">1</text>
+<text x="148" y="225" class="label" text-anchor="middle" fill="#2563eb">router</text>
+<text x="148" y="250" class="tiny" text-anchor="middle">算 token 去哪</text>
+<rect x="264" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+<circle cx="289" cy="194" r="15" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.3"/>
+<text x="289" y="199" class="small" text-anchor="middle" fill="#2563eb" font-weight="700">2</text>
+<text x="338" y="225" class="label" text-anchor="middle" fill="#2563eb">查位置</text>
+<text x="338" y="250" class="tiny" text-anchor="middle">expert 在哪张 GPU</text>
+<rect x="454" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#fed7aa" stroke-width="1.5"/>
+<circle cx="479" cy="194" r="15" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.3"/>
+<text x="479" y="199" class="small" text-anchor="middle" fill="#ea580c" font-weight="700">3</text>
+<text x="528" y="225" class="label" text-anchor="middle" fill="#ea580c">分桶</text>
+<text x="528" y="250" class="tiny" text-anchor="middle">按目标 GPU 分组</text>
+<rect x="644" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#fed7aa" stroke-width="1.5"/>
+<circle cx="669" cy="194" r="15" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.3"/>
+<text x="669" y="199" class="small" text-anchor="middle" fill="#ea580c" font-weight="700">4</text>
+<text x="718" y="225" class="label" text-anchor="middle" fill="#ea580c">拷贝</text>
+<text x="718" y="250" class="tiny" text-anchor="middle">写入 send buffer</text>
+<rect x="834" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.5"/>
+<circle cx="859" cy="194" r="15" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.3"/>
+<text x="859" y="199" class="small" text-anchor="middle" fill="#7c3aed" font-weight="700">5</text>
+<text x="908" y="225" class="label" text-anchor="middle" fill="#7c3aed">All-to-All</text>
+<text x="908" y="250" class="tiny" text-anchor="middle">第一次发送</text>
+<rect x="1024" y="166" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#fed7aa" stroke-width="1.5"/>
+<circle cx="1049" cy="194" r="15" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.3"/>
+<text x="1049" y="199" class="small" text-anchor="middle" fill="#ea580c" font-weight="700">6</text>
+<text x="1098" y="225" class="label" text-anchor="middle" fill="#ea580c">接收整理</text>
+<text x="1098" y="250" class="tiny" text-anchor="middle">按 expert 排</text>
+<rect x="1024" y="390" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.5"/>
+<circle cx="1049" cy="418" r="15" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.3"/>
+<text x="1049" y="423" class="small" text-anchor="middle" fill="#16a34a" font-weight="700">7</text>
+<text x="1098" y="449" class="label" text-anchor="middle" fill="#16a34a">expert 计算</text>
+<text x="1098" y="474" class="tiny" text-anchor="middle">矩阵计算</text>
+<rect x="834" y="390" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#fed7aa" stroke-width="1.5"/>
+<circle cx="859" cy="418" r="15" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.3"/>
+<text x="859" y="423" class="small" text-anchor="middle" fill="#ea580c" font-weight="700">8</text>
+<text x="908" y="449" class="label" text-anchor="middle" fill="#ea580c">结果打包</text>
+<text x="908" y="474" class="tiny" text-anchor="middle">准备回传</text>
+<rect x="644" y="390" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.5"/>
+<circle cx="669" cy="418" r="15" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.3"/>
+<text x="669" y="423" class="small" text-anchor="middle" fill="#7c3aed" font-weight="700">9</text>
+<text x="718" y="449" class="label" text-anchor="middle" fill="#7c3aed">All-to-All</text>
+<text x="718" y="474" class="tiny" text-anchor="middle">第二次发送</text>
+<rect x="454" y="390" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#fed7aa" stroke-width="1.5"/>
+<circle cx="479" cy="418" r="15" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.3"/>
+<text x="479" y="423" class="small" text-anchor="middle" fill="#ea580c" font-weight="700">10</text>
+<text x="528" y="449" class="label" text-anchor="middle" fill="#ea580c">恢复顺序</text>
+<text x="528" y="474" class="tiny" text-anchor="middle">回原 token 位</text>
+<rect x="264" y="390" width="148" height="108" rx="12" ry="12" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.5"/>
+<circle cx="289" cy="418" r="15" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.3"/>
+<text x="289" y="423" class="small" text-anchor="middle" fill="#16a34a" font-weight="700">11</text>
+<text x="338" y="449" class="label" text-anchor="middle" fill="#16a34a">top-k 合并</text>
+<text x="338" y="474" class="tiny" text-anchor="middle">按权重合并</text>
+<rect x="90" y="566" width="1100" height="68" rx="14" ry="14" fill="#f8fafc" stroke="#e5e7eb" stroke-width="1.3"/>
+<text x="132" y="596" class="label" text-anchor="start" fill="#ea580c">慢的高发区</text>
+<rect x="252" y="578" width="94" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="299.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">分桶</text>
+<rect x="394" y="578" width="94" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="441.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">拷贝</text>
+<rect x="536" y="578" width="94" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="583.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">重排</text>
+<rect x="678" y="578" width="112" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="734.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">同步等待</text>
+<rect x="820" y="578" width="94" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="867.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">回传整理</text>
+<rect x="962" y="578" width="94" height="34" rx="8" ry="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.4"/>
+<text x="1009.0" y="600.0" class="label" text-anchor="middle" fill="#ea580c">合并</text>
+<text x="640" y="666" class="small" text-anchor="middle">DeepEP 快在把这些零散动作收进 MoE 专用高速流水线</text>
+</svg>

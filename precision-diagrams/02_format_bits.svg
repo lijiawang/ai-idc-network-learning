@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; fill: #111827; }
+.title { font-size: 28px; font-weight: 700; }
+.subtitle { font-size: 15px; fill: #6b7280; }
+.label { font-size: 15px; font-weight: 600; }
+.small { font-size: 12px; fill: #6b7280; }
+.note { font-size: 13px; fill: #6b7280; }
+</style>
+<rect width="1200" height="760" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" class="title">图2：常见数字格式的位宽分配</text>
+<text x="60" y="88" text-anchor="start" class="subtitle">这一版不按面积暗示比例：符号位统一写成 S1，指数位和尾数位用数字标清楚。</text>
+<rect x="710" y="32" width="420" height="92" rx="10" ry="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.2" />
+<rect x="735" y="45" width="16" height="16" rx="4" ry="4" fill="#2563eb" stroke="#2563eb" stroke-width="1" />
+<text x="760" y="58" text-anchor="start" class="small">S1 符号位：永远 1 bit</text>
+<rect x="735" y="67" width="16" height="16" rx="4" ry="4" fill="#dc2626" stroke="#dc2626" stroke-width="1" />
+<text x="760" y="80" text-anchor="start" class="small">E 指数位：管范围</text>
+<rect x="735" y="89" width="16" height="16" rx="4" ry="4" fill="#16a34a" stroke="#16a34a" stroke-width="1" />
+<text x="760" y="102" text-anchor="start" class="small">M 尾数位：管精度</text>
+<text x="70" y="140" text-anchor="start" class="small">格式</text>
+<text x="170" y="140" text-anchor="start" class="small">总位宽</text>
+<text x="270" y="140" text-anchor="start" class="small">符号位</text>
+<text x="420" y="140" text-anchor="start" class="small">指数位</text>
+<text x="640" y="140" text-anchor="start" class="small">尾数位</text>
+<text x="885" y="140" text-anchor="start" class="small">小白理解</text>
+<line x1="60" y1="154" x2="1138" y2="154" stroke="#e5e7eb" stroke-width="1.2"/>
+<rect x="60" y="152" width="1080" height="46" rx="6" ry="6" fill="#ffffff" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="181" text-anchor="start" class="label">FP64</text>
+<text x="170" y="181" text-anchor="start" class="small">64 bit</text>
+<rect x="268" y="160" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="181" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="160" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="181" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E11</text>
+<rect x="638" y="160" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="181" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M52</text>
+<text x="885" y="181" text-anchor="start" class="small">科学计算：很准，很贵</text>
+<rect x="60" y="210" width="1080" height="46" rx="6" ry="6" fill="#f9fafb" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="239" text-anchor="start" class="label">FP32</text>
+<text x="170" y="239" text-anchor="start" class="small">32 bit</text>
+<rect x="268" y="218" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="239" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="218" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="239" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E8</text>
+<rect x="638" y="218" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="239" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M23</text>
+<text x="885" y="239" text-anchor="start" class="small">传统训练基准</text>
+<rect x="60" y="268" width="1080" height="46" rx="6" ry="6" fill="#ffffff" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="297" text-anchor="start" class="label">TF32</text>
+<text x="170" y="289" text-anchor="start" class="small">32 bit 存储</text>
+<text x="170" y="307" text-anchor="start" class="small">19 bit 计算</text>
+<rect x="268" y="276" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="297" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="276" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="297" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E8</text>
+<rect x="638" y="276" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="297" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M10</text>
+<text x="885" y="297" text-anchor="start" class="small">不省显存，只加速计算</text>
+<rect x="60" y="326" width="1080" height="46" rx="6" ry="6" fill="#f9fafb" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="355" text-anchor="start" class="label">BF16</text>
+<text x="170" y="355" text-anchor="start" class="small">16 bit</text>
+<rect x="268" y="334" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="355" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="334" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="355" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E8</text>
+<rect x="638" y="334" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="355" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M7</text>
+<text x="885" y="355" text-anchor="start" class="small">范围像 FP32，小数更粗</text>
+<rect x="60" y="384" width="1080" height="46" rx="6" ry="6" fill="#ffffff" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="413" text-anchor="start" class="label">FP16</text>
+<text x="170" y="413" text-anchor="start" class="small">16 bit</text>
+<rect x="268" y="392" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="413" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="392" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="413" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E5</text>
+<rect x="638" y="392" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="413" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M10</text>
+<text x="885" y="413" text-anchor="start" class="small">范围小，小数更细</text>
+<rect x="60" y="442" width="1080" height="46" rx="6" ry="6" fill="#f9fafb" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="471" text-anchor="start" class="label">FP8 E4M3</text>
+<text x="170" y="471" text-anchor="start" class="small">8 bit</text>
+<rect x="268" y="450" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="471" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="450" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="471" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E4</text>
+<rect x="638" y="450" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="471" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M3</text>
+<text x="885" y="471" text-anchor="start" class="small">8-bit 浮点，偏精度</text>
+<rect x="60" y="500" width="1080" height="46" rx="6" ry="6" fill="#ffffff" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="529" text-anchor="start" class="label">FP8 E5M2</text>
+<text x="170" y="529" text-anchor="start" class="small">8 bit</text>
+<rect x="268" y="508" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="529" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="508" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="529" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E5</text>
+<rect x="638" y="508" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="529" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M2</text>
+<text x="885" y="529" text-anchor="start" class="small">8-bit 浮点，偏范围</text>
+<rect x="60" y="558" width="1080" height="46" rx="6" ry="6" fill="#f9fafb" stroke="#eef2f7" stroke-width="1" />
+<text x="70" y="587" text-anchor="start" class="label">NVFP4</text>
+<text x="170" y="587" text-anchor="start" class="small">4 bit</text>
+<rect x="268" y="566" width="80" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2" />
+<text x="308" y="587" text-anchor="middle" fill="#2563eb" font-size="14" font-weight="700">S1</text>
+<rect x="418" y="566" width="150" height="30" rx="6" ry="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.2" />
+<text x="493" y="587" text-anchor="middle" fill="#dc2626" font-size="14" font-weight="700">E2</text>
+<rect x="638" y="566" width="170" height="30" rx="6" ry="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
+<text x="723" y="587" text-anchor="middle" fill="#16a34a" font-size="14" font-weight="700">M1</text>
+<text x="885" y="587" text-anchor="start" class="small">4-bit 浮点，需配合缩放</text>
+<rect x="90" y="660" width="1020" height="58" rx="10" ry="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.2" />
+<text x="115" y="686" text-anchor="start" class="note">注意：如果每一行都画成同样长的总条，S1 在 FP64 中只占 1/64，在 NVFP4 中占 1/4，看起来会一大一小。</text>
+<text x="115" y="711" text-anchor="start" class="note">所以这张表改成“字段表格”：所有格式的符号位都明确标为 S1，不再用蓝色块面积暗示符号位大小。</text>
+</svg>

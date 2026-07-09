@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.small { font-size: 14px; fill: #6b7280; }
+</style>
+
+<defs>
+  <marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#2563eb"/></marker>
+  <marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#16a34a"/></marker>
+  <marker id="arrow-purple" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#9333ea"/></marker>
+  <marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#ea580c"/></marker>
+  <marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#dc2626"/></marker>
+</defs>
+
+<rect width="1440" height="900" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" font-size="30" font-weight="700" fill="#111827" opacity="1">Compute Fabric：Rail-Optimized InfiniBand</text>
+<text x="60" y="92" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">同编号 NIC/GPU 进入同一条 rail，降低 hash 热点和跨 rail 抖动</text>
+<line x1="60" y1="118" x2="1380" y2="118" stroke="#e5e7eb" stroke-width="2" fill="none" opacity="1"/>
+<rect x="80" y="170" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="199" text-anchor="start" font-size="15" font-weight="700" fill="#2563eb" opacity="1">Rail 0</text>
+<rect x="210" y="178" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="199" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="178" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="199" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="193" x2="1110" y2="193" stroke="#2563eb" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-blue)"/>
+<rect x="80" y="242" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="271" text-anchor="start" font-size="15" font-weight="700" fill="#9333ea" opacity="1">Rail 1</text>
+<rect x="210" y="250" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="271" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="250" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="271" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="265" x2="1110" y2="265" stroke="#9333ea" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-purple)"/>
+<rect x="80" y="314" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="343" text-anchor="start" font-size="15" font-weight="700" fill="#2563eb" opacity="1">Rail 2</text>
+<rect x="210" y="322" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="343" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="322" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="343" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="337" x2="1110" y2="337" stroke="#2563eb" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-blue)"/>
+<rect x="80" y="386" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="415" text-anchor="start" font-size="15" font-weight="700" fill="#9333ea" opacity="1">Rail 3</text>
+<rect x="210" y="394" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="415" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="394" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="415" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="409" x2="1110" y2="409" stroke="#9333ea" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-purple)"/>
+<rect x="80" y="458" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="487" text-anchor="start" font-size="15" font-weight="700" fill="#2563eb" opacity="1">Rail 4</text>
+<rect x="210" y="466" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="487" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="466" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="487" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="481" x2="1110" y2="481" stroke="#2563eb" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-blue)"/>
+<rect x="80" y="530" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="559" text-anchor="start" font-size="15" font-weight="700" fill="#9333ea" opacity="1">Rail 5</text>
+<rect x="210" y="538" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="559" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="538" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="559" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="553" x2="1110" y2="553" stroke="#9333ea" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-purple)"/>
+<rect x="80" y="602" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="631" text-anchor="start" font-size="15" font-weight="700" fill="#2563eb" opacity="1">Rail 6</text>
+<rect x="210" y="610" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="631" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="610" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="631" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="625" x2="1110" y2="625" stroke="#2563eb" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-blue)"/>
+<rect x="80" y="674" width="1240" height="46" rx="8" ry="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4" opacity="1"/>
+<text x="100" y="703" text-anchor="start" font-size="15" font-weight="700" fill="#9333ea" opacity="1">Rail 7</text>
+<rect x="210" y="682" width="115" height="30" rx="6" ry="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" opacity="1"/>
+<text x="267" y="703" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb" opacity="1">Leaf</text>
+<rect x="1110" y="682" width="115" height="30" rx="6" ry="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" opacity="1"/>
+<text x="1167" y="703" text-anchor="middle" font-size="13" font-weight="700" fill="#9333ea" opacity="1">Spine</text>
+<line x1="325" y1="697" x2="1110" y2="697" stroke="#9333ea" stroke-width="2.6" fill="none" opacity="0.65" marker-end="url(#arrow-purple)"/>
+<rect x="220" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="232" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="232" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="272" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="255.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack1</text>
+<line x1="255" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="255" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="350" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="362" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="362" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="402" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="385.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack2</text>
+<line x1="385" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="385" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="480" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="492" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="492" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="532" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="515.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack3</text>
+<line x1="515" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="515" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="610" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="622" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="622" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="662" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="645.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack4</text>
+<line x1="645" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="645" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="740" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="752" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="752" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="792" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="775.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack5</text>
+<line x1="775" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="775" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="870" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="882" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="882" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="922" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="905.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack6</text>
+<line x1="905" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="905" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="1000" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="1012" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1012" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="1052" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="1035.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack7</text>
+<line x1="1035" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1035" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<rect x="1130" y="765" width="70" height="105" rx="10" ry="10" fill="#1f2937" stroke="#374151" stroke-width="2" opacity="1"/>
+<rect x="1142" y="783.0" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="791.625" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="800.25" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="808.875" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="817.5" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="826.125" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="834.75" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<rect x="1142" y="843.375" width="46" height="10" rx="3" ry="3" fill="#374151" stroke="none" stroke-width="0" opacity="1"/>
+<circle cx="1182" cy="783" r="4" fill="#22c55e" stroke="none" stroke-width="2" opacity="1"/>
+<text x="1165.0" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#111827" opacity="1">Rack8</text>
+<line x1="1165" y1="765" x2="267" y2="193" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="265" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="337" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="409" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="481" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="553" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="625" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+<line x1="1165" y1="765" x2="267" y2="697" stroke="#2563eb" stroke-width="0.7" fill="none" opacity="0.12"/>
+</svg>

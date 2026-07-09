@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+<style>
+text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.small { font-size: 14px; fill: #6b7280; }
+</style>
+
+<defs>
+  <marker id="arrow-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#2563eb"/></marker>
+  <marker id="arrow-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#16a34a"/></marker>
+  <marker id="arrow-purple" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#9333ea"/></marker>
+  <marker id="arrow-orange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#ea580c"/></marker>
+  <marker id="arrow-red" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#dc2626"/></marker>
+</defs>
+
+<rect width="1440" height="900" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="start" font-size="30" font-weight="700" fill="#111827" opacity="1">DGX SuperPOD 软件栈：从硬件到作业编排</text>
+<text x="60" y="92" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">Mission Control 将部署、监控、诊断、调度和恢复串成闭环</text>
+<line x1="60" y1="118" x2="1380" y2="118" stroke="#e5e7eb" stroke-width="2" fill="none" opacity="1"/>
+<rect x="160" y="170" width="1120" height="100" rx="14" ry="14" fill="#faf5ff" stroke="#e9d5ff" stroke-width="2" opacity="1"/>
+<rect x="160" y="170" width="18" height="100" rx="12" ry="12" fill="#9333ea" stroke="#9333ea" stroke-width="0" opacity="1"/>
+<text x="220" y="212" text-anchor="start" font-size="24" font-weight="700" fill="#111827" opacity="1">AI 应用与框架</text>
+<text x="220" y="244" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">NGC / AI Enterprise / Frameworks / Microservices</text>
+<line x1="720" y1="270" x2="720" y2="300" stroke="#9333ea" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-blue)"/>
+<rect x="160" y="300" width="1120" height="100" rx="14" ry="14" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" opacity="1"/>
+<rect x="160" y="300" width="18" height="100" rx="12" ry="12" fill="#2563eb" stroke="#2563eb" stroke-width="0" opacity="1"/>
+<text x="220" y="342" text-anchor="start" font-size="24" font-weight="700" fill="#111827" opacity="1">工作负载编排</text>
+<text x="220" y="374" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">Run:ai / Slurm / Kubernetes</text>
+<line x1="720" y1="400" x2="720" y2="430" stroke="#2563eb" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-blue)"/>
+<rect x="160" y="430" width="1120" height="120" rx="14" ry="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="160" y="430" width="18" height="120" rx="12" ry="12" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<text x="220" y="472" text-anchor="start" font-size="24" font-weight="700" fill="#111827" opacity="1">Mission Control</text>
+<text x="220" y="504" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">健康检查 / 遥测 / 诊断 / 自动恢复 / 作业迁移</text>
+<line x1="720" y1="550" x2="720" y2="580" stroke="#16a34a" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-blue)"/>
+<rect x="160" y="580" width="1120" height="100" rx="14" ry="14" fill="#fff7ed" stroke="#fed7aa" stroke-width="2" opacity="1"/>
+<rect x="160" y="580" width="18" height="100" rx="12" ry="12" fill="#ea580c" stroke="#ea580c" stroke-width="0" opacity="1"/>
+<text x="220" y="622" text-anchor="start" font-size="24" font-weight="700" fill="#111827" opacity="1">集群与网络管理</text>
+<text x="220" y="654" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">BCM / UFM / NMX / 配置管理</text>
+<line x1="720" y1="680" x2="720" y2="710" stroke="#ea580c" stroke-width="3" fill="none" opacity="1" marker-end="url(#arrow-blue)"/>
+<rect x="160" y="710" width="1120" height="100" rx="14" ry="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" opacity="1"/>
+<rect x="160" y="710" width="18" height="100" rx="12" ry="12" fill="#64748b" stroke="#64748b" stroke-width="0" opacity="1"/>
+<text x="220" y="752" text-anchor="start" font-size="24" font-weight="700" fill="#111827" opacity="1">基础设施</text>
+<text x="220" y="784" text-anchor="start" font-size="18" font-weight="400" fill="#6b7280" opacity="1">DGX GB200 / NVLink / InfiniBand / Ethernet / Storage</text>
+<rect x="1050" y="355" width="190" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="1050" y="355" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="1084" cy="395.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="1084" y="402.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">SR</text>
+<text x="1114" y="391.0" text-anchor="start" font-size="17" font-weight="700" fill="#111827" opacity="1">Self-Recovery</text>
+<text x="1114" y="420.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">降低训练中断</text>
+<rect x="840" y="355" width="190" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="840" y="355" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="874" cy="395.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="874" y="402.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">OBS</text>
+<text x="904" y="391.0" text-anchor="start" font-size="17" font-weight="700" fill="#111827" opacity="1">Telemetry</text>
+<text x="904" y="420.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">观测与定位</text>
+<rect x="630" y="355" width="190" height="80" rx="14" ry="14" fill="#ffffff" stroke="#bbf7d0" stroke-width="2" opacity="1"/>
+<rect x="630" y="355" width="10" height="80" rx="14" ry="14" fill="#16a34a" stroke="#16a34a" stroke-width="0" opacity="1"/>
+<circle cx="664" cy="395.0" r="19" fill="#16a34a" stroke="none" stroke-width="2" opacity="0.95"/>
+<text x="664" y="402.0" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff" opacity="1">DG</text>
+<text x="694" y="391.0" text-anchor="start" font-size="17" font-weight="700" fill="#111827" opacity="1">Diagnostics</text>
+<text x="694" y="420.0" text-anchor="start" font-size="15" font-weight="400" fill="#6b7280" opacity="1">统一诊断</text>
+</svg>
