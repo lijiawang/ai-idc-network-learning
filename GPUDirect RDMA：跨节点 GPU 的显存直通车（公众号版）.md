@@ -762,52 +762,19 @@ NCCL 是否选错 HCA
 
 ### 误区一：GPUDirect RDMA 就是 RDMA 网络
 
-不是。
-
-RDMA 网络主要解决 NIC 和 NIC 之间怎么高效通信。
-
-GPUDirect RDMA 解决 GPU 显存怎么进入 RDMA 数据路径。
-
-没有 GDRDMA，IB/RoCE 仍然可以工作，只是 GPU 数据可能要通过 Host Memory staging。
+不是。RDMA / IB / RoCE 解决的是网卡和网络这一层，GPUDirect RDMA 解决的是 GPU 显存怎么进入 RDMA 数据路径。
 
 ### 误区二：有 IB / RoCE，就一定启用了 GDRDMA
 
-不一定。
-
-你可能已经走了 IB/RoCE，但 GPU buffer 到 NIC 之间仍然在用 Host Memory 中转。
-
-所以 NCCL 日志里看到 `NET/IB` 还不够。
-
-还要确认 GDRDMA 是否生效。
+不一定。NCCL 日志里看到 `NET/IB`，只能说明网络后端走了 IB / RoCE；还要继续看 GDR / DMA-BUF 等信息，或者做对照实验确认。
 
 ### 误区三：CPU 完全不参与
 
-不准确。
-
-CPU 仍然负责控制面。
-
-比如：
-
-```text
-初始化通信库
-创建 Queue Pair
-注册内存
-提交 work request
-处理 completion
-做同步和错误处理
-```
-
-GPUDirect RDMA 优化的是大块数据路径，不是让 CPU 从系统里消失。
+不准确。前面说过，CPU 仍然负责控制面；GPUDirect RDMA 优化的是大块数据路径，不是让 CPU 从系统里消失。
 
 ### 误区四：`NCCL_NET_GDR_LEVEL=SYS` 一定更快
 
-不一定。
-
-`SYS` 会允许更远的 GPU-NIC 路径使用 GDRDMA。
-
-但跨 NUMA 路径可能非常慢。
-
-如果硬件拓扑本来就不适合，强行打开更远距离不一定有收益。
+不一定。`SYS` 只是放宽使用 GDRDMA 的拓扑距离，硬件路径绕远时，强行打开不一定有收益。
 
 ### 误区五：多网卡机器天然就能吃满带宽
 
@@ -827,11 +794,7 @@ rail 是否设计清楚
 
 ### 误区六：GDRDMA 可以解决所有跨节点慢的问题
 
-也不行。
-
-GDRDMA 只是跨节点路径的一段优化。
-
-如果网络 fabric 本身拥塞，RoCE 流控没配好，或者作业跨了不该跨的 rail / pod / leaf，训练一样会慢。
+也不行。GDRDMA 只优化 GPU-NIC 这一段；网络 fabric、rail 规划、流控和路由仍然要单独排查。
 
 ---
 
@@ -842,48 +805,7 @@ GDRDMA 只是跨节点路径的一段优化。
 ```text
 1. GPUDirect RDMA = RDMA NIC 直接读写 GPU 显存，减少 Host Memory 中转。
 2. 它不是 IB/RoCE 本身，也不是 NCCL 本身，而是 GPU-NIC 数据路径能力。
-3. 真正能不能快，要看 GPU-NIC 拓扑、nvidia-peermem、BAR/IOMMU、NCCL 选路和网络 fabric。
-```
-
-如果用一张最简单的路径图总结：
-
-```text
-传统跨节点路径：
-GPU HBM -> Host Memory -> NIC -> 网络 -> NIC -> Host Memory -> GPU HBM
-
-GPUDirect RDMA 路径：
-GPU HBM -> RDMA NIC -> 网络 -> RDMA NIC -> GPU HBM
-
-性能关键：
-GPU-NIC 近，网络 fabric 快，NCCL 选路对
-```
-
-GPUDirect P2P 讲的是单机内 scale-up：
-
-```text
-GPU <-> GPU
-```
-
-GPUDirect RDMA 讲的是跨节点 scale-out：
-
-```text
-GPU <-> NIC <-> 网络 <-> NIC <-> GPU
-```
-
-在 AI 集群里，这两件事要连起来看。
-
-一台机器内部再快，如果跨节点出口绕远路，训练会卡在网络上。
-
-网络再贵再快，如果 GPU 数据进出网卡还要绕 Host Memory，带宽也不一定吃得满。
-
-真正的多机多卡训练性能，来自整条链路都顺：
-
-```text
-GPU 内部算得快
-单机内 P2P 路近
-GPU-NIC 亲缘关系好
-IB/RoCE fabric 不拥塞
-NCCL 能把这些路径组织起来
+3. 真正能不能快，要看 GPU-NIC 拓扑、nvidia-peermem / DMA-BUF、BAR/IOMMU、NCCL 选路和网络 fabric。
 ```
 
 这就是 GPUDirect RDMA 在 AI 集群里的位置：
