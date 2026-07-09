@@ -20,11 +20,13 @@
 GPU A 显存 -> CPU 内存 -> 网卡 -> 网络 -> 网卡 -> CPU 内存 -> GPU B 显存
 ```
 
-这当然能工作，但每次跨节点通信都会多绕一次 Host Memory，PCIe 和内存带宽也会被卷进来。
+这条路径当然能工作。
+
+但代价是，每次跨节点通信都要经过 Host Memory 中转，PCIe 带宽和 CPU 内存带宽也会一起被卷进来。
 
 GPUDirect RDMA 要解决的，就是这个跨节点通信里的绕路问题。
 
-一句话：
+一句话总结：
 
 > GPUDirect RDMA 让支持 RDMA 的网卡可以直接读写 GPU 显存，让跨节点 GPU 通信尽量避免通过 CPU 内存中转。
 
