@@ -18,9 +18,9 @@ GPUDirect RDMA 关注的是：
 
 训练时，数据集、模型参数和 checkpoint 要在存储与 GPU 之间移动。
 
-推理时，模型权重、索引分片和离线数据也可能需要批量装载或落盘。
+推理时，模型权重和索引分片需要批量装载，离线处理结果也可能写回存储。
 
-今天要介绍的 GPUDirect Storage（GDS），就是用来优化存储与 GPU 显存之间的数据传输。传统方式通常要先经过 CPU 内存中转，而 GDS 的目标，就是尽量减少这一步。
+今天要介绍的 GPUDirect Storage（GDS），就是用来优化存储与 GPU 显存之间的数据传输。传统方式通常要先经过 CPU 内存中转，而 GDS 的目标是尽量减少这一步。
 
 两者到底有什么区别，下面结合数据路径来看。
 
@@ -52,7 +52,7 @@ GDS 的目标，是让大块数据尽量直接进入 GPU 显存，少经过一�
 
 CPU 并没有消失。它仍然负责启动和管理 I/O，只是不再充当搬运大块数据的“中转仓库”。
 
-实际环境不满足条件时，数据也可能退回 CPU 中转路径，或者直接报错。因此，使用了 GDS 不代表每次都一定直达。
+实际环境不满足条件时，数据可能改走 CPU 中转路径，也可能直接报错。因此，使用了 GDS 不代表每次都一定直达。
 
 ---
 
@@ -106,8 +106,8 @@ Lustre / BeeGFS / WekaFS / NFS ...
 应用只需要表达一件事：
 
 ```text
-把文件数据读到 GPU buffer
-或者把 GPU buffer 写回文件
+把文件数据读到 GPU 显存
+或者把 GPU 显存里的数据写回文件
 ```
 
 这就是 cuFile 的主要作用。
@@ -116,7 +116,7 @@ Lustre / BeeGFS / WekaFS / NFS ...
 
 `libcufile` 更像一个“路径调度器”。
 
-它会结合文件系统、驱动、配置和硬件拓扑，在几类概念路径之间选择或组合：
+它会综合文件系统、驱动、配置和硬件拓扑，从以下路径中选择或组合：
 
 ```text
 nvidia-fs 路径
@@ -125,31 +125,31 @@ Linux PCI P2PDMA 路径
 经过 CPU 内存的兼容路径
 ```
 
-`nvidia-fs` 仍然是很多 GDS 环境的重要组件，但不是所有 GDS I/O 都必须经过它。
+`nvidia-fs` 仍然是很多 GDS 部署中的重要组件，但并非所有 GDS I/O 都依赖它。
 
-这些路径也不是完全互斥的。有些厂商文件系统会结合 `nvidia-fs` 的内核回调，有些则使用自己的用户态或 RDMA 实现。
+这些路径也可能配合使用。有些厂商文件系统会调用 `nvidia-fs` 提供的内核接口，有些则使用自己的用户态或 RDMA 路径。
 
 从 CUDA 12.8 开始，在部分满足支持条件的系统中，本地 NVMe 设备可以通过 Linux PCI P2PDMA 与 GPU 传输数据，不再依赖 `nvidia-fs.ko`。
 
 但并不是有 NVMe 设备就能使用这条路径，还要看 GPU、驱动、Linux 内核、文件系统和 PCIe 连接是否支持。RAID 或多路径配置也可能受到限制。
 
-### 第三层：文件系统和存储决定路能不能走通
+### 第三层：文件系统和存储决定路径能不能走通
 
-GDS 面对的存储来源不只有本机 NVMe。数据也可能来自 NVMe-oF、NFS over RDMA、并行文件系统，或者厂商提供的用户态存储客户端。
+GDS 不仅可以连接本机 NVMe，还可以配合 NVMe-oF、NFS over RDMA、并行文件系统和厂商提供的用户态存储客户端使用。
 
-真正能不能走 GDS direct path，取决于：
+能不能走 GDS 直接路径，取决于：
 
 ```text
 CUDA、驱动和 libcufile 版本
 文件系统和存储设备是否支持
 远端存储网络是否支持 RDMA / GDS
-GPU 与 NVMe / NIC 的 PCIe 拓扑
+GPU 与 NVMe 或存储网卡的 PCIe 连接
 I/O 对齐和运行时配置
 ```
 
 可以把它理解为：应用通过 cuFile 发起读写请求，libcufile 根据当前环境选择传输路径，而文件系统、存储设备、网络和硬件拓扑共同决定这条路径是否可用。
 
-装了 CUDA，不等于所有文件都能直通 GPU。
+装了 CUDA，不代表所有文件都能通过 GDS 直达 GPU 显存。
 
 ---
 
@@ -162,16 +162,16 @@ I/O 对齐和运行时配置
 ```text
 1. 打开文件
 2. 把文件交给 cuFile
-3. 准备接收数据的 GPU buffer
+3. 准备一块接收数据的 GPU 显存
 4. 提交读取请求
 5. 检查完成状态和错误
 ```
 
-CPU 仍然负责打开文件、提交请求、处理完成状态和错误。
+CPU 仍然负责打开文件、提交请求，并处理完成状态和错误。
 
 GDS 所说的“直接”，主要是指大块数据尽量不经过 CPU 内存，而不是 CPU 从流程里消失。
 
-需要注意的是，读取完成前，GPU 不能提前使用或复用这块显存。cuFile 调用成功也不代表数据一定走了直接路径，实际情况还要通过日志和测试确认。
+需要注意的是，读取完成前，应用不能让 GPU 提前使用或复用这块显存。cuFile 调用成功也不代表数据一定走了直接路径，实际情况还要通过日志和测试确认。
 
 ---
 
@@ -188,13 +188,13 @@ GPU 与 NVMe
 位于同一个 PCIe Switch 或 Root Port 下
 ```
 
-设备靠得越近，数据路径通常越短。跨 Root Port 或跨 CPU Socket 时，性能可能下降，直接路径也可能不可用。同属一个 NUMA 域只能作为参考，不能代替 PCIe 拓扑检查。
+设备靠得越近，数据路径通常越短。跨 Root Port 或跨 CPU Socket 时，性能可能下降，直接路径也可能不可用。处于同一个 NUMA 域只能作为参考，不能代替 PCIe 拓扑检查。
 
-在常见的 x86-64 GDS 部署中，通常建议禁用 PCIe ACS 和 IOMMU；否则 P2P 直接路径可能被阻断，或者性能明显下降。Grace Hopper 等平台可能有不同要求，最终仍要以平台文档和实测结果为准。
+在常见的 x86-64 GDS 部署中，通常建议禁用 PCIe ACS 和 IOMMU，否则 P2P 直接路径可能被阻断或性能明显下降。Grace Hopper 等平台的要求可能不同，最终仍要以平台文档和实测结果为准。
 
 远端存储场景还要检查 GPU 与存储网卡的距离，以及客户端是否真正使用受支持的 RDMA/GDS 路径。不能只看 NVMe-oF、NFS、Lustre 或其他协议和文件系统的名称，还要核对 NVIDIA 与存储厂商的版本支持情况。
 
-还有一个存量集群容易忽略的版本变化：从 GDS v1.15 开始，NVIDIA 移除了对 Pascal 和 Volta 架构的正式支持。使用 Tesla V100 等 Volta GPU 的环境，在升级 CUDA / GDS 前需要先核对支持矩阵，不能只看 CUDA 程序是否还能运行。
+存量集群还要注意一项版本变化：从 GDS v1.15 开始，NVIDIA 移除了对 Pascal 和 Volta 架构的正式支持。使用 Tesla V100 等 Volta GPU 时，升级 CUDA 或 GDS 前需要先核对支持矩阵，不能只看 CUDA 程序是否还能运行。
 
 ---
 
@@ -203,8 +203,8 @@ GPU 与 NVMe
 GDS 更适合同时具备以下特点的场景：
 
 ```text
-数据块比较大，可以批量或并发读写
-数据读入后主要由 GPU 使用，或者本来就由 GPU 产生
+数据块较大，可以批量或并发读写
+数据主要由 GPU 使用或产生
 应用或框架已经接入 GDS
 ```
 
@@ -337,36 +337,14 @@ Storage -> CPU -> GPU 的传统基线
 
 ---
 
-## 八、最后再澄清三个常见误区
-
-### 误区一：装了 NVMe 和 CUDA，GDS 就一定生效
-
-不一定。
-
-文件系统、设备、驱动、拓扑、对齐和运行时配置要同时满足要求。
-
-### 误区二：用了 cuFile，就一定绕过 CPU 内存
-
-不一定。
-
-一次 I/O 可能直接进入应用 GPU buffer，也可能经过内部 GPU buffer、CPU 兼容路径，或者返回错误。
-
-### 误区三：GDS 能解决所有数据加载慢的问题
-
-不能。
-
-它不负责解码、tokenization、数据增强、小文件元数据和网络拥塞。
-
----
-
-## 九、总结
+## 八、总结
 
 如果只记三句话：
 
 ```text
-1. GDS 的目标，是减少存储与 GPU memory 之间的 CPU 内存中转。
-2. 实际可能是直接路径、GPU 内部中转、CPU 兼容路径，或者直接报错。
-3. 真正能不能用、能快多少，要看支持矩阵、PCIe 拓扑、日志和 gdsio 对照测试。
+1. GDS 的目标，是减少存储与 GPU 显存之间的 CPU 内存中转。
+2. 实际 I/O 可能直达 GPU 显存，也可能经过内部显存中转、CPU 兼容路径或直接报错。
+3. GDS 是否可用、性能如何，要看支持矩阵、PCIe 拓扑、日志和 gdsio 对照测试。
 ```
 
 **GDS 优化的不是 GPU 计算，而是 GPU 显存与存储之间搬数据的路径。**
@@ -383,5 +361,4 @@ Storage -> CPU -> GPU 的传统基线
 - [NVIDIA GPUDirect Storage Benchmarking and Configuration Guide](https://docs.nvidia.com/gpudirect-storage/configuration-guide/index.html)
 - [NVIDIA GPUDirect Storage Best Practices Guide](https://docs.nvidia.com/gpudirect-storage/best-practices-guide/index.html)
 - [NVIDIA GPUDirect Storage Release Notes / Support Matrix](https://docs.nvidia.com/gpudirect-storage/release-notes/index.html)
-- [NVIDIA cuObject 文档](https://docs.nvidia.com/gpudirect-storage/cuobject/)
 - [Linux PCI P2PDMA 文档](https://docs.kernel.org/driver-api/pci/p2pdma.html)
