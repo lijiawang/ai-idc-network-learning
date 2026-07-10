@@ -4,11 +4,11 @@
 
 前两篇讲了 GPUDirect P2P 和 GPUDirect RDMA。
 
-P2P 关注的是：
+GPUDirect P2P 关注的是：
 
 **同一台服务器里，GPU 和 GPU 怎么更直接地交换显存数据？**
 
-RDMA 关注的是：
+GPUDirect RDMA 关注的是：
 
 **网卡怎么直接读写本机 GPU 显存，让跨节点数据少绕 CPU 内存？**
 
@@ -26,13 +26,13 @@ RDMA 关注的是：
 Storage -> CPU 内存 -> GPU 显存
 ```
 
-这种方式当然可以工作，但 CPU 内存成了必经的中转站：数据要先从存储读入主机内存，再复制到 GPU 显存。这样一来，主机内存带宽、PCIe 传输和 NUMA 拓扑都会影响整体性能。
+这种方式当然可以工作了，但 CPU 内存成了必经的中转站：数据要先从存储读入到主机内存，再复制到 GPU 显存。这样一来，主机内存带宽、PCIe 传输和 NUMA 拓扑都会影响整体的性能。
 
-GPUDirect Storage，简称 GDS，就是为减少这段中转而设计的。
+今天介绍的GPUDirect Storage，简称 GDS，就是为了减少这段中转而设计的。
 
 一句话总结：
 
-> GDS 的目标，是减少存储与 GPU memory 之间的 CPU 内存中转。应用通常通过 cuFile 使用它；条件满足时，数据可以通过 DMA 直接进入 GPU 显存。
+> GDS 的目标，是减少存储与 GPU memory 之间的 CPU 内存中转。应用通常可通过 cuFile 使用它；条件满足时，数据可以通过 DMA 直接进入 GPU 显存。
 
 这里说的“直接”不是无条件保证：
 
@@ -41,8 +41,6 @@ GPUDirect Storage，简称 GDS，就是为减少这段中转而设计的。
 有时会先经过内部显存中转
 条件不满足时，也可能经过 CPU 内存或直接报错
 ```
-
-官方文档里的 bounce buffer，更准确地说是“临时中转缓冲区”。它既可能在 CPU 内存里，也可能在 GPU 显存里，后文会把两者分开。
 
 本文主要讲基于文件系统的 `cuFile` 路径。
 
