@@ -59,7 +59,7 @@ cuFile 有时会使用内部 GPU buffer 做显存中转；条件不满足时，�
 
 先看两条最主要的数据路径。
 
-![GDS 的两条主要数据路径](assets/gpudirect-storage/01-gds-two-main-paths-v5.png)
+![GDS 的两条主要数据路径](assets/gpudirect-storage/01-gds-two-main-paths-v6.png)
 
 图里把 cuFile 的内部 GPU buffer 放在补充说明中，因为它不是每次都要经过的固定步骤。
 
