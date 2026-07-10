@@ -61,6 +61,16 @@ cuFile 有时会使用内部 GPU buffer 做显存中转；条件不满足时，�
 
 ![GDS 的三种数据路径](assets/gpudirect-storage/01-gds-three-paths-v2.png)
 
+先澄清一个容易混淆的地方：cuFile 每次都会负责检查条件、提交 I/O 和选择路径，但这不代表数据每次都要经过 cuFile 的内部 GPU buffer。
+
+```text
+应用 GPU buffer 已登记、已对齐，并且硬件路径支持直接访问
+    -> 数据直接进入应用 GPU buffer
+
+应用 GPU buffer 暂时不适合直接接收 DMA
+    -> 数据先进入 cuFile 内部 GPU buffer，再复制给应用
+```
+
 ### 路径一：直接进入应用 GPU buffer
 
 ```text
@@ -91,7 +101,7 @@ cuFile 内部 GPU buffer
 
 没有提前登记应用 buffer、I/O 没有对齐，或者受到 BAR 空间和拓扑限制时，cuFile 可能使用这种路径。
 
-为什么还要在显存里转一次？因为存储设备不能随意写入任意一块应用显存。只有完成登记和映射、并满足访问条件的 GPU buffer，才能安全地接收 DMA 数据。cuFile 的内部 GPU buffer 已经提前准备好，可以把它理解成一个“显存中转站”：数据先到这里，再复制到应用真正需要的位置。
+为什么有时还要在显存里转一次？因为存储设备不能随意写入任意一块应用显存。只有完成登记和映射、并满足访问条件的 GPU buffer，才能安全地接收 DMA 数据。cuFile 的内部 GPU buffer 已经提前准备好，可以把它理解成一个“显存中转站”：应用 buffer 可以直接接收时就不经过它；不能直接接收时，数据才先到这里，再复制到应用真正需要的位置。
 
 它仍然可以绕开 CPU 内存，因此仍属于 GDS 路径；只是多了一次 GPU 内部复制。
 
