@@ -99,7 +99,7 @@ Lustre / BeeGFS / WekaFS / NFS ...
 
 ![GDS 软件栈与路径选择](assets/gpudirect-storage/03-gds-software-stack-v2.png)
 
-小白可以先把它理解成三层。
+可以先把它理解成三层。
 
 ### 第一层：cuFile 提供统一入口
 
@@ -272,7 +272,7 @@ GPU 与 NVMe / 存储 NIC
 
 ### 远端存储怎么理解？
 
-| 方案 | 小白版理解 |
+| 方案 | 简单理解 |
 |---|---|
 | NVMe-oF over RDMA | 在支持条件满足时，客户端 RDMA NIC 可以直接与本机 GPU memory 交换数据。不是远端 SSD 的 DMA 地址“直接指向”另一台机器的 GPU。 |
 | NFS over RDMA | 服务端需要提供受支持的 NFS/RDMA 服务；客户端需要具备 GDS-enabled NFS/RDMA 路径。普通 NFS over TCP 不能形成 NIC 到 GPU 的直接数据路径。 |
