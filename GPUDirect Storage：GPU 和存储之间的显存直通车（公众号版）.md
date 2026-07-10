@@ -135,7 +135,7 @@ Linux PCI P2PDMA 路径
 
 ### 第三层：文件系统和存储决定路能不能走通
 
-底层可能是本地 NVMe，也可能是 NVMe-oF、NFS over RDMA、并行文件系统或厂商用户态文件系统。
+GDS 面对的存储来源不只有本机 NVMe。数据也可能来自 NVMe-oF、NFS over RDMA、并行文件系统，或者厂商提供的用户态存储客户端。
 
 真正能不能走 GDS direct path，取决于：
 
