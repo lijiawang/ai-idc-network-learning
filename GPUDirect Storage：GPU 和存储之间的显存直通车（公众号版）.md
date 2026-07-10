@@ -116,7 +116,7 @@ Lustre / BeeGFS / WekaFS / NFS ...
 
 `libcufile` 更像一个“路径调度器”。
 
-它会综合文件系统、驱动、配置和硬件拓扑，从以下路径中选择或组合：
+它会综合文件系统、驱动、配置和硬件拓扑，选择合适的路径，必要时组合使用：
 
 ```text
 nvidia-fs 路径
@@ -225,7 +225,7 @@ GDS 更适合同时具备以下特点的场景：
 
 ## 七、怎么确认 GDS 真的在工作？
 
-对初次接触 GDS 的读者，排查可以先收敛成三步：
+对初次接触 GDS 的读者，可以按三个步骤排查：
 
 ```text
 先看环境支持
@@ -256,7 +256,7 @@ PCIe ACS、IOMMU 和 RDMA 环境是否有明显问题
 
 > `gdscheck` 只能说明环境具备哪些能力，不能证明某一次应用 I/O 已经走了 direct path。
 
-### 第二步：检查 GPU 与存储出口的拓扑
+### 第二步：检查 GPU 与存储 I/O 设备之间的连接关系
 
 ```bash
 nvidia-smi topo -m
@@ -271,7 +271,7 @@ lspci -t
 
 ### 第三步：用 gdsio 做同条件对照
 
-GDS 自带 benchmark 工具：
+GDS 自带性能测试工具：
 
 ```bash
 /usr/local/cuda-<x>.<y>/gds/tools/gdsio
@@ -341,7 +341,7 @@ Storage -> CPU -> GPU 的传统基线
 
 ```text
 1. GDS 的目标，是减少存储与 GPU 显存之间的 CPU 内存中转。
-2. 实际 I/O 可能直达 GPU 显存，也可能经过内部显存中转、CPU 兼容路径或直接报错。
+2. 实际 I/O 可能直达 GPU 显存，也可能经过内部显存中转、改走 CPU 兼容路径，或者直接报错。
 3. GDS 是否可用、性能如何，要看支持矩阵、PCIe 拓扑、日志和 gdsio 对照测试。
 ```
 
