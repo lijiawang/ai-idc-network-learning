@@ -131,7 +131,7 @@ Linux PCI P2PDMA 路径
 
 从 CUDA 12.8 开始，在部分满足支持条件的系统中，本地 NVMe 设备可以通过 Linux PCI P2PDMA 与 GPU 传输数据，不再依赖 `nvidia-fs.ko`。
 
-但并不是装上 NVMe 就能使用这条路径，还要看 GPU、驱动、Linux 内核、文件系统和 PCIe 连接是否支持。RAID 或多路径配置也可能受到限制。
+但并不是有 NVMe 设备就能使用这条路径，还要看 GPU、驱动、Linux 内核、文件系统和 PCIe 连接是否支持。RAID 或多路径配置也可能受到限制。
 
 ### 第三层：文件系统和存储决定路能不能走通
 
