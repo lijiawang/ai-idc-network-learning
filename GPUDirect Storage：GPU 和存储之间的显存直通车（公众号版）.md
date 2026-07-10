@@ -581,67 +581,7 @@ CUDA 12.2 以后，cuFile 可以接受非 `O_DIRECT` 文件描述符；具体请
 
 ---
 
-## 八、GDS、PyTorch DataLoader 和 DALI 是什么关系？
-
-这几个名字经常一起出现，但它们不在同一层。
-
-| 组件 | 主要负责什么 | 会不会自动使用 GDS |
-|---|---|---|
-| GDS / cuFile | 在存储和 GPU memory 之间读写数据 | 它本身就是底层 I/O 能力 |
-| PyTorch `DataLoader` | 采样、worker、batch、预取和数据集迭代 | 默认不会 |
-| `torch.cuda.gds` | PyTorch 对 GDS 的实验性封装 | 需要应用显式使用 |
-| NVIDIA DALI | 数据读取、解码、增强和预处理 pipeline | 只在支持 GDS 的 reader/backend 上使用 |
-
-### 普通 PyTorch DataLoader
-
-常见路径仍然是：
-
-```text
-磁盘
-  -> CPU worker 读取
-  -> CPU 解码 / tokenization / 数据增强
-  -> pinned memory
-  -> GPU
-```
-
-因此，在机器上安装 GDS，并不会让现有 `DataLoader` 自动变成 Storage-to-GPU direct path。
-
-### PyTorch 自己也提供 GDS 接口
-
-从 PyTorch 2.7 起，PyTorch 提供 prototype `torch.cuda.gds`。
-
-它可以显式把文件数据读入 CUDA Tensor Storage，或者把 GPU Tensor Storage 写入文件。官方也提供了与 checkpoint 配合的示例。
-
-不过它仍然不是 `DataLoader` 的透明加速开关。应用需要自己处理文件布局、对齐和 buffer 生命周期。
-
-### DALI 解决的是数据处理 pipeline
-
-DALI 是独立的数据加载和预处理引擎，可以把部分解码、resize、crop 和数据增强放到 GPU 上执行，再把结果交给 PyTorch。
-
-DALI 对 GDS 的支持与具体 reader 和 backend 有关。例如，NumPy reader 使用 GPU backend 时需要 cuFile/GDS；这不代表所有 DALI reader 都会自动走 GDS。
-
-可以把一条可能的组合路径理解为：
-
-```text
-文件
-  -> 支持 GDS 的 DALI reader
-  -> DALI GPU 预处理
-  -> PyTorch Tensor
-  -> 模型计算
-```
-
-所以更准确的关系是：
-
-```text
-GDS 负责底层 I/O 数据路径
-DALI 负责数据加载和预处理 pipeline
-DataLoader 负责 PyTorch 的数据迭代抽象
-torch.cuda.gds 提供 PyTorch 中显式使用 GDS 的入口
-```
-
----
-
-## 九、最后再澄清三个常见误区
+## 八、最后再澄清三个常见误区
 
 ### 误区一：装了 NVMe 和 CUDA，GDS 就一定生效
 
@@ -663,7 +603,7 @@ torch.cuda.gds 提供 PyTorch 中显式使用 GDS 的入口
 
 ---
 
-## 十、总结
+## 九、总结
 
 如果只记三句话：
 
@@ -689,5 +629,3 @@ torch.cuda.gds 提供 PyTorch 中显式使用 GDS 的入口
 - [NVIDIA GPUDirect Storage Release Notes / Support Matrix](https://docs.nvidia.com/gpudirect-storage/release-notes/index.html)
 - [NVIDIA cuObject 文档](https://docs.nvidia.com/gpudirect-storage/cuobject/)
 - [Linux PCI P2PDMA 文档](https://docs.kernel.org/driver-api/pci/p2pdma.html)
-- [PyTorch GPUDirect Storage 教程](https://docs.pytorch.org/tutorials/unstable/gpu_direct_storage.html)
-- [NVIDIA DALI NumPy Reader 文档](https://docs.nvidia.com/deeplearning/dali/user-guide/docs/operations/nvidia.dali.fn.readers.numpy.html)
