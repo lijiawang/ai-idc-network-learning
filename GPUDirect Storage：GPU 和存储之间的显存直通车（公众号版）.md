@@ -23,7 +23,7 @@ RDMA 解决的是：
 最容易想到的路径是：
 
 ```text
-Storage / NVMe -> CPU Memory -> GPU HBM
+Storage / NVMe -> CPU Memory -> GPU 显存
 ```
 
 这当然能工作。
@@ -36,7 +36,13 @@ GPUDirect Storage 要解决的，就是这段绕路。
 
 > GPUDirect Storage，简称 GDS，是 NVIDIA 在 CUDA 生态中提供的一套 GPU 显存与存储之间的直接 IO 能力。应用通常通过 cuFile API 使用它，让存储数据尽量通过 DMA 直接进出 GPU 显存，减少 CPU 内存中转。
 
-这里的 bounce buffer，可以简单理解成“为了中转而临时借用的一块 CPU 内存缓冲区”。
+官方文档里常说的 bounce buffer，可以简单理解成“为了中转而临时借用的一块 CPU 内存缓冲区”。
+
+本文主要讲基于文件系统的 `cuFile` 路径。
+
+当前 GDS 还包括面向 S3 兼容对象存储的 `cuObject`，这篇先不展开。
+
+文中的“GPU 显存”泛指 GPU device memory；配图里的 HBM，是 AI 训练 GPU 上常见的一种显存实现。
 
 ---
 
@@ -51,13 +57,13 @@ GPUDirect Storage 要解决的，就是这段绕路。
 没有 GPUDirect Storage 时，常见路径会是：
 
 ```text
-Storage / NVMe -> PCIe -> CPU Memory -> PCIe -> GPU HBM
+Storage / NVMe -> PCIe -> CPU Memory -> PCIe -> GPU 显存
 ```
 
 如果是写 checkpoint，方向反过来：
 
 ```text
-GPU HBM -> PCIe -> CPU Memory -> PCIe -> Storage / NVMe
+GPU 显存 -> PCIe -> CPU Memory -> PCIe -> Storage / NVMe
 ```
 
 这条路径的问题不是“CPU 会不会计算这些数据”。
@@ -74,24 +80,24 @@ CPU Memory 成了数据中转站
 
 ```text
 Storage -> Host Memory
-Host Memory -> GPU HBM
+Host Memory -> GPU 显存
 ```
 
 有了 GPUDirect Storage，理想路径会变成：
 
 ```text
-Storage / NVMe -> GPU HBM
+Storage / NVMe -> GPU 显存
 ```
 
 或者写入时：
 
 ```text
-GPU HBM -> Storage / NVMe
+GPU 显存 -> Storage / NVMe
 ```
 
 CPU 仍然在场。
 
-它负责打开文件、注册 file handle、注册 buffer、发起 `cuFileRead` / `cuFileWrite`、处理完成和错误。
+它负责打开文件、注册 file handle、按需显式注册 buffer、发起 `cuFileRead` / `cuFileWrite`、处理完成和错误。
 
 但大块数据路径尽量不再把 CPU 内存当中转仓库。
 
@@ -105,7 +111,7 @@ CPU 完全消失
 
 ```text
 CPU 负责控制面
-数据面尽量直接在 Storage 和 GPU HBM 之间搬
+数据面尽量直接在 Storage 和 GPU 显存之间搬
 ```
 
 这点和前两篇非常像：
@@ -122,15 +128,17 @@ Storage：GPU ↔ Storage，少绕 Host Memory
 
 GPUDirect 不是单一技术，而是一组围绕 GPU 显存数据路径的能力。
 
+下面列的不是全部 GPUDirect 技术，而是这个系列重点关注的三类能力。
+
 ![GPUDirect 家族定位图](assets/gpudirect-storage/02-gpudirect-family-map.png)
 
 可以这样记：
 
 | 名称 | 关注的问题 | 典型路径 |
 |---|---|---|
-| GPUDirect P2P | 单机内 GPU 和 GPU 怎么直接交换显存数据 | GPU HBM ↔ GPU HBM |
-| GPUDirect RDMA | 跨节点通信时，网卡怎么直接读写 GPU 显存 | GPU HBM ↔ RDMA NIC ↔ 网络 |
-| GPUDirect Storage | 存储 IO 怎么直接进出 GPU 显存 | GPU HBM ↔ NVMe / 文件系统 / 存储 |
+| GPUDirect P2P | 单机内 GPU 和 GPU 怎么直接交换显存数据 | GPU 显存 ↔ GPU 显存 |
+| GPUDirect RDMA | 跨节点通信时，网卡怎么直接读写 GPU 显存 | GPU 显存 ↔ RDMA NIC ↔ 网络 |
+| GPUDirect Storage | 存储 IO 怎么直接进出 GPU 显存 | GPU 显存 ↔ NVMe / 文件系统 / 存储 |
 
 如果把 AI 集群的数据流分成几类：
 
@@ -193,11 +201,17 @@ Lustre / WekaFS / NFS / BeeGFS ...
 
 至于底下到底能不能绕开 CPU 内存，不应该让应用自己去硬猜，而是交给 cuFile、驱动和文件系统一起判断。
 
-### 第二层：libcufile / nvidia-fs 接上 GDS 路径
+### 第二层：libcufile 选择并接上 GDS 路径
 
 `libcufile` 是用户态库，应用链接或加载它之后，才能调用 cuFile API。
 
-很多 GDS 路径还会涉及 `nvidia-fs` 内核模块，也就是常见的 `nvidia-fs.ko` / `nvidia_fs`。
+它会结合文件系统、配置和硬件能力，选择实际的数据路径。
+
+不少 GDS 路径仍然会涉及 `nvidia-fs` 内核模块，也就是常见的 `nvidia-fs.ko` / `nvidia_fs`。
+
+但 `nvidia-fs` 不是所有 GDS IO 的必经层。
+
+从 CUDA 12.8 开始，满足平台和内核条件的本地 NVMe，可以通过 Linux PCI P2PDMA 路径工作，不再依赖 `nvidia-fs.ko`。部分分布式文件系统或用户态文件系统也可能使用厂商自己的实现。
 
 这一层大致负责：
 
@@ -205,10 +219,11 @@ Lustre / WekaFS / NFS / BeeGFS ...
 识别这是 GPU buffer
 判断文件和挂载点是否适合走 GDS
 建立必要的映射和注册状态
-决定走 direct path，还是退回 compatibility mode
+在 nvidia-fs / PCI P2PDMA / 厂商路径之间选择
+条件不满足时决定是否退回 compatibility mode
 ```
 
-这里不用先背一堆 API 名字。下一节讲一次读取流程时，再看 `cuFileHandleRegister()`、`cuFileBufRegister()` 和 `cuFileRead()` 会更自然。
+这里不用先背一堆 API 名字。下一节用一次读取流程把这些动作串起来。
 
 ### 第三层：文件系统和存储设备决定底层能不能直通
 
@@ -238,7 +253,7 @@ IO 对齐、buffer 注册和运行时配置
 
 ```text
 CUDA / cuFile 提供入口
-驱动和 nvidia-fs 接上数据路径
+libcufile 选择 nvidia-fs / PCI P2PDMA / 厂商数据路径
 文件系统、存储设备和拓扑决定这条路能不能真的跑顺
 ```
 
@@ -257,16 +272,20 @@ CUDA / cuFile 提供入口
 ```text
 1. 应用打开文件
 2. 把文件交给 cuFile 注册
-3. 准备一块 GPU 显存 buffer
+3. 准备一块可复用的 GPU 显存 buffer，可选显式注册
 4. 调用 cuFileRead 发起读取
-5. 条件满足时，数据进入 GPU HBM
+5. 条件满足时，数据进入 GPU 显存
 ```
 
 从语义上看，这仍然像一次文件读取。
 
 只是目标地址不再是普通 CPU 内存，而是 GPU 显存地址。
 
-如果文件系统、驱动、buffer、拓扑和运行时配置都满足要求，数据路径就可以尽量绕开 CPU bounce buffer，直接进入 GPU HBM。
+其中 `cuFileHandleRegister()` 是文件 IO 流程中的必要步骤，`cuFileBufRegister()` 则是可选的性能优化。
+
+如果没有显式注册用户 buffer，cuFile 可以使用内部预注册的 GPU buffer 完成 IO，但可能多一次 GPU 内部拷贝。
+
+如果文件系统、驱动、buffer、拓扑和运行时配置都满足要求，数据路径就可以尽量绕开 CPU bounce buffer，直接进入 GPU 显存。
 
 如果条件不满足，cuFile 可能报错，也可能退回 compatibility mode，也就是重新通过 CPU 内存 staging 完成 IO。
 
@@ -350,7 +369,7 @@ numactl -H
 这时 GDS 和前一篇 GPUDirect RDMA 会在工程上交汇：
 
 ```text
-GPU HBM ↔ NIC / NVMe ↔ 存储系统
+GPU 显存 ↔ NIC / NVMe ↔ 存储系统
 ```
 
 本机 GPU 到存储出口这一段，仍然离不开 PCIe / NUMA 亲缘关系。
@@ -405,7 +424,7 @@ GDS 不会让模型计算更快，但可能改善数据进入 GPU 前的 IO 路�
 
 ![GDS 排障检查表](assets/gpudirect-storage/06-gds-troubleshooting-checklist.png)
 
-### 1. 先跑 gdscheck
+### 1. 先用 gdscheck 检查环境
 
 最常用的是：
 
@@ -413,14 +432,16 @@ GDS 不会让模型计算更快，但可能改善数据进入 GPU 前的 IO 路�
 /usr/local/cuda-<x>.<y>/gds/tools/gdscheck.py -p
 ```
 
-它会输出当前 GDS release、驱动配置、文件系统支持、NVMe / NVMe-oF / RDMA 状态、cuFile 配置等信息。
+它会输出当前 GDS release、驱动配置、文件系统支持能力、NVMe / NVMe-oF / RDMA 状态、cuFile 配置等信息。
+
+这里要注意：`gdscheck` 检查的是环境具备哪些能力，不代表某一次实际 IO 已经走了 direct path。
 
 重点看：
 
 ```text
 GDS 版本
 nvidia_fs 版本
-NVMe / NVMeOF / 文件系统是否显示 supported / compat
+NVMe / NVMeOF / 文件系统显示 supported / p2pdma / compat 中的哪些能力
 是否启用了 compat mode
 PCIe ACS 是否影响 P2P
 RDMA 相关库和设备是否可用
@@ -428,23 +449,28 @@ RDMA 相关库和设备是否可用
 
 其中 `compat` 不是“坏掉了”的意思。
 
-它表示 cuFile 可能在当前条件下走兼容路径，通常会经过 CPU 内存 staging。
+它表示 cuFile 可以在条件不满足时使用兼容路径，通常会经过 CPU 内存 staging；不代表当前所有 IO 都正在走 compat。
 
-如果你以为自己已经走 GDS 直通路径，但 `gdscheck` 或日志显示一直在 compat，那就要继续查。
+要确认某一次 IO 的真实路径，还要结合 `cufile.log`、cuFile / GDS 运行时统计，以及 `gdsio` 对照测试。
 
-### 2. 看 nvidia-fs / libcufile
+### 2. 看 libcufile 和实际使用的数据路径
 
 常见检查包括：
 
 ```bash
-lsmod | grep nvidia_fs
 ldconfig -p | grep libcufile
+lsmod | grep nvidia_fs
 ```
+
+没有看到 `nvidia_fs`，不一定代表 GDS 失效。
+
+如果本地 NVMe 使用的是 PCI P2PDMA 路径，CUDA 12.8 及更高版本可以不依赖这个模块，具体要结合 `gdscheck` 输出判断。
 
 如果是容器里运行应用，要注意两件事：
 
 ```text
-nvidia-fs 是宿主机内核模块
+nvidia-fs 如果被使用，它是宿主机内核模块
+PCI P2PDMA 依赖宿主机内核、GPU 驱动和运行时配置
 libcufile 和 CUDA / driver / container 镜像版本要匹配
 ```
 
@@ -477,16 +503,20 @@ O_DIRECT 直接 IO
 还是 CPU staging fallback
 ```
 
-### 4. 看 O_DIRECT、对齐和 buffer 注册
+### 4. 看打开模式、对齐和 buffer 策略
 
 高性能 GDS 路径经常会遇到这些细节：
+
+CUDA 12.2 以前，cuFile 只支持以 `O_DIRECT` 打开的文件；CUDA 12.2 及以后也支持非 `O_DIRECT` 文件描述符。
+
+但想获得 direct path 的性能收益，仍然要关注文件系统是否真正支持高效的直接 IO。
 
 ```text
 IO size 是否合适
 file offset 是否对齐
 buffer 地址是否对齐
 是否频繁注册 / 反注册 GPU buffer
-文件打开 flag 是否被支持
+是否使用 O_DIRECT，以及当前文件系统如何处理这种打开方式
 ```
 
 如果每次 IO 都做一次注册 / 反注册，或者 IO 太小，GDS 的优势可能被管理开销吃掉。
@@ -616,7 +646,7 @@ NVMe 是存储设备或协议，GDS 是让存储 IO 能直接进出 GPU 显存�
 
 如果文件系统、驱动、拓扑、打开方式或配置不满足条件，它可能进入 compatibility mode，通过 CPU 内存 staging 完成 IO。
 
-所以一定要看 `gdscheck`、日志和 benchmark。
+所以要先用 `gdscheck` 看环境能力，再用日志、运行时统计和 benchmark 确认实际路径。
 
 ### 误区三：GDS 让 CPU 完全不参与
 
@@ -658,9 +688,9 @@ GDS 和 P2P / RDMA 一样，真正性能很看拓扑。
 
 GDS 既可以读，也可以写。
 
-读数据时，它帮助数据进入 GPU HBM。
+读数据时，它帮助数据进入 GPU 显存。
 
-写 checkpoint 或结果落盘时，它帮助 GPU HBM 里的数据写回存储。
+写 checkpoint 或结果落盘时，它帮助 GPU 显存里的数据写回存储。
 
 ---
 
@@ -670,24 +700,24 @@ GDS 既可以读，也可以写。
 
 ```text
 1. GPUDirect Storage = 存储 IO 和 GPU 显存之间尽量直接 DMA，减少 CPU bounce buffer 中转。
-2. 它不是 NVMe 本身，也不是文件系统本身；应用通常通过 cuFile / libcufile 使用这条能力。
-3. 真正能不能快，要看文件系统支持、nvidia-fs / cuFile 配置、O_DIRECT/对齐/注册开销、GPU-Storage 拓扑和 gdsio 实测。
+2. 它不是 NVMe 本身，也不是文件系统本身；文件 IO 通常通过 cuFile / libcufile 使用这条能力。
+3. 真正能不能快，要看文件系统支持、nvidia-fs / PCI P2PDMA / 厂商路径、打开模式与对齐、GPU-Storage 拓扑和 gdsio 实测。
 ```
 
 用一张最简单的路径图总结：
 
 ```text
 传统读取：
-Storage -> CPU Memory -> GPU HBM
+Storage -> CPU Memory -> GPU 显存
 
 GDS 读取：
-Storage -> GPU HBM
+Storage -> GPU 显存
 
 传统写入：
-GPU HBM -> CPU Memory -> Storage
+GPU 显存 -> CPU Memory -> Storage
 
 GDS 写入：
-GPU HBM -> Storage
+GPU 显存 -> Storage
 ```
 
 在 AI 集群里，GDS 对应的是**数据进出 GPU 的存储路径优化**。
@@ -704,9 +734,13 @@ GPU HBM -> Storage
 
 ## 参考资料
 
+- [NVIDIA GPUDirect Storage 文档入口](https://docs.nvidia.com/gpudirect-storage/)
 - [NVIDIA GPUDirect Storage 官方页](https://developer.nvidia.com/gpudirect-storage)
 - [NVIDIA GPUDirect Storage Overview Guide](https://docs.nvidia.com/gpudirect-storage/overview-guide/index.html)
+- [NVIDIA GPUDirect Storage Design Guide](https://docs.nvidia.com/gpudirect-storage/design-guide/index.html)
 - [NVIDIA GDS cuFile API Reference Guide](https://docs.nvidia.com/gpudirect-storage/api-reference-guide/index.html)
 - [NVIDIA GPUDirect Storage Installation and Troubleshooting Guide](https://docs.nvidia.com/gpudirect-storage/troubleshooting-guide/index.html)
+- [NVIDIA GPUDirect Storage Benchmarking and Configuration Guide](https://docs.nvidia.com/gpudirect-storage/configuration-guide/index.html)
 - [NVIDIA GPUDirect Storage O_DIRECT Requirements Guide](https://docs.nvidia.com/gpudirect-storage/o-direct-guide/index.html)
 - [NVIDIA GPUDirect Storage Best Practices Guide](https://docs.nvidia.com/gpudirect-storage/best-practices-guide/index.html)
+- [NVIDIA GPUDirect Storage Release Notes](https://docs.nvidia.com/gpudirect-storage/release-notes/index.html)
