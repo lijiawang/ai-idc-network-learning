@@ -57,19 +57,11 @@ cuFile 有时会使用内部 GPU buffer 做显存中转；条件不满足时，�
 
 ## 一、传统路径和 GDS 到底差在哪？
 
-先看三种最常见的数据路径。
+先看两条最主要的数据路径。
 
-![GDS 的三种数据路径](assets/gpudirect-storage/01-gds-three-paths-v4.png)
+![GDS 的两条主要数据路径](assets/gpudirect-storage/01-gds-two-main-paths-v5.png)
 
-先澄清一个容易混淆的地方：cuFile 每次都会参与管理，但它的内部 GPU buffer 不是必经之路。
-
-```text
-能直接放进应用显存
-    -> 直接放进去
-
-暂时不能直接放进去
-    -> 先放到 cuFile 的显存中转站，再转给应用
-```
+图里把 cuFile 的内部 GPU buffer 放在补充说明中，因为它不是每次都要经过的固定步骤。
 
 ### 路径一：直接进入应用 GPU buffer
 
