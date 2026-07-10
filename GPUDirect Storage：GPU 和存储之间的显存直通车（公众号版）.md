@@ -704,31 +704,7 @@ GDS 既可以读，也可以写。
 3. 真正能不能快，要看文件系统支持、nvidia-fs / PCI P2PDMA / 厂商路径、打开模式与对齐、GPU-Storage 拓扑和 gdsio 实测。
 ```
 
-用一张最简单的路径图总结：
-
-```text
-传统读取：
-Storage -> CPU Memory -> GPU 显存
-
-GDS 读取：
-Storage -> GPU 显存
-
-传统写入：
-GPU 显存 -> CPU Memory -> Storage
-
-GDS 写入：
-GPU 显存 -> Storage
-```
-
-在 AI 集群里，GDS 对应的是**数据进出 GPU 的存储路径优化**。
-
-它不负责单机 GPU-GPU 通信，那是 P2P。
-
-它不负责跨节点 GPU-GPU 通信，那是 RDMA / NCCL / 网络 fabric。
-
-它负责的是：
-
-**当 GPU 要吃数据、吐 checkpoint、读写大文件时，能不能少绕 CPU 内存这一圈。**
+**GDS 优化的不是 GPU 计算，而是 GPU 显存与存储之间搬数据的路径。**
 
 ---
 
