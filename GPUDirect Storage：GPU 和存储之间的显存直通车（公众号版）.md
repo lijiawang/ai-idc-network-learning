@@ -50,7 +50,7 @@ Storage -> CPU 内存 -> GPU 显存
 
 把存储里的数据送进 GPU 显存，主要有两种走法。
 
-![GDS 的两条主要数据路径](assets/gpudirect-storage/01-gds-two-main-paths-v6.png)
+![GDS 的两条主要数据路径](assets/gpudirect-storage/01-gds-two-main-paths-v7.png)
 
 ### 传统方式：先经过 CPU 内存
 
