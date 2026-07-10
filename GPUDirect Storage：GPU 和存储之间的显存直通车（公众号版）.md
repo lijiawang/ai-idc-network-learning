@@ -175,60 +175,24 @@ GDS 所说的“直接”，主要是指大块数据尽量不经过 CPU 内存�
 
 ---
 
-## 五、GDS 快不快，关键看拓扑
+## 五、GDS 快不快，先看硬件连接
 
-听起来只要有 GDS，就应该很快。
-
-但 GDS 能不能快，仍然要看物理路径。
+GDS 的效果不仅取决于软件，也取决于 GPU 与存储设备之间的 PCIe 连接。
 
 ![GDS 近端与远端拓扑](assets/gpudirect-storage/05-storage-gpu-topology-v2.png)
 
-最理想的情况通常是：
+本地 NVMe 场景中，比较理想的情况是：
 
 ```text
-GPU 与 NVMe / 存储 NIC
+GPU 与 NVMe
 位于同一个 PCIe Switch 或 Root Port 下
 ```
 
-“位于同一个 NUMA 域”只能说明它们可能比较近，不能证明一定支持 P2P，也不能代替 PCIe 拓扑检查。
-
-跨 Root Port、跨 CPU Socket 的路径可能仍然可用，也可能性能下降，甚至无法建立直接路径。
-
-这里还有一个很容易误解的点：
-
-```text
-经过 CPU Root Complex
-不等于数据进入 CPU 内存
-```
-
-它可能只是 PCIe 流量经过 CPU 的互连结构，并没有落进 CPU DRAM。
+设备靠得越近，数据路径通常越短。跨 Root Port 或跨 CPU Socket 时，性能可能下降，直接路径也可能不可用。同属一个 NUMA 域只能作为参考，不能代替 PCIe 拓扑检查。
 
 在常见的 x86-64 GDS 部署中，通常建议禁用 PCIe ACS 和 IOMMU；否则 P2P 直接路径可能被阻断，或者性能明显下降。Grace Hopper 等平台可能有不同要求，最终仍要以平台文档和实测结果为准。
 
-### 远端存储怎么理解？
-
-| 方案 | 简单理解 |
-|---|---|
-| NVMe-oF over RDMA | 在支持条件满足时，客户端 RDMA NIC 可以直接与本机 GPU memory 交换数据。不是远端 SSD 的 DMA 地址“直接指向”另一台机器的 GPU。 |
-| NFS over RDMA | 服务端需要提供受支持的 NFS/RDMA 服务；客户端需要具备 GDS-enabled NFS/RDMA 路径。普通 NFS over TCP 不能形成 NIC 到 GPU 的直接数据路径。 |
-| Lustre、BeeGFS、WekaFS 等 | 是否支持不能只看文件系统名字，还要看具体产品、客户端、内核、CUDA 和厂商版本矩阵。 |
-
-所以，选型时不要只问：
-
-```text
-这个协议或文件系统“支持 GDS”吗？
-```
-
-更应该问：
-
-```text
-当前版本组合是否经过验证？
-客户端是否真的走 RDMA / GDS？
-GPU 与存储 NIC 的 PCIe 路径是否合适？
-本次 I/O 是 direct、GPU 中转、CPU 兼容，还是失败？
-```
-
-支持矩阵变化很快，部署时要同时检查 NVIDIA 和文件系统厂商的当前文档。
+远端存储场景还要检查 GPU 与存储网卡的距离，以及客户端是否真正使用受支持的 RDMA/GDS 路径。不能只看 NVMe-oF、NFS、Lustre 或其他协议和文件系统的名称，还要核对 NVIDIA 与存储厂商的版本支持情况。
 
 还有一个存量集群容易忽略的版本变化：从 GDS v1.15 开始，NVIDIA 移除了对 Pascal 和 Volta 架构的正式支持。使用 Tesla V100 等 Volta GPU 的环境，在升级 CUDA / GDS 前需要先核对支持矩阵，不能只看 CUDA 程序是否还能运行。
 
