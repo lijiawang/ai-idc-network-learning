@@ -22,7 +22,7 @@ GPUDirect RDMA 关注的是：
 
 今天要介绍的 GPUDirect Storage（GDS），就是用来优化存储与 GPU 显存之间的数据传输。传统方式通常要先经过 CPU 内存中转，而 GDS 的目标是尽量减少这一步。
 
-两者到底有什么区别，下面结合数据路径来看。
+传统路径和 GDS 路径到底有什么区别？下面直接看数据怎么走。
 
 ---
 
@@ -101,7 +101,7 @@ Lustre / BeeGFS / WekaFS / NFS ...
 
 可以先把它理解成三层。
 
-### 第一层：cuFile 提供统一入口
+### 第一层：cuFile API 提供文件读写入口
 
 应用只需要表达一件事：
 
@@ -110,13 +110,13 @@ Lustre / BeeGFS / WekaFS / NFS ...
 或者把 GPU 显存里的数据写回文件
 ```
 
-这就是 cuFile 的主要作用。
+这就是 cuFile API 的主要作用。
 
 ### 第二层：libcufile 负责选择路径
 
 `libcufile` 更像一个“路径调度器”。
 
-它会综合文件系统、驱动、配置和硬件拓扑，选择合适的路径，必要时组合使用：
+它会综合文件系统、驱动、配置和硬件拓扑，为本次 I/O 选择合适的路径：
 
 ```text
 nvidia-fs 路径
@@ -135,14 +135,14 @@ Linux PCI P2PDMA 路径
 
 ### 第三层：文件系统和存储决定路径能不能走通
 
-GDS 不仅可以连接本机 NVMe，还可以配合 NVMe-oF、NFS over RDMA、并行文件系统和厂商提供的用户态存储客户端使用。
+在受支持的配置中，GDS 可以读写本地 NVMe 设备上的文件，也可以通过基于 RDMA 的 NVMe-oF、NFS over RDMA、并行文件系统或厂商提供的用户态存储客户端访问远端存储。
 
 能不能走 GDS 直接路径，取决于：
 
 ```text
 CUDA、驱动和 libcufile 版本
 文件系统和存储设备是否支持
-远端存储网络是否支持 RDMA / GDS
+远端存储及客户端是否支持 GDS，网络传输是否支持 RDMA
 GPU 与 NVMe 或存储网卡的 PCIe 连接
 I/O 对齐和运行时配置
 ```
@@ -179,7 +179,7 @@ GDS 所说的“直接”，主要是指大块数据尽量不经过 CPU 内存�
 
 GDS 的效果不仅取决于软件，也取决于 GPU 与存储设备之间的 PCIe 连接。
 
-![GDS 近端与远端拓扑](assets/gpudirect-storage/05-storage-gpu-topology-v2.png)
+![GDS 近端与远端拓扑](assets/gpudirect-storage/05-storage-gpu-topology-v3.png)
 
 本地 NVMe 场景中，比较理想的情况是：
 
@@ -190,9 +190,9 @@ GPU 与 NVMe
 
 设备靠得越近，数据路径通常越短。跨 Root Port 或跨 CPU Socket 时，性能可能下降，直接路径也可能不可用。处于同一个 NUMA 域只能作为参考，不能代替 PCIe 拓扑检查。
 
-在常见的 x86-64 GDS 部署中，通常建议禁用 PCIe ACS 和 IOMMU，否则 P2P 直接路径可能被阻断或性能明显下降。Grace Hopper 等平台的要求可能不同，最终仍要以平台文档和实测结果为准。
+在常见的 x86-64 物理机 GDS 部署中，通常建议禁用 PCIe ACS 和 IOMMU，否则 P2P 直接路径可能被阻断或性能明显下降。Grace Hopper 等平台的要求可能不同，最终仍要以平台文档和实测结果为准。
 
-远端存储场景还要检查 GPU 与存储网卡的距离，以及客户端是否真正使用受支持的 RDMA/GDS 路径。不能只看 NVMe-oF、NFS、Lustre 或其他协议和文件系统的名称，还要核对 NVIDIA 与存储厂商的版本支持情况。
+远端存储场景还要检查 GPU 与存储网卡的距离，以及客户端是否真正使用受支持的 RDMA/GDS 路径。不能只看基于 RDMA 的 NVMe-oF、NFS、Lustre 或其他协议和文件系统的名称，还要核对 NVIDIA 与存储厂商的版本支持情况。
 
 存量集群还要注意一项版本变化：从 GDS v1.15 开始，NVIDIA 移除了对 Pascal 和 Volta 架构的正式支持。使用 Tesla V100 等 Volta GPU 时，升级 CUDA 或 GDS 前需要先核对支持矩阵，不能只看 CUDA 程序是否还能运行。
 
@@ -247,14 +247,14 @@ GDS 更适合同时具备以下特点的场景：
 
 ```text
 当前 GDS 和 libcufile 版本
-本地 NVMe / NVMe-oF / 文件系统是否受支持
+本地 NVMe / 基于 RDMA 的 NVMe-oF / 文件系统是否受支持
 可以使用 nvidia-fs、PCI P2PDMA，还是只能兼容路径
 PCIe ACS、IOMMU 和 RDMA 环境是否有明显问题
 ```
 
 但要注意：
 
-> `gdscheck` 只能说明环境具备哪些能力，不能证明某一次应用 I/O 已经走了 direct path。
+> `gdscheck` 只能说明环境具备哪些能力，不能证明某一次应用 I/O 已经走了 GDS 直接路径。
 
 ### 第二步：检查 GPU 与存储 I/O 设备之间的连接关系
 
@@ -329,7 +329,7 @@ Storage -> CPU -> GPU 的传统基线
 
 如果工具显示环境支持，但应用表现仍然异常，再查看 `cufile.log`、运行时统计和应用返回值。
 
-不要仅凭“API 调用成功”就判断已经走了 direct path。
+不要仅凭“API 调用成功”就判断已经走了 GDS 直接路径。
 
 测试时还要注意：4 KiB 对齐通常更容易走高效路径，小而零碎的 I/O 更容易被管理开销吃掉。
 
@@ -341,7 +341,7 @@ Storage -> CPU -> GPU 的传统基线
 
 ```text
 1. GDS 的目标，是减少存储与 GPU 显存之间的 CPU 内存中转。
-2. 实际 I/O 可能直达 GPU 显存，也可能经过内部显存中转、改走 CPU 兼容路径，或者直接报错。
+2. 使用 cuFile 不代表数据每次都能直达 GPU 显存；条件不满足时，可能改走 CPU 兼容路径，也可能报错。
 3. GDS 是否可用、性能如何，要看支持矩阵、PCIe 拓扑、日志和 gdsio 对照测试。
 ```
 
