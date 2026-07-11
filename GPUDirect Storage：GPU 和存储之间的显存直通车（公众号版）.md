@@ -194,7 +194,7 @@ GPU 与 NVMe
 
 远端存储场景还要检查 GPU 与存储网卡的距离，以及客户端是否真正使用受支持的 RDMA/GDS 路径。不能只看基于 RDMA 的 NVMe-oF、NFS、Lustre 或其他协议和文件系统的名称，还要核对 NVIDIA 与存储厂商的版本支持情况。
 
-存量集群还要注意一项版本变化：从 GDS v1.15 开始，NVIDIA 移除了对 Pascal 和 Volta 架构的正式支持。使用 Tesla V100 等 Volta GPU 时，升级 CUDA 或 GDS 前需要先核对支持矩阵，不能只看 CUDA 程序是否还能运行。
+从 GDS v1.15 开始，Pascal 和 Volta 架构的 GPU 已不在 GDS 官方支持范围内，例如 V100。这里说的是“新版 GDS 不再支持这些 GPU”，并不是这些 GPU 不能继续运行 CUDA 程序。如果集群里还有这类旧 GPU，升级 CUDA 或 GDS 前要先查看官方支持列表。
 
 ---
 
