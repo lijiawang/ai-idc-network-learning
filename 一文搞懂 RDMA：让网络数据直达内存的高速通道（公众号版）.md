@@ -40,6 +40,16 @@ RDMA 的全称是 Remote Direct Memory Access，中文常译为“远程直接�
 
 RNIC 是支持 RDMA 的网卡，也常被叫作 HCA。不同资料的叫法不同，入门阶段把它理解成“高性能 RDMA 网卡”即可。
 
+RNIC 和普通 NIC（Network Interface Card，普通网卡）的关系可以这样记：**RNIC 是具备 RDMA 能力的 NIC。所有 RNIC 都是 NIC，但不是所有 NIC 都是 RNIC。**
+
+| 对比项 | 普通 NIC | RNIC |
+|---|---|---|
+| 主要任务 | 收发普通网络报文 | 收发 RDMA 数据，并直接搬运已注册内存 |
+| 数据快路径 | 较多工作由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
+| 常见场景 | TCP/UDP、Web 与一般业务网络 | AI 集群、HPC、分布式存储 |
+
+一张支持 RoCE 的以太网网卡，既可以像普通 NIC 一样处理 TCP/UDP，也可以开启 RDMA 功能，以 RNIC 的方式工作。
+
 ### RDMA 不是任意读取远程内存
 
 “直接”不代表可以随意访问另一台机器。
