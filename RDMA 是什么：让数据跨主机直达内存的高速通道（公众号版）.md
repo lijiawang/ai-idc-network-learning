@@ -8,6 +8,8 @@
 
 **数据已经到网卡了，为什么还要在内核、CPU 和多块缓冲区之间绕来绕去？**
 
+传统 Socket 通信是最常见的网络编程方式。应用调用 send/recv 等接口把数据交给操作系统；内核处理 Socket 缓冲区和 TCP/IP 协议栈，再由网卡发送到网络。接收端则按相反方向处理数据。
+
 传统 Socket 通信的概念路径大致是：
 
     发送端应用内存
@@ -43,7 +45,7 @@ RNIC（RDMA Network Interface Card）是一类支持 RDMA 的网卡；在 Infini
 | 对比项 | 普通 NIC | RNIC |
 |---|---|---|
 | 主要任务 | 收发普通网络报文 | 收发 RDMA 数据，并直接搬运已注册内存 |
-| 数据快路径 | 较多工作由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
+| 数据快路径 | 普通 TCP/UDP 通信通常由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
 | 常见场景 | TCP/UDP、Web 与一般业务网络 | AI 集群、HPC、分布式存储 |
 
 一张支持 RoCE 的以太网网卡，既可以像普通 NIC 一样处理 TCP/UDP，也可以开启 RDMA 功能，以 RNIC 的方式工作。
@@ -188,7 +190,7 @@ Atomic 用来原子更新远程内存中的小字段，例如计数器。它是�
 
 ---
 
-## 五、RC、RoCE 和 InfiniBand：先知道它们各自是什么
+## 五、常见连接类型与网络承载方式
 
 ### RC、UC、UD：QP 的传输类型
 
@@ -235,7 +237,7 @@ RoCEv2 里的 PFC、ECN、DCQCN、QoS 映射和交换机配置，是网络工程
         -> 创建 CQ 和 QP
         -> 双方交换连接信息
         -> 把 QP 置为可工作状态
-        -> 接收方提前 Post Receive（仅 Send/Recv 等场景）
+        -> 接收方提前 Post Receive（Send/Recv 或 Write with Immediate 场景）
         -> 向 SQ 提交任务
         -> RNIC 执行
         -> 从 CQ 查看结果
