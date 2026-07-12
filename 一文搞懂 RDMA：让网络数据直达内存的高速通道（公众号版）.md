@@ -1,4 +1,4 @@
-# 一文搞懂 RDMA：让网络数据直达内存的高速通道
+# RDMA 是什么：让数据跨主机直达内存的高速通道
 
 ![传统 Socket 通信与 RDMA 数据路径对比](assets/rdma-intro/01-traditional-vs-rdma.png)
 
