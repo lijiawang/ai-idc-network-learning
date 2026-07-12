@@ -38,9 +38,7 @@ RDMA 的全称是 Remote Direct Memory Access，中文常译为“远程直接�
     CPU 负责控制和协调
     RNIC 负责数据快路径上的搬运
 
-RNIC 是支持 RDMA 的网卡，也常被叫作 HCA。不同资料的叫法不同，入门阶段把它理解成“高性能 RDMA 网卡”即可。
-
-RNIC 和普通 NIC（Network Interface Card，普通网卡）的关系可以这样记：**RNIC 是具备 RDMA 能力的 NIC。所有 RNIC 都是 NIC，但不是所有 NIC 都是 RNIC。**
+RNIC（RDMA Network Interface Card）是一类支持 RDMA 的网卡；在 InfiniBand 文档中也常被称为 HCA。它属于 NIC（Network Interface Card，网卡）的一种：**所有 RNIC 都是 NIC，但不是所有 NIC 都支持 RDMA。**
 
 | 对比项 | 普通 NIC | RNIC |
 |---|---|---|
