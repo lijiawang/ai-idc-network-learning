@@ -237,7 +237,7 @@ RoCEv2 里的 PFC、ECN、DCQCN、QoS 映射和交换机配置，是网络工程
 
 第一次看图时，只看中间的软件栈和服务器之间的网络路径即可：训练框架调用通信组件，通信组件或其网络后端通过 RDMA Verbs 使用 RNIC；RDMA 报文则由 InfiniBand 或 RoCE 网络承载。不同软件组合的实际分层可能有所不同，图中展示的是便于入门理解的常见关系。
 
-> 值得注意：在启用 **GPUDirect RDMA** 的 GPU 训练数据路径中，RDMA 搬运的数据起点和终点可以是 GPU 显存。RNIC 可以通过 PCIe 数据路径直接读写 GPU 显存，避免以主机内存作为主要的数据中转缓冲区。实际能否使用这条路径，取决于 GPU、RNIC、驱动、通信库和 PCIe 拓扑等条件。详见[《GPUDirect RDMA：跨节点 GPU 的显存直通车》](https://mp.weixin.qq.com/s/eaPt4jwbF833z8ovJDhkPA)。
+> 实际能否使用 GPUDirect RDMA，取决于 GPU、RNIC、驱动、通信库和 PCIe 拓扑等条件。详见[《GPUDirect RDMA：跨节点 GPU 的显存直通车》](https://mp.weixin.qq.com/s/eaPt4jwbF833z8ovJDhkPA)。
 
 ---
 
