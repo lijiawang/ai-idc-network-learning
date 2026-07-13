@@ -34,8 +34,6 @@ RDMA 的做法很直接：应用把传输任务交给了支持 RDMA 的网卡，
             ↓ DMA
     接收端主机内存 / GPU 显存
 
-这里的“已注册内存”通常位于主机内存中；在满足 GPUDirect RDMA 条件时，也可以位于 GPU 显存中。它并不是指网卡自带的板载内存。RNIC 虽然通常也有板载内存，但它主要用于保存队列上下文、地址转换缓存、连接状态和报文缓冲等网卡内部数据。
-
 ---
 
 ## 一、RDMA 到底是什么？
@@ -47,17 +45,12 @@ RDMA 的全称是 Remote Direct Memory Access，中文常译为“远程直接�
 - DMA：本机的设备（例如网卡或 SSD）可以直接读写本机内存，CPU 负责下达任务，不逐字节搬运数据。
 - RDMA：支持 RDMA 的网卡通过网络，在两台主机的已注册内存之间传输数据；其中 Read、Write 等单边操作还可以直接访问远端已授权的内存区域。
 
-可以把它记成一句话：
-
-    CPU 负责控制和协调
-    RNIC 负责数据快路径上的搬运
-
 RNIC（RDMA Network Interface Card）是一类支持 RDMA 的网卡；在 InfiniBand 文档中也常被称为 HCA。它属于 NIC（Network Interface Card，网卡）的一种：**所有 RNIC 都是 NIC，但不是所有 NIC 都支持 RDMA。**
 
 | 对比项 | 普通 NIC | RNIC |
 |---|---|---|
 | 主要任务 | 收发普通网络报文 | 收发 RDMA 数据，并直接搬运已注册内存 |
-| 数据快路径 | 普通 TCP/UDP 通信通常由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
+| 数据传输方式 | 普通 TCP/UDP 通信通常由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
 | 常见场景 | TCP/UDP、Web 与一般业务网络 | AI 集群、HPC、分布式存储 |
 
 一张支持 RoCE 的以太网网卡，既可以像普通 NIC 一样处理 TCP/UDP，也可以开启 RDMA 功能，以 RNIC 的方式工作。
@@ -66,9 +59,7 @@ RNIC（RDMA Network Interface Card）是一类支持 RDMA 的网卡；在 Infini
 
 “直接”不代表可以随意访问另一台机器。
 
-远端应用要先把一段内存注册为 MR（Memory Region），并设置访问权限；进行远程读写时，通信对端只能访问这段已授权的内存。对端通常还需要知道远程地址和 rkey（远程访问密钥）。
-
-所以 RDMA 的直接，指的是**数据快路径直接**，不是跳过权限控制。
+比如，主机 A 想直接读写主机 B 的内存，主机 B 必须先把允许访问的内存范围注册为 MR（Memory Region）并设置权限。这里的“直接”，是指 RNIC 可以直接访问已授权的内存，减少数据传输过程中绕行的软件环节，而不是跳过权限控制。
 
 ---
 
@@ -80,14 +71,9 @@ RDMA 常和三个关键词一起出现：
 
 | 关键词 | 用大白话解释 |
 |---|---|
-| Zero-copy | 典型 RDMA 数据快路径可直接 DMA 访问已注册内存，无需在应用缓冲区与内核缓冲区之间复制数据 |
-| Kernel bypass | 数据快路径通常不必每次都经过内核协议栈 |
+| Zero-copy | 典型 RDMA 传输中，RNIC 可通过 DMA 直接访问已注册内存，无需在应用缓冲区与内核缓冲区之间复制数据 |
+| Kernel bypass | 实际传输的数据通常不必每次都经过内核协议栈 |
 | Transport offload | 队列处理、权限检查、报文分段与重组，以及部分可靠传输工作由 RNIC 完成 |
-
-传统网络和 RDMA 的概念路径可以这样对比：
-
-    传统网络：应用 Buffer -> 内核 Buffer -> NIC -> 网络 -> 内核 Buffer -> 应用 Buffer
-    RDMA：    已注册 Buffer -> RNIC -> 网络 -> RNIC -> 已注册 Buffer
 
 这里的 Zero-copy 不是“数据没有移动”。数据仍要经过 PCIe、网卡和网络；它减少的是为经过软件协议栈而产生的中间复制。
 
@@ -97,82 +83,51 @@ RDMA 也不是“零 CPU”：
 - 应用还要从 CQ 查询完成结果。
 - 为了极低延迟，应用有时会让一个 CPU 核持续轮询 CQ。
 
-更准确的说法是：**RDMA 把数据搬运和部分协议处理从 CPU 快路径转交给 RNIC。**
+更准确的说法是：**RDMA 把实际的数据搬运和部分协议处理从 CPU 转交给 RNIC。**
 
-RDMA 到底快多少，没有一个脱离测试条件的固定答案。网卡速率、报文大小、操作类型、NUMA 拓扑、拥塞状况和测试方法都会影响结果。在经过良好调优的高性能网络中，RDMA 的优势通常体现在：小消息延迟更低、传输时 CPU 开销更小，大消息吞吐也更容易接近链路线速。
-
-所以数字不是这里的重点。更重要的直觉是：**同样是把数据送到对端，缩短软件数据路径，可以显著降低延迟和 CPU 开销。**
+RDMA 能快多少取决于网卡、报文大小、NUMA 拓扑和网络状况，无法用固定倍数概括。它的核心优势是减少软件处理和数据复制，从而降低延迟和 CPU 开销，并让吞吐更接近链路线速。
 
 ---
 
 ## 三、先看懂 MR、QP 和 CQ
 
-第一次接触 RDMA，不必一次记住所有缩写。先记住三个主角：
+使用 RDMA 时，先记住三个核心对象：
 
-    MR：网卡被允许访问的那块内存
-    QP：应用把通信任务交给网卡的工作队列
-    CQ：应用查看“任务完成了吗”的回执队列
+| 对象 | 简单理解 | 主要作用 |
+|---|---|---|
+| MR | 已经登记并授权的内存 | 告诉 RNIC 哪块内存可以访问 |
+| QP | 提交通信任务的队列 | 把 Send、Write、Read 等任务交给 RNIC |
+| CQ | 保存完成结果的队列 | 告诉应用任务成功还是失败 |
 
 ![RDMA 对象模型：MR、QP、CQ](assets/rdma-intro/02-rdma-object-model.png)
 
-### 1. MR：Memory Region，注册内存
+### MR：允许 RNIC 访问的内存
 
-普通用户态指针不能直接交给 RNIC 做 DMA。应用要先把一段 Buffer 注册为 MR。
+应用不能直接把任意内存地址交给 RNIC，而要先把一段 Buffer 注册为 MR。注册时需要说明内存范围和访问权限。
 
-注册后，这段内存才有明确的地址范围、访问权限和访问密钥：
+注册完成后会得到 `lkey` 和 `rkey`：`lkey` 供本地 RNIC 使用，`rkey` 供对端执行 RDMA Read、Write 等远程访问时使用。
 
-| 字段 | 作用 |
-|---|---|
-| lkey | 本地 RNIC 使用本地 Buffer 时的校验信息 |
-| rkey | 对端执行 Read、Write 等远程访问时的校验信息 |
+可以把 MR 理解成一块已经登记并授权的货架：地址、范围、权限和访问凭证都正确，RNIC 才允许访问。
 
-注册 MR 时还要指定访问权限。以 libibverbs 的常见 access flags 为例：
+### QP：提交任务的地方
 
-| 权限位 | 含义 |
-|---|---|
-| `IBV_ACCESS_LOCAL_WRITE` | 允许本地 RNIC 写入该 MR，例如将其作为 Receive 或 RDMA Read 的目标 Buffer |
-| `IBV_ACCESS_REMOTE_WRITE` | 允许对端通过 RDMA Write 写入该 MR |
-| `IBV_ACCESS_REMOTE_READ` | 允许对端通过 RDMA Read 读取该 MR |
-| `IBV_ACCESS_REMOTE_ATOMIC` | 允许对端对该 MR 执行受支持的 Atomic 操作 |
+QP 是 Queue Pair，由两个队列组成：
 
-访问权限应遵循最小授权原则：只开放业务实际需要的远程访问能力。例如，某块 MR 如果只需要被对端 Read，就不应同时开放 Remote Write。在常见 Verbs 注册规则中，启用 Remote Write 或 Remote Atomic 时还需要同时启用 Local Write。需要注意，CPU 对这段内存的读写权限由进程的内存映射权限决定，不由这些 MR access flags 决定。
+- SQ（Send Queue）：提交 Send、Write、Read 等主动任务。
+- RQ（Receive Queue）：提前准备 Receive Buffer，主要供 Send/Recv 使用。
 
-进行单边操作时，对端通常需要 remote_addr、rkey 和长度。这里的 remote_addr 通常是远端进程注册 MR 时对应的虚拟地址，并不是把物理地址直接暴露给对端；RNIC 会结合 MR 信息完成地址转换和权限校验。初学时只要理解为：“远端把一块有权限的货架位置告诉了我”。
+可以把 SQ 理解成待办队列，把 RQ 理解成提前准备好的收件箱。
 
-### 2. QP：Queue Pair，队列对
+### CQ：查看任务是否完成
 
-QP 是提交 RDMA 工作的地方，通常包含：
+RDMA 通常是异步执行的。应用把任务放进 QP 后，RNIC 在后台处理；任务完成后，应用从 CQ 中获取成功或失败结果。
 
-| 队列 | 作用 |
-|---|---|
-| SQ（Send Queue） | 应用把 Send、Write、Read 等主动任务放进这里 |
-| RQ（Receive Queue） | 应用提前准备接收 Buffer，主要给 Send/Recv 使用 |
-
-可以把 SQ 看成待办队列，RQ 看成提前摆好的收件箱。
-
-### 3. CQ：Completion Queue，完成队列
-
-RDMA 是异步的。应用提交任务后，RNIC 在后台执行；需要确认结果时，应用从 CQ 取回完成记录。
-
-    应用提交任务
+    应用注册 MR
+        -> 向 QP 提交任务
         -> RNIC 执行传输
-        -> RNIC 写入完成结果
-        -> 应用轮询或等待 CQ
+        -> 应用从 CQ 查看结果
 
-最重要的一句是：**任务放进 QP，不等于任务已经完成；CQ 才是查看结果的地方。**
-
-实际程序也可能使用 selective signaling，只让一部分发送任务产生 CQE，以减少完成队列和轮询压力。因此，不一定每个发送任务都会单独返回一条完成记录。
-
-### 4. 三个对象如何配合？
-
-    1. 应用注册 Buffer，得到 MR
-    2. 应用向 QP 提交任务
-    3. RNIC 根据任务访问 MR，并完成网络传输
-    4. 应用从 CQ 获取成功或失败结果
-
-PD、WR、WQE、CQE、SGE 等术语都很常见，但第一次阅读不必深究。它们分别是在描述资源隔离、工作请求和队列中的具体条目。
-
-还有一个点值得先知道：传统 MR 注册通常需要锁定相关内存页，并建立供 RNIC 使用的地址转换信息，因此注册大块内存可能带来较高成本。部分 RNIC、驱动和内核支持 **ODP（On-Demand Paging）**，可以按需建立映射，减少预先锁定全部页面的压力；代价是首次访问等场景可能产生缺页与映射开销。初学时只要知道这个机制存在即可，不需要深究实现。
+最重要的一点是：**任务已经提交，不等于任务已经完成。**
 
 ---
 
@@ -186,6 +141,8 @@ PD、WR、WQE、CQE、SGE 等术语都很常见，但第一次阅读不必深究
 | RDMA Write | 把数据推到对方授权的指定内存 | 不需要 | 否 |
 | RDMA Read | 从对方授权的指定内存把数据拉回来 | 不需要 | 否 |
 | Write with Immediate | Write 数据，同时附带一条通知 | 是，需要预投 Receive WQE 接收通知 | 是 |
+
+![Send、RDMA Write 与 RDMA Read 的数据方向、接收准备和完成通知对比](assets/rdma-intro/06-send-write-read.png)
 
 ### Send/Recv：双方都参与
 
@@ -251,8 +208,6 @@ RDMA 是一种通信能力，不等于某一种线缆或网络。
 | RoCE | 以太网 | 在以太网上承载 RDMA；RoCEv2 使用 IP/UDP 封装，可跨三层网络 |
 | iWARP | TCP/IP 以太网 | 在 TCP/IP 体系上实现 RDMA，生态相对少见 |
 
-先记住：**RDMA 是能力，RoCE 是让这项能力跑在以太网上的一种方式。**
-
 RoCE 常见有两个版本：
 
 | 版本 | 简单理解 |
@@ -285,16 +240,13 @@ RoCEv2 里的 PFC、ECN、DCQCN、QoS 映射和交换机配置，是网络工程
 
 ---
 
-## 七、使用 RDMA 要付出什么成本？
+## 七、RDMA 不是换张网卡就能变快
 
-RDMA 把部分成本从“每条消息都经过内核”换成了“提前准备与正确管理资源”：
+RDMA 减少了传输过程中的 CPU 和软件开销，但也需要提前注册内存、创建并管理 QP、CQ 等资源。
 
-- 传统内存注册需要锁定内存页，并建立供 RNIC 使用的地址转换和 DMA 映射；注册成本通常会随涉及的页面数量增加。因此，实际程序通常通过已注册 Buffer Pool（也常称为 MR Pool）复用内存，而不是每次传输都重新注册。
-- QP 和 CQ 都会占用主机与网卡资源，连接数量不是越多越好。
-- 忙轮询 CQ 延迟低，但会占用 CPU 核。
-- CPU、内存和 RNIC 的 NUMA/PCIe 拓扑，以及网络是否拥塞，都会影响最终性能。
+为了降低延迟，程序有时会让 CPU 持续轮询 CQ；内存注册、队列数量、NUMA/PCIe 拓扑和网络拥塞，也都会影响最终性能。
 
-所以 RDMA 不是加上一张网卡就自动变快；应用的 Buffer、通知方式、队列设计和网络环境同样重要。
+因此，RDMA 的效果不仅取决于网卡，还取决于应用如何管理 Buffer、队列和通知，以及网络是否经过正确配置。
 
 ---
 
@@ -302,28 +254,18 @@ RDMA 把部分成本从“每条消息都经过内核”换成了“提前准备
 
 在多机大模型训练中，使用者通常不会手写 Verbs；训练框架、集合通信库和传输框架会分层封装底层细节。
 
-常见层次是：
+![RDMA 在 AI 集群中的软件层次、普通主机内存中转路径与 GPUDirect RDMA 直通路径](assets/rdma-intro/07-rdma-in-ai-cluster-v2.png)
 
-    训练框架：PyTorch / JAX / TensorFlow
-                    |
-    通信组件：NCCL / MPI
-                 |      \
-    网络后端或传输框架：NCCL 网络后端 / UCX 等
-                    |
-    底层接口：RDMA Verbs
-    （连接建立可选使用 RDMA CM）
-                    |
-    网络承载：InfiniBand / RoCE
-                    |
-    RNIC + 交换网络
+图中的线条分别表示：
 
-![RDMA 在 AI 集群中的位置](assets/rdma-intro/04-rdma-in-ai-cluster.png)
+- **蓝色双向线**：普通主机内存中转路径，数据经过 GPU、主机内存和 RNIC。
+- **绿色双向线**：GPUDirect RDMA 直通路径，RNIC 直接读写 GPU 显存，不再使用主机内存中转。
+- **灰色箭头或虚线**：软件调用、任务提交和控制关系，不表示主体数据经过 CPU 搬运。
+- **紫色虚线**：RDMA CM 与 RDMA Verbs 的可选连接管理关系，不是数据传输的必经路径。
 
 第一次看图时，只看中间的软件栈和服务器之间的网络路径即可：训练框架调用通信组件，通信组件或其网络后端通过 RDMA Verbs 使用 RNIC；RDMA 报文则由 InfiniBand 或 RoCE 网络承载。不同软件组合的实际分层可能有所不同，图中展示的是便于入门理解的常见关系。
 
-RDMA 提供高速数据通道；NCCL 等通信库则负责把 AllReduce、AllGather、All-to-All 等通信模式组织起来。
-
-> 值得注意：在启用 **GPUDirect RDMA** 的 GPU 训练数据路径中，RDMA 搬运的数据起点和终点可以是 GPU 显存。RNIC 可以通过 PCIe 数据路径直接读写 GPU 显存，避免以 CPU 内存作为主要的数据中转缓冲区。实际能否使用这条路径，取决于 GPU、RNIC、驱动、通信库和 PCIe 拓扑等条件。详见[《GPUDirect RDMA：跨节点 GPU 的显存直通车》](https://mp.weixin.qq.com/s/eaPt4jwbF833z8ovJDhkPA)。
+> 值得注意：在启用 **GPUDirect RDMA** 的 GPU 训练数据路径中，RDMA 搬运的数据起点和终点可以是 GPU 显存。RNIC 可以通过 PCIe 数据路径直接读写 GPU 显存，避免以主机内存作为主要的数据中转缓冲区。实际能否使用这条路径，取决于 GPU、RNIC、驱动、通信库和 PCIe 拓扑等条件。详见[《GPUDirect RDMA：跨节点 GPU 的显存直通车》](https://mp.weixin.qq.com/s/eaPt4jwbF833z8ovJDhkPA)。
 
 ---
 
@@ -360,40 +302,12 @@ perftest 常用工具包括：
 
 分别测试 Write、Read、Send 的带宽与延迟，更容易发现问题在哪一种操作、哪一个方向。
 
-RoCEv2 网络配置、拥塞计数器和交换机侧验证会在后续文章中详细说明。
-
 ---
 
-## 十、五个常见误区
-
-### 1. RDMA 就是 InfiniBand
-
-不是。InfiniBand、RoCE 和 iWARP 都可以提供 RDMA。
-
-### 2. RDMA 完全不需要 CPU
-
-不是。CPU 仍负责初始化、注册、连接、提交请求、同步和异常处理；RDMA 主要卸载的是数据快路径。
-
-### 3. Zero-copy 意味着数据没有搬运
-
-不是。数据仍会经过主机 I/O 和网络；Zero-copy 只是减少中间的额外复制。
-
-### 4. 拿到 rkey 就能任意访问远端
-
-不是。远端必须先注册内存并授予对应权限；rkey 也不替代完整的身份认证和网络隔离。
-
-### 5. 普通 RDMA Write 会自动通知远端应用
-
-不会。普通 Write 把数据写到远端 MR，但业务线程是否知道、何时处理，需要上层协议另行约定。
-
----
-
-## 十一、总结
-
-如果只记住四句话：
+## 十、总结
 
     1. RDMA 让 RNIC 在两台主机的已注册内存之间高速搬运数据。
-    2. 它通过减少中间复制、内核快路径和 CPU 协议处理来降低开销。
+    2. 它通过减少中间复制、内核参与和 CPU 协议处理来降低开销。
     3. MR 决定“哪块内存能访问”，QP 决定“任务从哪里提交”，CQ 告诉应用“任务是否完成”。
     4. Send/Recv 是双方参与的消息模式；Write/Read 是典型的远程内存访问。
 
