@@ -1,6 +1,6 @@
 # RDMA 是什么：让数据跨主机直达内存的高速通道
 
-![传统 Socket 通信与 RDMA 数据路径对比](assets/rdma-intro/01-traditional-vs-rdma.png)
+![传统 Socket 经过内核网络栈与 RDMA 绕过内核网络栈的对比](assets/rdma-intro/09-kernel-bypass-rdma-cn.png)
 
 > 阅读提示：第一次接触 RDMA，只要先看懂三件事：数据为什么能少绕路、MR/QP/CQ 分别做什么、Send/Write/Read 有什么区别。
 
@@ -16,17 +16,7 @@
 
 现代操作系统可以通过协议卸载、批处理和零拷贝 API 减少部分开销，因此不能简单理解为传统 TCP 一定很慢。
 
-RDMA 的做法很直接：应用把传输任务交给了支持 RDMA 的网卡，由网卡在两台主机已注册的内存之间搬运数据。这样，数据传输时可以少经过内核和中间的缓冲区，也能减少 CPU 参与搬运和协议处理的开销。
-
-更准确地说，两端 RNIC 分别通过 DMA 访问自己所在主机的已注册内存，再通过网络协作完成跨主机传输：
-
-    发送端主机内存 / GPU 显存
-            ↓ DMA
-    发送端 RNIC
-            ↓ 网络
-    接收端 RNIC
-            ↓ DMA
-    接收端主机内存 / GPU 显存
+RDMA 把主体数据传输交给 RNIC。两端 RNIC 分别通过 DMA 访问各自主机的已注册内存，并通过网络完成传输，从而减少应用与内核之间的数据复制和 CPU 协议处理开销。
 
 ---
 
@@ -59,9 +49,11 @@ RNIC（RDMA Network Interface Card）是一类支持 RDMA 的网卡；在 Infini
 
 ## 二、RDMA 为什么快？
 
-![DMA 与 RDMA 的关系：DMA 搬运本机数据，RDMA 通过网络搬运远端已授权内存](assets/rdma-intro/05-dma-vs-rdma.png)
+![传统 Socket 的应用与内核复制和 RDMA Zero-copy 路径对比](assets/rdma-intro/10-zero-copy-vs-traditional-cn.png)
 
-RDMA 常和三个关键词一起出现：
+图中右侧以 RDMA Write 的方向为例；RDMA Read 的数据方向相反，但同样由两端 RNIC 通过 DMA 访问已注册内存。
+
+结合上图，可以把 RDMA 的优势概括为三个关键词：
 
 | 关键词 | 用大白话解释 |
 |---|---|
@@ -69,7 +61,7 @@ RDMA 常和三个关键词一起出现：
 | Kernel bypass | 实际传输的数据通常不必每次都经过内核协议栈 |
 | Transport offload | 队列处理、权限检查、报文分段与重组，以及部分可靠传输工作由 RNIC 完成 |
 
-这里的 Zero-copy 不是“数据没有移动”。数据仍要经过 PCIe、网卡和网络；它减少的是为经过软件协议栈而产生的中间复制。
+Zero-copy 省掉的是应用与内核之间的中间复制，并不是数据不需要移动。
 
 RDMA 也不是“零 CPU”：
 
