@@ -6,15 +6,15 @@
 
 大模型训练需要跨服务器同步数据，分布式存储也需要频繁读写其他机器上的数据。网络带宽越来越高后，瓶颈不一定在线缆上，还可能出现在服务器内部：
 
-**数据已经到网卡了，为什么还要在内核、CPU 和多块缓冲区之间绕来绕去？**
+**只是想把数据交给网卡发送，为什么还要经过内核、CPU 和多块缓冲区？**
 
 先看最常见的传统 Socket 通信：
 
 ![传统 Socket 发送数据时经过用户态、内核态和网卡的处理步骤](assets/rdma-intro/08-traditional-socket-send-path.png)
 
-以发送为例，应用通过 `send()` 进入内核，数据通常要从应用 Buffer 复制到内核 Socket Buffer，再经过 TCP/IP 协议栈和网卡驱动处理，最后由 NIC 通过 DMA 读取并发送。系统调用、内存复制和协议处理都会产生开销。现代操作系统可以通过卸载、批处理和零拷贝 API 减少部分开销，因此传统 TCP 并不等于一定很慢。
+以发送为例，应用通过 `send()` 进入内核，数据通常要从应用 Buffer 复制到内核 Socket Buffer，再经过 TCP/IP 协议栈和网卡驱动处理，最后由 NIC 通过 DMA 读取并发送。系统调用、内存复制和协议处理都会产生开销。现代操作系统可以通过协议卸载、批处理和零拷贝 API 减少部分开销，因此不能简单认为传统 TCP 一定很慢。
 
-RDMA 把主体数据传输交给 RNIC。两端 RNIC 分别通过 DMA 访问各自主机的已注册内存，并通过网络完成传输，从而减少应用与内核之间的数据复制和 CPU 协议处理开销。
+RDMA 把主体数据传输交给 RNIC。两端 RNIC 分别通过 DMA 访问各自主机的已注册内存，并通过网络完成传输。
 
 ---
 
@@ -25,16 +25,16 @@ RDMA 的全称是 Remote Direct Memory Access，中文常译为“远程直接�
 先理解 DMA，再理解 RDMA：
 
 - DMA：本机的设备（例如网卡或 SSD）可以直接读写本机内存，CPU 负责下达任务，不逐字节搬运数据。
-- RDMA：支持 RDMA 的网卡通过网络，在两台主机的已注册内存之间传输数据；其中 Read、Write 等单边操作还可以直接访问远端已授权的内存区域。
+- RDMA：支持 RDMA 的网卡通过网络，在两台主机的已注册内存之间传输数据。
 
 RNIC（RDMA Network Interface Card）就是支持 RDMA 的网卡。在 InfiniBand 文档中，它也常被称为 HCA。**所有 RNIC 都是 NIC，但不是所有 NIC 都支持 RDMA。**
 
 | 对比项 | 普通 NIC | RNIC |
 |---|---|---|
-| 主要任务 | 收发普通网络报文 | 收发 RDMA 数据，并直接搬运已注册内存 |
+| 主要任务 | 收发普通网络报文 | 收发 RDMA 数据，并通过 DMA 读写已注册内存 |
 | 数据传输方式 | 普通 TCP/UDP 通信通常由内核协议栈和 CPU 配合完成 | 队列处理、DMA、权限校验等可由网卡硬件完成 |
 
-“直接”不代表可以随意访问另一台机器。远端必须先把允许访问的内存注册为 MR（Memory Region）并设置权限，RNIC 只能访问已授权的范围。
+“直接”不代表可以随意访问另一台机器。远端应用必须先把一段内存注册为 MR（Memory Region）并设置权限，RNIC 只能访问已授权的范围。
 
 ---
 
@@ -42,7 +42,7 @@ RNIC（RDMA Network Interface Card）就是支持 RDMA 的网卡。在 InfiniBan
 
 ![传统 Socket 的应用与内核复制和 RDMA Zero-copy 路径对比](assets/rdma-intro/10-zero-copy-vs-traditional-cn.png)
 
-图中右侧以 RDMA Write 的方向为例；RDMA Read 的数据方向相反，但同样由两端 RNIC 通过 DMA 访问已注册内存。
+图中右侧以 RDMA Write 为例。RDMA Read 的数据方向相反，但同样由两端 RNIC 通过 DMA 访问已注册内存。
 
 结合上图，可以把 RDMA 的优势概括为三个关键词：
 
@@ -52,7 +52,7 @@ RNIC（RDMA Network Interface Card）就是支持 RDMA 的网卡。在 InfiniBan
 | Kernel bypass | 实际传输的数据通常不必每次都经过内核协议栈 |
 | Transport offload | 队列处理、权限检查、报文分段与重组，以及部分可靠传输工作由 RNIC 完成 |
 
-RDMA 也不是“零 CPU”：CPU 仍要创建资源、注册内存、建立连接、提交任务和处理异常，应用也要从 CQ 查询结果；为了极低延迟，有些程序还会让 CPU 持续轮询 CQ。
+RDMA 也不是“零 CPU”：CPU 仍要准备资源、提交任务和处理异常；为了追求极低延迟，有些程序还会持续轮询 CQ。
 
 RDMA 能快多少取决于网卡、报文大小、NUMA 拓扑和网络状况，无法用固定倍数概括。它的核心优势是减少软件处理和数据复制，从而降低延迟和 CPU 开销，并让吞吐更接近链路线速。
 
@@ -74,7 +74,7 @@ RDMA 能快多少取决于网卡、报文大小、NUMA 拓扑和网络状况，�
 
 应用不能直接把任意内存地址交给 RNIC，而要先把一段 Buffer 注册为 MR。注册时需要说明内存范围和访问权限。
 
-注册完成后会得到 `lkey` 和 `rkey`：`lkey` 供本地 RNIC 使用，`rkey` 供对端执行 RDMA Read、Write 等远程访问时使用。
+注册完成后会得到 `lkey` 和 `rkey`：`lkey` 供本地 RNIC 使用，`rkey` 供对端执行 RDMA Write、Read 等远程访问时使用。
 
 可以把 MR 理解成一块已经登记并授权的货架：地址、范围、权限和访问凭证都正确，RNIC 才允许访问。
 
@@ -108,13 +108,13 @@ QP 是 Queue Pair，由两个队列组成：
 
 ### Send/Recv：双方都参与
 
-接收方先准备 Receive Buffer，发送方再提交 Send。它和普通消息通信最接近，关键点是：**接收方要先准备好收件箱。**
+接收方先准备 Receive Buffer 并 Post Receive，发送方再提交 Send。它和普通消息通信最接近，关键点是：**接收方要先准备好收件箱。**
 
 ### RDMA Write：把数据推过去
 
 发起方知道对方的远程地址和 `rkey` 后，可以把本地数据直接写进对方指定的 MR。普通 Write 不需要远端提前 Post Receive，也不会自动通知远端业务线程，因此上层还要约定通知方式。
 
-> Write with Immediate 可以在写入数据的同时通知远端；预投的 Receive WQE 只接收通知，不承载主体数据。
+> Write with Immediate 可以在写入数据的同时通知远端。远端需要预投 Receive WQE 来接收通知，但主体数据仍直接写入指定的 MR。
 
 ### RDMA Read：把数据拉回来
 
@@ -134,7 +134,7 @@ Read 的方向正好相反：发起方使用远程地址和 `rkey`，把远端 M
 
 | 类型 | 入门理解 |
 |---|---|
-| RC（Reliable Connection） | 一对一，在同一 QP 的传输语义范围内可靠且有序；常用于 AI、HPC 和存储 |
+| RC（Reliable Connection） | 一对一，连接正常时可靠且有序；常用于 AI、HPC 和存储 |
 | UC（Unreliable Connection） | 一对一，但不保证可靠交付；较少作为通用入门选择 |
 | UD（Unreliable Datagram） | 类似不可靠数据报；适合小消息或控制面场景 |
 
@@ -147,7 +147,7 @@ RDMA 是一种通信能力，不等于某一种线缆或网络。
 | 技术 | 底层网络 | 入门理解 |
 |---|---|---|
 | InfiniBand | 专用 InfiniBand Fabric | 原生为高性能 RDMA 设计的网络 |
-| RoCE | 以太网 | 在以太网上承载 RDMA；RoCEv2 使用 IP/UDP 封装，可跨三层网络 |
+| RoCE | 以太网 | 在以太网上承载 RDMA，数据中心里较常见 |
 | iWARP | TCP/IP 以太网 | 在 TCP/IP 体系上实现 RDMA，生态相对少见 |
 
 RoCEv1 运行在二层以太网上；更常见的 RoCEv2 增加了 IP/UDP 封装，可以跨三层网络。这里的 UDP 只是承载方式，应用仍通过 RDMA 接口提交任务。PFC、ECN、DCQCN 等网络配置属于进阶主题，本文不展开。
@@ -173,7 +173,7 @@ RoCEv1 运行在二层以太网上；更常见的 RoCEv2 增加了 IP/UDP 封装
 
 ## 七、RDMA 在 AI 集群里处在什么位置？
 
-在多机大模型训练中，使用者通常不会手写 Verbs；训练框架、集合通信库和传输框架会分层封装底层细节。
+在多机大模型训练中，开发者通常不会手写 Verbs；训练框架、集合通信库和传输框架会分层封装底层细节。
 
 ![RDMA 在 AI 集群中的软件层次、普通主机内存中转路径与 GPUDirect RDMA 直通路径](assets/rdma-intro/07-rdma-in-ai-cluster-v2.png)
 
@@ -184,7 +184,7 @@ RoCEv1 运行在二层以太网上；更常见的 RoCEv2 增加了 IP/UDP 封装
 - **灰色箭头或虚线**：软件调用、任务提交和控制关系，不表示主体数据经过 CPU 搬运。
 - **紫色虚线**：RDMA CM 与 RDMA Verbs 的可选连接管理关系，不是数据传输的必经路径。
 
-中间的软件栈可以简单理解为：训练框架调用通信组件，通信组件或网络后端通过 RDMA Verbs 使用 RNIC，数据由 InfiniBand 或 RoCE 网络承载。实际软件组合可能有所不同。
+中间的软件栈可以简单理解为：训练框架调用通信组件，通信组件再通过网络后端或传输框架调用 RDMA Verbs，由 RNIC 传输数据；底层网络则是 InfiniBand 或 RoCE。实际软件组合可能有所不同。
 
 > 实际能否使用 GPUDirect RDMA，取决于 GPU、RNIC、驱动、通信库和 PCIe 拓扑等条件。详见[《GPUDirect RDMA：跨节点 GPU 的显存直通车》](https://mp.weixin.qq.com/s/eaPt4jwbF833z8ovJDhkPA)。
 
@@ -206,11 +206,11 @@ RoCEv1 运行在二层以太网上；更常见的 RoCEv2 增加了 IP/UDP 封装
 
 ### 2. 测基本连通性
 
-使用 rping 或示例程序验证 RDMA 连接。普通 ping 成功只代表 IP 大致可达，不代表 RDMA QP 一定能建立。
+使用 `rping` 或示例程序验证 RDMA 连接。普通 `ping` 成功只代表 IP 大致可达，不代表 RDMA QP 一定能建立。
 
 ### 3. 测点对点性能
 
-perftest 常用工具包括：
+`perftest` 常用工具包括：
 
     ib_write_bw
     ib_read_bw
