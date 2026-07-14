@@ -4,7 +4,7 @@
 
 最核心的区别可以概括为：
 
-> **RoCEv1 工作在二层网络；RoCEv2 增加 UDP/IP 封装，可以跨三层网络路由。**
+> **RoCEv1 工作在二层网络；RoCEv2 采用 UDP/IP 封装，可以跨三层网络路由。**
 
 ## 一、什么是 RoCE？
 
@@ -28,9 +28,9 @@ Ethernet → GRH → BTH/RETH → Payload → ICRC
 
 交换机根据 MAC 地址进行二层转发。RoCEv1 可以在同一个二层网络或 VLAN 内运行，但不能像普通 IP 报文一样，通过三层路由器跨越不同子网。
 
-### RoCEv2：增加 IP 和 UDP
+### RoCEv2：采用 IP 和 UDP
 
-RoCEv2 在 RDMA 报文外增加了 IP 和 UDP 头部：
+RoCEv2 使用可路由的 IP 头替代 RoCEv1 的 GRH，并在 IP 与 RDMA 传输头之间加入 UDP 头：
 
 ```text
 Ethernet → IP → UDP → BTH/RETH → Payload → ICRC
@@ -38,7 +38,7 @@ Ethernet → IP → UDP → BTH/RETH → Payload → ICRC
 
 RoCEv2 使用 UDP 目的端口 `4791` 标识 RDMA 流量。IP 头部让报文能够跨越三层路由设备，UDP 则提供轻量、无状态并且容易由网卡硬件解析的封装。
 
-RoCEv2 比 RoCEv1 多出 IP 和 UDP 头部。以 IPv4 为例，通常会增加至少 28 字节。不过，在高速链路、大 MTU 和网卡硬件卸载环境中，这部分额外开销一般不是主要性能瓶颈。
+需要注意，不能简单地说 RoCEv2 比 RoCEv1 固定“多出 28 字节”。RoCEv1 使用 40 字节的 GRH，而 RoCEv2 是用 IPv4 或 IPv6 头替代 GRH，再增加 8 字节 UDP 头。因此，净头部变化取决于 IP 版本：使用 IPv4 时，`IPv4 + UDP` 通常为 28 字节；使用 IPv6 时，`IPv6 + UDP` 通常为 48 字节。实际性能更容易受到拥塞、丢包、MTU 和负载均衡效果影响。
 
 ## 三、网络路径和扩展能力
 
@@ -84,19 +84,19 @@ RDMA RC：负责确认、排序和重传
 
 ![ECMP 多路径与拥塞控制](assets/roce-v1-v2/04-ecmp-congestion-control-v2.png)
 
-Leaf-Spine 网络中，两台服务器之间通常存在多条路由代价相同的路径。交换机可以根据源 IP、目的 IP、UDP 源端口、UDP 目的端口和协议类型计算哈希，将不同流量分配到不同 Spine，这种机制叫作 ECMP。
+Leaf-Spine 网络中，两台服务器之间通常存在多条路由代价相同的路径。交换机可以根据源 IP、目的 IP、UDP 源端口、UDP 目的端口和协议类型计算哈希，将不同流量分配到不同 Spine，这种机制叫作 ECMP。由于 RoCEv2 的 UDP 目的端口通常固定为 `4791`、协议类型也固定为 UDP，不同流之间的哈希差异主要来自源/目的 IP 和承载流标识的 UDP 源端口。
 
 同一条流通常固定经过同一路径，以避免报文乱序；不同的流则可能经过不同 Spine，从而并行利用多条链路。但是，ECMP 是根据哈希结果选路，并不一定选择当前最空闲的链路。多条大流仍可能被分配到同一条路径，形成哈希碰撞和局部拥塞。
 
-RoCE 追求低延迟和高吞吐，但对突发拥塞和丢包比较敏感。AI 集群进行集合通信时，多个发送端可能同时向一个端口注入流量，形成典型的 Incast（多对一突发）。当流量进入交换机的速度超过出口转发速度时，队列会快速经历“正常、开始积压、接近溢出”三个阶段。
+RoCE 追求低延迟和高吞吐，但对突发拥塞和丢包比较敏感。AI 集群进行集合通信时，多个发送端可能同时向一个端口注入流量，形成典型的 Incast（多对一突发）。当流量进入交换机的速度超过出口转发速度时，队列会快速经历“正常、开始积压、接近溢出”三个阶段。下面以常见的 **RoCEv2 + DCQCN** 部署为例说明控制过程。
 
 如果队列最终溢出，交换机会丢弃报文。RDMA RC 虽然能够检测丢包并重传，但重传恢复会中断原本连续的数据传输，放大尾延迟，并可能降低整条通信流水线的有效吞吐。因此，RoCE 网络不能只依赖丢包后的重传，还需要在队列溢出之前控制流量。
 
-![RoCE 为什么需要 PFC、ECN 与 DCQCN](assets/roce-v1-v2/05-roce-dcqcn-control-loop.png)
+![RoCEv2 为什么需要 PFC、ECN 与 DCQCN](assets/roce-v1-v2/05-rocev2-dcqcn-control-loop.png)
 
 这套保护机制可以分成四个环节：
 
-1. **ECN 负责提前预警。** 当交换机发现队列开始积压时，它不会立即丢包，而是给经过的 IP 报文设置 CE 标记。
+1. **ECN 负责提前预警。** 当交换机发现队列开始积压并达到配置的 ECN 门限时，可以给经过的 RoCEv2 IP 报文设置 CE 标记，而不是等到缓冲区溢出后才通过丢包反映拥塞。
 2. **CNP 负责把拥塞反馈给发送端。** 接收端 RNIC 收到带 CE 标记的报文后，向发送端返回 CNP。CNP 本身只是通知，不直接决定发送速率。
 3. **DCQCN 负责在发送端执行调速。** 发送端 RNIC 收到 CNP 后，由 DCQCN（Data Center Quantized Congestion Notification）降低对应流的发送速率；拥塞缓解后，再逐步恢复速率，让流量与网络可用带宽重新匹配。
 4. **PFC 负责接近溢出时的最后保护。** 如果队列继续增长并达到 PFC 门限，交换机会向直接相连的上游设备发送 Pause 帧，暂时停止指定优先级的流量，尽量避免缓冲区溢出。
@@ -147,7 +147,7 @@ RP：发送端 DCQCN 降低对应流速率
 | 协议标识 | EtherType `0x8915` | UDP 目的端口 `4791` |
 | 能否跨子网 | 通常不能 | 可以 |
 | 转发依据 | MAC 地址 | IP 地址 |
-| ECMP | 支持能力有限 | 支持五元组哈希 |
+| ECMP | 不能直接利用标准 L3 五元组 ECMP | 可利用 IP/UDP 字段进行 ECMP 哈希 |
 | 网络规模 | 相对较小 | 适合大规模扩展 |
 | 典型场景 | 小型二层 RDMA 网络 | AI 集群、大型数据中心 |
 | RDMA 操作语义 | 基本相同 | 基本相同 |
@@ -158,8 +158,14 @@ RoCEv1 和 RoCEv2 都可以在以太网上提供 RDMA 能力。二者最大的�
 
 RoCEv1 是二层协议，结构简单，但不能通过普通 IP 路由跨越不同子网，更适合规模有限的二层网络。
 
-RoCEv2 增加 UDP/IP 封装，能够跨三层网络路由，并可以利用 Leaf-Spine 和 ECMP 多路径，因此更适合大型数据中心、分布式存储和 AI GPU 集群。
+RoCEv2 采用 UDP/IP 封装，能够跨三层网络路由，并可以利用 Leaf-Spine 和 ECMP 多路径，因此更适合大型数据中心、分布式存储和 AI GPU 集群。
 
 一句话记忆：
 
 > **RoCEv1 = 二层 RDMA；RoCEv2 = UDP/IP 可路由 RDMA。**
+
+## 参考资料
+
+- [NVIDIA：RoCEv1 与 RoCEv2 封装和 UDP 源端口](https://docs.nvidia.com/networking/display/WINOFv55052000/RoCEv2)
+- [NVIDIA：RoCEv2 拥塞管理中的 CP、NP 与 RP](https://docs.nvidia.com/networking/display/winof2v31052010lts/ethernet%2Bnetwork)
+- [SIGCOMM：DCQCN 原始论文](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
