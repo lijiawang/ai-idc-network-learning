@@ -174,6 +174,6 @@ RoCEv2 采用 UDP/IP 封装，能够跨三层网络路由，并可以利用 Leaf
 
 - [IBTA：2014 年发布 RoCEv2，并回顾 2010 年最初的 RoCE 规范](https://www.infinibandta.org/infiniband-trade-association-releases-updated-specification-for-remote-direct-memory-access-over-converged-ethernet-roce/)
 - [NVIDIA：RoCEv1 与 RoCEv2 封装和 UDP 源端口](https://docs.nvidia.com/networking/display/WINOFv55052000/RoCEv2)
-- [NVIDIA MLNX_OFED：RoCEv2 自 4.1 版起为默认 RoCE 模式](https://docs.nvidia.com/networking/display/mlnxofedv495100/general%2Bsupport%2Bin%2Bmlnx_ofed)
-- [NVIDIA WinOF-2 v26.4：RoCEv2 拥塞管理中的 CP、NP 与 RP（见 3.3.3.4 节）](https://docs.nvidia.com/nvidia-winof-2-documentation-v26-4-50010.pdf)
+- [NVIDIA MLNX_OFED v4.9 LTS：RoCEv2 自 v4.1 起为 RDMA CM 默认 RoCE 模式](https://docs.nvidia.com/networking/display/nvidia-mlnx-ofed-documentation-v4-9-7-1-0-0-lts.0%20LTS.pdf)
+- [NVIDIA WinOF-2：RoCEv2 拥塞管理（RCM）中的 CP、NP 与 RP](https://networking-docs.nvidia.com/winof2driverum/26150000/ethernet-network)
 - [SIGCOMM：DCQCN 原始论文](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
