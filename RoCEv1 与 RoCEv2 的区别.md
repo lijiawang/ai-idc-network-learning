@@ -10,6 +10,8 @@
 
 RoCE 全称是 RDMA over Converged Ethernet，即“融合以太网上的远程直接内存访问”。
 
+从演进时间看，IBTA 在 2010 年公布了最初的 RoCE 规范，后来通常称为 RoCEv1；2014 年又发布 RoCEv2，通过 UDP/IP 封装把 RoCE 从二层网络扩展到可路由的三层网络。
+
 传统网络通信通常需要 CPU 和操作系统内核参与协议处理，并在用户空间、内核空间和网卡之间复制数据。RDMA 则允许网卡直接在本地和远端应用内存之间传输数据，减少内核参与和数据复制。
 
 因此，RDMA 具有低延迟、高吞吐和低 CPU 占用等特点，常用于 GPU 集群、分布式存储、高性能计算和高速数据库系统。RoCE 的作用，就是在以太网上提供这种 RDMA 能力。
@@ -35,6 +37,8 @@ RoCEv2 使用可路由的 IP 头替代 RoCEv1 的 GRH，并在 IP 与 RDMA 传�
 ```text
 Ethernet → IP → UDP → BTH/RETH → Payload → ICRC
 ```
+
+这里的 `BTH/RETH` 是便于理解的简化写法。BTH（Base Transport Header）是 RDMA 传输报文的基础传输头；RETH（RDMA Extended Transport Header）用于携带远端虚拟地址、R_Key 和数据长度，只会出现在需要这些信息的 RDMA Read/Write 等报文中，Send 报文不包含 RETH。因此，不应把图中的 `BTH/RETH` 理解为每个 RoCE 报文都同时带有这两个头部。
 
 RoCEv2 使用 UDP 目的端口 `4791` 标识 RDMA 流量。IP 头部让报文能够跨越三层路由设备，UDP 则提供轻量、无状态并且容易由网卡硬件解析的封装。
 
@@ -160,12 +164,16 @@ RoCEv1 是二层协议，结构简单，但不能通过普通 IP 路由跨越不
 
 RoCEv2 采用 UDP/IP 封装，能够跨三层网络路由，并可以利用 Leaf-Spine 和 ECMP 多路径，因此更适合大型数据中心、分布式存储和 AI GPU 集群。
 
+从当前实践看，新建的大规模数据中心和 AI 集群通常优先采用 RoCEv2，它也已成为多种网卡驱动和软件栈的默认 RoCE 模式。RoCEv1 并非从软硬件中完全消失，部分产品仍保留支持，但更多见于遗留系统或范围受限的纯二层网络。因此，与其说 RoCEv1 已经被彻底淘汰，更准确的说法是：**RoCEv2 已成为现代生产网络的主流选择。**
+
 一句话记忆：
 
 > **RoCEv1 = 二层 RDMA；RoCEv2 = UDP/IP 可路由 RDMA。**
 
 ## 参考资料
 
+- [IBTA：2014 年发布 RoCEv2，并回顾 2010 年最初的 RoCE 规范](https://www.infinibandta.org/infiniband-trade-association-releases-updated-specification-for-remote-direct-memory-access-over-converged-ethernet-roce/)
 - [NVIDIA：RoCEv1 与 RoCEv2 封装和 UDP 源端口](https://docs.nvidia.com/networking/display/WINOFv55052000/RoCEv2)
+- [NVIDIA MLNX_OFED：RoCEv2 自 4.1 版起为默认 RoCE 模式](https://docs.nvidia.com/networking/display/mlnxofedv495100/general%2Bsupport%2Bin%2Bmlnx_ofed)
 - [NVIDIA WinOF-2 v26.4：RoCEv2 拥塞管理中的 CP、NP 与 RP（见 3.3.3.4 节）](https://docs.nvidia.com/nvidia-winof-2-documentation-v26-4-50010.pdf)
 - [SIGCOMM：DCQCN 原始论文](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
