@@ -167,5 +167,5 @@ RoCEv2 采用 UDP/IP 封装，能够跨三层网络路由，并可以利用 Leaf
 ## 参考资料
 
 - [NVIDIA：RoCEv1 与 RoCEv2 封装和 UDP 源端口](https://docs.nvidia.com/networking/display/WINOFv55052000/RoCEv2)
-- [NVIDIA：RoCEv2 拥塞管理中的 CP、NP 与 RP](https://docs.nvidia.com/networking/display/winof2v31052010lts/ethernet%2Bnetwork)
+- [NVIDIA WinOF-2 v26.4：RoCEv2 拥塞管理中的 CP、NP 与 RP（见 3.3.3.4 节）](https://docs.nvidia.com/nvidia-winof-2-documentation-v26-4-50010.pdf)
 - [SIGCOMM：DCQCN 原始论文](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
