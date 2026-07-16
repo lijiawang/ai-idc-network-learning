@@ -1,6 +1,6 @@
 # RoCEv2 网络拥塞控制：PFC、ECN 与 DCQCN
 
-> 不推导复杂公式，重点讲清楚 PFC、ECN、CNP、DCQCN 如何协作，以及训练吞吐下降时应该看什么。
+> 本文介绍 PFC、ECN、CNP 与 DCQCN 的工作机制、协作流程，以及训练吞吐下降时的排查方法。
 
 在 AI 集群中，GPU 算力并不总是性能瓶颈。一次 AllReduce、AllGather 或 MoE All-to-All，只要网络中的某个出口发生拥塞，就可能让大量 GPU 等待通信，最终表现为：
 
