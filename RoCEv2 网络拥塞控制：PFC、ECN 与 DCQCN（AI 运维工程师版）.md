@@ -498,18 +498,7 @@ ECN / CNP / PFC / Queue Occupancy / Buffer Drop → 拥塞控制方向
 
 ### 第三步：判断拥塞控制链路是否闭环
 
-按事件顺序核对：
-
-```text
-交换机队列上涨
-  → ECN/CE 标记增加
-  → 接收端 CNP Tx 增加
-  → 发送端 CNP Rx 增加
-  → 发送速率下降
-  → 队列回落
-```
-
-在哪一步断掉，就重点检查那一层。
+参照第七节的拥塞控制闭环，依次核对交换机 `ECN/CE`、接收端 `CNP Tx`、发送端 `CNP Rx`、发送速率和队列水位。哪个信号没有按预期变化，就重点检查对应环节。
 
 ![GPT 信息图：从交换机、RNIC 和训练作业三侧沿闭环排查拥塞](assets/rocev2-congestion/infographics/operations-troubleshooting.png)
 
