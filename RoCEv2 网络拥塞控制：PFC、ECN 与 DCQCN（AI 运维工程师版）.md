@@ -18,7 +18,7 @@ RoCEv2 使用 UDP/IP 承载 RDMA，可以运行在三层 Leaf-Spine 网络中，
 
 它们不是三个互相替代的开关，而是三种不同层次的机制。
 
-![GPT 信息图：RoCEv2 中 PFC、ECN、CNP 与 DCQCN 的完整协作关系](assets/rocev2-congestion/gpt-infographics/02-pfc-ecn-dcqcn-overview.png)
+![GPT 信息图：RoCEv2 中 PFC、ECN、CNP 与 DCQCN 的完整协作关系](assets/rocev2-congestion/infographics/overview-pfc-ecn-dcqcn.png)
 
 ---
 
@@ -32,7 +32,7 @@ RoCEv2 使用 UDP/IP 承载 RDMA，可以运行在三层 Leaf-Spine 网络中，
 - **大流多**：梯度、激活值和专家 Token 会形成持续的高带宽流；
 - **同步性强**：一个 Rank 变慢，其他 Rank 也可能在同步点等待。
 
-![GPT 信息图：AI 集群多个 GPU 同步发送形成 Incast 拥塞](assets/rocev2-congestion/gpt-infographics/05-ai-incast.png)
+![GPT 信息图：AI 集群多个 GPU 同步发送形成 Incast 拥塞](assets/rocev2-congestion/infographics/ai-incast.png)
 
 ### 2. Incast 会快速打满一个出口队列
 
@@ -73,6 +73,8 @@ RoCEv2 使用 UDP/IP 承载 RDMA，可以运行在三层 Leaf-Spine 网络中，
 | CNP | 端到端反馈报文 | 接收端 RNIC | 通知发送端 RNIC | 把 CE 信号带回流量源 |
 | DCQCN | 端到端速率控制 | 发送端 RNIC | 降低或恢复对应流的发送速率 | 从源头消除持续拥塞 |
 
+RoCEv2 数据报文封装在 UDP/IP 中，标准目标端口通常是 **4791**。排障时可以在交换机 ACL、流量计数器或镜像抓包中使用 `udp dst port 4791` 快速定位 RoCEv2 流量。需要注意：端口可能因设备或历史配置而不同；而且 RNIC 硬件卸载可能使主机上的 `tcpdump` 看不到全部 RDMA 报文，因此不能只凭主机抓包判断流量是否存在。
+
 可以把它们类比成高速公路：
 
 - ECN 是前方拥堵提示牌；
@@ -88,9 +90,7 @@ RoCEv2 使用 UDP/IP 承载 RDMA，可以运行在三层 Leaf-Spine 网络中，
 
 PFC 全称 Priority-based Flow Control，来自数据中心桥接（DCB）体系。它与传统的全链路 Pause 最大的区别是：**PFC 可以只暂停一个或若干个 802.1p 优先级，而不暂停整条链路上的所有流量。**
 
-![GPT 信息图：802.3x 全局 Pause 与 PFC 按优先级暂停的范围对比](assets/rocev2-congestion/gpt-infographics/10-global-pause-vs-pfc.png)
-
-![GPT 绘制：PFC 按优先级逐跳暂停直接上游，同时保留其他优先级流量](assets/rocev2-congestion/gpt-images/02-pfc-hop-by-hop.png)
+![GPT 信息图：802.3x 全局 Pause 与 PFC 按优先级暂停的范围对比](assets/rocev2-congestion/infographics/global-pause-vs-pfc.png)
 
 ### 1. PFC 如何工作？
 
@@ -106,7 +106,7 @@ PFC 全称 Priority-based Flow Control，来自数据中心桥接（DCB）体系
 
 上游收到 Pause 后，暂时停止发送对应优先级的流量。队列下降到 XON 恢复条件后，下游再允许上游继续发送。
 
-![GPT 信息图：PFC 的 XOFF 暂停水位与 XON 恢复过程](assets/rocev2-congestion/gpt-infographics/01-pfc-xoff-xon.png)
+![GPT 信息图：PFC 的 XOFF 暂停水位与 XON 恢复过程](assets/rocev2-congestion/infographics/pfc-xoff-xon.png)
 
 PFC 的几个关键词：
 
@@ -115,7 +115,25 @@ PFC 的几个关键词：
 - **响应快**：通常由交换机 ASIC 和网卡硬件完成；
 - **只是兜底**：它没有让发送源理解“为什么拥塞”，也没有从根本上降低业务注入速率。
 
-### 2. 为什么需要 Headroom？
+### 2. Buffer 是什么？
+
+这里的 **Buffer（缓存）**，是交换机 ASIC 临时存放报文的高速存储空间，不是服务器内存，也不是磁盘缓存。当多个入口同时向同一个出口发送，报文到达速度暂时超过出口转发速度时，来不及立即发出的报文会先进入队列 Buffer：
+
+```text
+多个入口同时到达
+        ↓
+交换机端口 / TC 队列 Buffer 暂存报文
+        ↓
+出口按线路速率逐个转发
+```
+
+Buffer 的作用是吸收短时突发和速率差，但容量有限。队列持续增长时，会依次触发 ECN 标记、PFC Pause，最终在缓存耗尽后丢包。交换机可能采用入口缓存、出口缓存、共享缓存和队列专用缓存等不同架构，因此“整机总缓存很大”不等于某个 RoCE 队列可以使用全部容量。
+
+可以把 Buffer 理解为交换机中的“候车区”：短时间人多可以排队，持续涌入且出口能力不变，候车区最终仍会被占满。
+
+### 3. Headroom 是什么？
+
+**Headroom 是 Buffer 中专门为 PFC 停止过程预留的安全空间。**它不是日常排队容量，而是在队列达到 XOFF、交换机已经发出 Pause 后，用来接住上游尚未来得及停发的在途报文。
 
 交换机发出 Pause 后，上游不会瞬间停止。在 Pause 帧传播、设备处理和发送流水线停止之前，仍有一批在途报文继续到达。
 
@@ -126,11 +144,28 @@ PFC 的几个关键词：
 - 本地端口和 ASIC 流水线中的数据；
 - 最大帧、线缆长度和设备实现带来的余量。
 
-![GPT 信息图：PFC 发出 Pause 后仍需要 Headroom 吸收在途报文](assets/rocev2-congestion/gpt-infographics/08-pfc-headroom.png)
+![GPT 信息图：PFC 发出 Pause 后仍需要 Headroom 吸收在途报文](assets/rocev2-congestion/infographics/pfc-headroom.png)
 
 链路越快、线缆越长、设备响应越慢，需要吸收的在途数据通常越多。Headroom 不能照抄另一种交换机或另一种速率的配置，应该使用厂商针对 ASIC、端口速率、MTU 和线缆长度给出的计算或模板。
 
-### 3. PFC 的副作用
+> **数量级直觉，不是配置公式：**假设从交换机决定发送 Pause，到上游真正停止发送的总延迟预算为 `3 μs`，那么在 100 Gbit/s 链路上，这段时间仍可能到达：
+>
+> ```text
+> 100 Gbit/s × 3 μs ÷ 8 ≈ 37.5 KB
+> ```
+>
+> 这只是停止延迟对应的在途数据量。实际 Headroom 还要考虑最大帧、ASIC 流水线、缓存 cell 对齐、安全余量和厂商实现，不能直接把 `37.5 KB` 当作生产配置值。
+
+两者的关系可以简化为：
+
+```text
+普通 Buffer：吸收日常排队和微突发
+Headroom：    发出 PFC Pause 后，吸收尚未停下的在途报文
+```
+
+Headroom 太小，Pause 已经发出仍可能溢出丢包；预留过大，则会挤占共享 Buffer，降低其他端口或队列吸收突发的能力。
+
+### 4. PFC 的副作用
 
 PFC 能减少因拥塞造成的丢包，但不是越多越好。
 
@@ -146,7 +181,7 @@ PFC 能减少因拥塞造成的丢包，但不是越多越好。
 
 错误的优先级映射、环形依赖、故障网卡持续发送 Pause，可能导致大量端口长期暂停。此时链路仍是 Up，但有效吞吐接近零，排障时很容易误判。
 
-![GPT 信息图：PFC Storm 从局部热点向上游逐跳扩散](assets/rocev2-congestion/gpt-infographics/03-pfc-storm.png)
+![GPT 信息图：PFC Storm 从局部热点向上游逐跳扩散](assets/rocev2-congestion/infographics/pfc-storm.png)
 
 因此，生产网络通常需要：
 
@@ -182,7 +217,7 @@ ECN 全称 Explicit Congestion Notification。对于 RoCEv2，它使用 IP 头�
 
 ECN 的关键价值是：**报文仍能到达接收端，但网络已经明确告诉端点“这条路径开始拥塞”。**
 
-![GPT 信息图：交换机在丢包前将 ECT 报文标记为 CE](assets/rocev2-congestion/gpt-infographics/06-ecn-marking.png)
+![GPT 信息图：交换机在丢包前将 ECT 报文标记为 CE](assets/rocev2-congestion/infographics/ecn-marking.png)
 
 ### 2. ECN 门限不是一个孤立数字
 
@@ -220,7 +255,7 @@ ECN 的关键价值是：**报文仍能到达接收端，但网络已经明确�
 反馈方向：发送端 RNIC ←──────── CNP ────── 接收端 RNIC
 ```
 
-![GPT 信息图：CP 标记 CE、NP 返回 CNP、RP 执行 DCQCN 降速的完整闭环](assets/rocev2-congestion/gpt-images/03-ecn-cnp-dcqcn-loop.png)
+![GPT 信息图：CP 标记 CE、NP 返回 CNP、RP 执行 DCQCN 降速的完整闭环](assets/rocev2-congestion/infographics/ecn-cnp-dcqcn-loop.png)
 
 CNP 是通知，不是 Pause：
 
@@ -236,7 +271,7 @@ CNP 是通知，不是 Pause：
 
 DCQCN 全称 Data Center Quantized Congestion Notification，是 RoCEv2 中广泛使用的端到端拥塞控制算法。
 
-![GPT 信息图：DCQCN 收到 CNP 后降速并分阶段恢复](assets/rocev2-congestion/gpt-infographics/07-dcqcn-rate-control.png)
+![GPT 信息图：DCQCN 收到 CNP 后降速并分阶段恢复](assets/rocev2-congestion/infographics/dcqcn-rate-control.png)
 
 它把系统分成三个角色：
 
@@ -280,6 +315,16 @@ ECN、CNP 和源端降速形成闭环需要时间。遇到极强微突发时，�
 
 PFC 的价值是在这段反馈延迟内提供快速的逐跳保护。反过来，只有 PFC 而没有有效的 ECN/DCQCN，持续拥塞就会不断触发 Pause，容易造成拥塞扩散。
 
+### 3. DCQCN 不是唯一方案
+
+DCQCN 是 RoCEv2 中常见的拥塞控制方案，但不是唯一技术路线：
+
+- **TIMELY、Swift** 主要利用 RTT 或延迟变化判断拥塞；
+- **HPCC** 利用 INT（In-band Network Telemetry）携带更精细的链路和队列信息；
+- **HPCC-PINT** 用概率化遥测降低 INT 的报文开销。
+
+这些方案不是 DCQCN 的简单“增强版”，反馈信号和控制逻辑并不相同。生产选型应以 RNIC、交换机、驱动和固件的正式支持矩阵为准，不应只依据算法论文下发参数。
+
 ---
 
 ## 七、三者是如何配合的？
@@ -316,7 +361,7 @@ ECN 标记门限 < PFC XOFF 门限 < 实际丢包水位
 
 三者之间还要留出足够安全距离：ECN 需要时间完成端到端反馈，PFC XOFF 之后需要 Headroom 吸收在途报文。
 
-![GPT 绘制：交换机队列中的 ECN、PFC、Headroom 与丢包水位](assets/rocev2-congestion/gpt-images/04-queue-thresholds.png)
+![GPT 绘制：交换机队列中的 ECN、PFC、Headroom 与丢包水位](assets/rocev2-congestion/infographics/queue-thresholds.png)
 
 这只是设计原则，不是可以直接下发的数值公式。共享缓存架构、端口速率、扇入比、MTU、线缆长度、ASIC 单元大小和厂商实现都会影响最终配置。
 
@@ -326,7 +371,7 @@ ECN 标记门限 < PFC XOFF 门限 < 实际丢包水位
 
 很多 RoCE 故障并不是算法失效，而是服务器与交换机对“这是什么流量”理解不一致。
 
-![GPT 信息图：从 RNIC 标记到 Priority、TC 和 Queue 的逐跳映射](assets/rocev2-congestion/gpt-infographics/04-priority-mapping.png)
+![GPT 信息图：从 RNIC 标记到 Priority、TC 和 Queue 的逐跳映射](assets/rocev2-congestion/infographics/priority-mapping.png)
 
 一个典型链路可能包含：
 
@@ -385,7 +430,15 @@ rdma link show
 rdma statistic show
 perfquery                 # InfiniBand 场景常用，RoCE 需结合具体驱动
 ls /sys/class/infiniband/<device>/ports/1/hw_counters/
+
+# NVIDIA/Mellanox ConnectX（需安装相应驱动工具或 MFT）
+mlnx_qos -i <netdev>          # 查看 QoS、Trust、PFC 等配置
+mst start                     # 启动 MFT 设备访问服务
+mst status -v                 # 查找 PCI BDF 与 MST 设备名
+mlxlink -d <PCI_BDF或MST设备> # 查看链路、FEC、误码等物理层信息
 ```
+
+`mlxreg` 可做寄存器级查询和调试，但也具备修改设备寄存器的能力。生产环境中只应按 NVIDIA 文档或厂商支持人员的明确步骤使用，本文不提供寄存器写入示例。`show_gvmid.sh` 并非所有 ConnectX 软件栈都提供的标准命令，因此没有把它列为通用排障入口。
 
 重点寻找：
 
@@ -451,7 +504,7 @@ ls /sys/class/infiniband/<device>/ports/1/hw_counters/
 
 在哪一步断掉，就重点检查那一层。
 
-![GPT 信息图：从交换机、RNIC 和训练作业三侧沿闭环排查拥塞](assets/rocev2-congestion/gpt-infographics/09-operations-troubleshooting.png)
+![GPT 信息图：从交换机、RNIC 和训练作业三侧沿闭环排查拥塞](assets/rocev2-congestion/infographics/operations-troubleshooting.png)
 
 ### 第四步：检查 PFC 是否只是短暂兜底
 
@@ -467,67 +520,7 @@ ls /sys/class/infiniband/<device>/ports/1/hw_counters/
 
 ---
 
-## 十二、部署与变更检查清单
-
-### 主机/RNIC
-
-- [ ] RoCEv2 模式和 GID 选择正确；
-- [ ] MTU 在端到端路径一致；
-- [ ] RoCE 数据的 DSCP/PCP 符合设计；
-- [ ] PFC 在计划中的优先级启用；
-- [ ] ECN/DCQCN 在 RNIC 和驱动侧启用；
-- [ ] CNP 映射到正确的优先级；
-- [ ] 固件、驱动和 OFED/Inbox Driver 组合经过兼容性验证。
-
-### 交换机
-
-- [ ] 所有端口使用一致的 Trust 与 QoS 映射；
-- [ ] RoCE Priority 映射到正确的无损 TC/Queue；
-- [ ] ECN 对正确队列生效；
-- [ ] ECN 门限早于 PFC XOFF；
-- [ ] Headroom 与端口速率、MTU、线缆长度匹配；
-- [ ] PFC 只对必要优先级启用；
-- [ ] CNP 队列不会被 RoCE 数据长期阻塞；
-- [ ] PFC watchdog/storm protection 已启用并验证动作；
-- [ ] ECMP 哈希字段能够区分 RoCEv2 流；
-- [ ] Telemetry 能采集队列、ECN、PFC、丢包和 Buffer 峰值。
-
-### 验收
-
-- [ ] 单流、多流、Incast 和 All-to-All 均已测试；
-- [ ] 满载时 ECN/CNP 闭环能够使队列回落；
-- [ ] PFC 不长期持续，也不会跨大量端口扩散；
-- [ ] 无损队列没有持续丢包；
-- [ ] NCCL 带宽、Step 时间和尾延迟达到基线；
-- [ ] 故障注入时 watchdog 和告警能够生效。
-
----
-
-## 十三、几个容易混淆的结论
-
-### “RoCE 必须零丢包”
-
-更准确的说法是：传统 RoCE 部署尽量通过 PFC、ECN 和端到端拥塞控制减少拥塞丢包。RDMA RC 有可靠传输和重传能力，但丢包恢复会显著影响尾延迟和吞吐。现代设备也支持不同程度的 lossy 或 semi-lossless RoCE 方案，不能把某一种部署模式写成协议的绝对要求。
-
-### “只要打开 PFC，RoCE 就不会拥塞”
-
-错误。PFC 不能消除拥塞，只会把压力推回上一跳。没有有效的 ECN/DCQCN，持续热点可能演变成 Pause 传播和队头阻塞。
-
-### “ECN 标记就是丢包”
-
-错误。CE 是报文头中的拥塞标记，报文通常仍会被转发到接收端。它的目的正是在真正丢包前触发源端降速。
-
-### “PFC 和 DCQCN 都是在限速，所以二选一即可”
-
-错误。PFC 是邻居间、按优先级的快速暂停；DCQCN 是面向具体 RoCE 流的端到端速率调节。两者的范围、触发方式和副作用都不同。
-
-### “有 ECN 计数就是网络异常”
-
-不一定。ECN 被触发说明队列曾达到标记门限。若 CNP 随后增加、队列回落、PFC 很少触发、作业性能稳定，反而说明闭环正在工作。
-
----
-
-## 十四、总结
+## 十二、总结
 
 在 RoCEv2 AI 网络中，拥塞控制可以理解成一套分层防线：
 
@@ -557,9 +550,19 @@ ls /sys/class/infiniband/<device>/ports/1/hw_counters/
 
 - [微信参考文章 1](https://mp.weixin.qq.com/s/PowmfUGDeKjuLNJfBDk8lA)
 - [微信参考文章 2](https://mp.weixin.qq.com/s/rrWp9-FBcuat1T0r_71qZg)
+- [微信参考文章：Buffer 与 Headroom](https://mp.weixin.qq.com/s/6Pa6WUVBlp2eSPJQca4I5w)
+- [H3C RDMA 技术专题：PFC Buffer 与 Headroom](https://www.h3c.com/cn/Service/Document_Software/Document_Center/Home/Public/00-Public/Learn_Technologies/Technical_Topics/H3C_S6805_S9820_RDMA-Long/?CHID=685753)
 - [NVIDIA Cumulus Linux：RDMA over Converged Ethernet](https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-52/Layer-1-and-Switch-Ports/Quality-of-Service/RDMA-over-Converged-Ethernet-RoCE/)
 - [NVIDIA Cumulus Linux：Quality of Service 与 ECN](https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-53/Layer-1-and-Switch-Ports/Quality-of-Service/)
 - [NVIDIA NCCL：RoCE 网络排障](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/networking_troubleshooting.html)
+- [NVIDIA：RoCEv2 UDP 端口与报文格式](https://docs.nvidia.com/networking/display/mlnxofedv551032/rdma%2Bover%2Bconverged%2Bethernet%2B%28roce%29)
+- [NVIDIA：mlnx_qos QoS 配置工具](https://docs.nvidia.com/networking/display/mlnxofedv590560/quality%2Bof%2Bservice%2B%28qos%29)
+- [NVIDIA MFT：Debug Utilities（含 mlxlink）](https://docs.nvidia.com/networking/display/mft/debug-utilities)
+- [NVIDIA MFT：mlxreg Utility](https://docs.nvidia.com/networking/display/mftv4240/mlxreg%2Butility)
 - [Microsoft Learn：Priority-based Flow Control](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/priority-based-flow-control--pfc)
 - [SIGCOMM 2015：Congestion Control for Large-Scale RDMA Deployments（DCQCN）](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
+- [Google Research：TIMELY](https://research.google/pubs/timely-rtt-based-congestion-control-for-the-datacenter/)
+- [Google Research：Swift](https://research.google/pubs/swift-delay-is-simple-and-effective-for-congestion-control-in-the-datacenter/)
+- [HPCC：High Precision Congestion Control](https://hpcc-group.github.io/)
+- [PINT：Probabilistic In-band Network Telemetry](https://arxiv.org/abs/2007.03731)
 - [RFC 3168：The Addition of Explicit Congestion Notification (ECN) to IP](https://www.rfc-editor.org/rfc/rfc3168)
