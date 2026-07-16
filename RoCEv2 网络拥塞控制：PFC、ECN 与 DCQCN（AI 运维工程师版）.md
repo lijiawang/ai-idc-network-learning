@@ -1,0 +1,565 @@
+# RoCEv2 网络拥塞控制：PFC、ECN 与 DCQCN
+
+> 面向 AI 运维工程师：不推导复杂公式，重点讲清楚 PFC、ECN、CNP、DCQCN 如何协作，以及训练吞吐下降时应该看什么。
+
+在 AI 集群中，GPU 算力并不总是性能瓶颈。一次 AllReduce、AllGather 或 MoE All-to-All，只要网络中的某个出口发生拥塞，就可能让大量 GPU 等待通信，最终表现为：
+
+- NCCL 带宽忽高忽低；
+- 单个训练 Step 偶发变慢；
+- 平均吞吐尚可，但 P99/P999 延迟明显升高；
+- 链路没有 Down，光模块也没有误码，作业却像“网络不稳定”；
+- 严重时出现 RDMA 重传、QP 超时或训练任务失败。
+
+RoCEv2 使用 UDP/IP 承载 RDMA，可以运行在三层 Leaf-Spine 网络中，但它对拥塞和丢包非常敏感。生产网络通常通过 **PFC、ECN 和 DCQCN** 共同处理拥塞。
+
+先记住一句话：
+
+> **ECN 负责提前发现拥塞，DCQCN 负责让真正的发送源降速，PFC 负责在队列接近危险水位时逐跳暂停。**
+
+它们不是三个互相替代的开关，而是三种不同层次的机制。
+
+![GPT 信息图：RoCEv2 中 PFC、ECN、CNP 与 DCQCN 的完整协作关系](assets/rocev2-congestion/gpt-infographics/02-pfc-ecn-dcqcn-overview.png)
+
+---
+
+## 一、为什么 AI 流量特别容易造成拥塞？
+
+### 1. AI 流量不是平稳的小水流
+
+大模型训练会周期性进入集合通信阶段。多个 GPU 可能在非常接近的时间同时发送数据，流量具有三个典型特征：
+
+- **突发性强**：计算阶段结束后，许多 GPU 同时开始通信；
+- **大流多**：梯度、激活值和专家 Token 会形成持续的高带宽流；
+- **同步性强**：一个 Rank 变慢，其他 Rank 也可能在同步点等待。
+
+![GPT 信息图：AI 集群多个 GPU 同步发送形成 Incast 拥塞](assets/rocev2-congestion/gpt-infographics/05-ai-incast.png)
+
+### 2. Incast 会快速打满一个出口队列
+
+假设 8 台服务器各以 100 Gbit/s 向同一个 100 Gbit/s 出口发送：
+
+```text
+8 × 100 Gbit/s 输入
+        ↓
+   同一个交换机出口
+        ↓
+     100 Gbit/s
+```
+
+交换机瞬间收到的流量远高于出口能力，多出来的报文只能进入队列。即使平均带宽没有超过网络容量，微秒级的同步突发也可能让缓存快速上涨。
+
+队列增长通常经历以下过程：
+
+```text
+正常水位
+   ↓
+达到 ECN 门限：开始标记拥塞
+   ↓
+达到 PFC XOFF 门限：暂停直接上游的指定优先级
+   ↓
+缓存耗尽：丢包
+```
+
+设计目标不是让队列永远为零，而是尽早控制流量，避免队列长期积压和缓存溢出。
+
+---
+
+## 二、三种机制分别解决什么问题？
+
+| 机制 | 工作范围 | 谁发现/触发 | 谁采取动作 | 主要作用 |
+|---|---|---|---|---|
+| PFC | 二层、逐跳 | 下游端口或交换机 | 直接相邻的上游设备 | 暂停某个优先级，尽量避免丢包 |
+| ECN | 三层、端到端信号的一部分 | 拥塞交换机 | 给经过的 IP 报文标记 CE | 在丢包前暴露拥塞 |
+| CNP | 端到端反馈报文 | 接收端 RNIC | 通知发送端 RNIC | 把 CE 信号带回流量源 |
+| DCQCN | 端到端速率控制 | 发送端 RNIC | 降低或恢复对应流的发送速率 | 从源头消除持续拥塞 |
+
+可以把它们类比成高速公路：
+
+- ECN 是前方拥堵提示牌；
+- CNP 是把拥堵消息传回出发车辆；
+- DCQCN 是车辆主动减速和逐步恢复速度；
+- PFC 是入口临时落杆，防止道路彻底堵死。
+
+真正解决持续拥塞的是源端调速。PFC 只能暂时阻止报文继续进入某个队列，不能增加出口带宽。
+
+---
+
+## 三、PFC：按优先级执行的逐跳暂停
+
+PFC 全称 Priority-based Flow Control，来自数据中心桥接（DCB）体系。它与传统的全链路 Pause 最大的区别是：**PFC 可以只暂停一个或若干个 802.1p 优先级，而不暂停整条链路上的所有流量。**
+
+![GPT 信息图：802.3x 全局 Pause 与 PFC 按优先级暂停的范围对比](assets/rocev2-congestion/gpt-infographics/10-global-pause-vs-pfc.png)
+
+![GPT 绘制：PFC 按优先级逐跳暂停直接上游，同时保留其他优先级流量](assets/rocev2-congestion/gpt-images/02-pfc-hop-by-hop.png)
+
+### 1. PFC 如何工作？
+
+当交换机发现某个无损队列达到 XOFF 门限时，会向直接相连的上游设备发送 PFC Pause 帧：
+
+```text
+服务器 A ──→ Leaf 1 ──→ Spine ──→ Leaf 2
+                         队列拥塞
+                             │
+              PFC Pause ←────┘
+              只通知直接上游，且只暂停指定优先级
+```
+
+上游收到 Pause 后，暂时停止发送对应优先级的流量。队列下降到 XON 恢复条件后，下游再允许上游继续发送。
+
+![GPT 信息图：PFC 的 XOFF 暂停水位与 XON 恢复过程](assets/rocev2-congestion/gpt-infographics/01-pfc-xoff-xon.png)
+
+PFC 的几个关键词：
+
+- **逐跳**：Pause 只作用于直连邻居，不会直接通知最初的发送端；
+- **按优先级**：可以只暂停 RoCE 所在优先级；
+- **响应快**：通常由交换机 ASIC 和网卡硬件完成；
+- **只是兜底**：它没有让发送源理解“为什么拥塞”，也没有从根本上降低业务注入速率。
+
+### 2. 为什么需要 Headroom？
+
+交换机发出 Pause 后，上游不会瞬间停止。在 Pause 帧传播、设备处理和发送流水线停止之前，仍有一批在途报文继续到达。
+
+因此，无损队列必须预留 Headroom，用来吸收：
+
+- 链路传播期间的在途数据；
+- 对端响应 Pause 之前已经发出的数据；
+- 本地端口和 ASIC 流水线中的数据；
+- 最大帧、线缆长度和设备实现带来的余量。
+
+![GPT 信息图：PFC 发出 Pause 后仍需要 Headroom 吸收在途报文](assets/rocev2-congestion/gpt-infographics/08-pfc-headroom.png)
+
+链路越快、线缆越长、设备响应越慢，需要吸收的在途数据通常越多。Headroom 不能照抄另一种交换机或另一种速率的配置，应该使用厂商针对 ASIC、端口速率、MTU 和线缆长度给出的计算或模板。
+
+### 3. PFC 的副作用
+
+PFC 能减少因拥塞造成的丢包，但不是越多越好。
+
+#### 队头阻塞（HOL Blocking）
+
+同一优先级内，只要其中一个目的方向拥塞，其他本来不拥塞的流量也可能被一起暂停。
+
+#### 拥塞扩散
+
+一个下游端口持续发 Pause，上游队列也会积压；上游又可能继续向更上游发 Pause，最终把局部热点扩散到更大范围。
+
+#### PFC 风暴或死锁
+
+错误的优先级映射、环形依赖、故障网卡持续发送 Pause，可能导致大量端口长期暂停。此时链路仍是 Up，但有效吞吐接近零，排障时很容易误判。
+
+![GPT 信息图：PFC Storm 从局部热点向上游逐跳扩散](assets/rocev2-congestion/gpt-infographics/03-pfc-storm.png)
+
+因此，生产网络通常需要：
+
+- 只对计划中的 RoCE 优先级启用 PFC；
+- 控制面和管理流量放在非 PFC 优先级；
+- 启用 PFC watchdog、storm detection 或厂商同类保护；
+- 监控 Pause 帧次数之外，还要监控 Pause 持续时间。
+
+---
+
+## 四、ECN：在丢包之前给报文做标记
+
+ECN 全称 Explicit Congestion Notification。对于 RoCEv2，它使用 IP 头中的两个 ECN 位传递拥塞信息。
+
+常见取值为：
+
+| ECN 位 | 名称 | 含义 |
+|---|---|---|
+| `00` | Not-ECT | 发送方不声明支持 ECN |
+| `01` / `10` | ECT | 发送方声明报文支持 ECN |
+| `11` | CE | 报文经过的设备发现了拥塞 |
+
+### 1. ECN 标记过程
+
+发送端发出 ECT 报文。交换机检测到 RoCE 队列超过 ECN 门限后，不必立即丢包，而是把部分或全部经过报文的 ECN 字段改成 CE：
+
+```text
+发送端 RNIC → 交换机队列 → 接收端 RNIC
+   ECT          达到门限          收到 CE
+                  │
+                  └─ 把 ECT 改为 CE，报文继续转发
+```
+
+ECN 的关键价值是：**报文仍能到达接收端，但网络已经明确告诉端点“这条路径开始拥塞”。**
+
+![GPT 信息图：交换机在丢包前将 ECT 报文标记为 CE](assets/rocev2-congestion/gpt-infographics/06-ecn-marking.png)
+
+### 2. ECN 门限不是一个孤立数字
+
+交换机常见的 ECN 配置包括：
+
+- 最小门限 Kmin；
+- 最大门限 Kmax；
+- 标记概率；
+- 绝对门限或动态门限；
+- 生效的 Traffic Class/Queue。
+
+一种常见策略是：队列低于 Kmin 不标记；从 Kmin 到 Kmax 逐步提高标记概率；超过 Kmax 后高概率或全部标记。具体行为取决于交换机 ASIC 和 NOS。
+
+运维上最重要的不是背一个“标准门限”，而是确认：
+
+1. ECN 是否作用于真正承载 RoCE 的队列；
+2. ECN 是否早于 PFC 介入；
+3. 门限是否与交换机缓存、端口速率和 DCQCN 参数成套设计；
+4. ECT 报文是否被正确标记，而不是直接被 WRED 丢弃。
+
+> 理想状态通常是 ECN 经常发挥作用，PFC 偶尔兜底，而不是长期依赖 PFC 控制流量。
+
+---
+
+## 五、CNP：把拥塞消息送回发送端
+
+交换机只负责标记 CE，并不直接控制源端 RNIC 的发送速率。
+
+接收端 RNIC 收到带 CE 标记的 RoCEv2 报文后，会生成 CNP（Congestion Notification Packet，拥塞通知报文），发回发送端：
+
+```text
+数据方向：发送端 RNIC ──→ 拥塞交换机 ──→ 接收端 RNIC
+                            标记 CE
+
+反馈方向：发送端 RNIC ←──────── CNP ────── 接收端 RNIC
+```
+
+![GPT 信息图：CP 标记 CE、NP 返回 CNP、RP 执行 DCQCN 降速的完整闭环](assets/rocev2-congestion/gpt-images/03-ecn-cnp-dcqcn-loop.png)
+
+CNP 是通知，不是 Pause：
+
+- 它不会要求链路上的某个端口立即停止一个优先级；
+- 它告诉发送端某条 RoCE 流遇到了拥塞；
+- 发送端收到 CNP 后，由拥塞控制算法决定降速幅度和恢复方式。
+
+实际部署中，CNP 常被映射到独立的高优先级队列，以免拥塞反馈本身被数据流堵住。但它不应被错误地塞进一个可能长期被 PFC Pause 的队列，否则会出现“越拥塞，反馈越回不来”的问题。
+
+---
+
+## 六、DCQCN：在发送端完成闭环调速
+
+DCQCN 全称 Data Center Quantized Congestion Notification，是 RoCEv2 中广泛使用的端到端拥塞控制算法。
+
+![GPT 信息图：DCQCN 收到 CNP 后降速并分阶段恢复](assets/rocev2-congestion/gpt-infographics/07-dcqcn-rate-control.png)
+
+它把系统分成三个角色：
+
+| 角色 | 所在位置 | 作用 |
+|---|---|---|
+| CP（Congestion Point） | 拥塞交换机 | 检测排队并标记 CE |
+| NP（Notification Point） | 接收端 RNIC | 识别 CE，返回 CNP |
+| RP（Reaction Point） | 发送端 RNIC | 根据 CNP 调整发送速率 |
+
+完整闭环如下：
+
+```text
+        ① 数据报文
+RP ─────────────────────→ CP ─────────────────────→ NP
+发送端                    交换机标记 CE              接收端
+  ↑                                                    │
+  └────────────────── ② CNP 反馈 ─────────────────────┘
+  │
+  ├─ ③ 收到持续拥塞反馈：降低对应流的发送速率
+  └─ ④ 一段时间没有新反馈：逐步恢复发送速率
+```
+
+### 1. 降速不是“一脚刹车到底”
+
+发送端 RNIC 会根据 CNP 估计拥塞程度，更新目标速率和当前速率。拥塞持续时继续抑制发送；拥塞缓解后，再按照定时器或已发送字节数逐步恢复。
+
+从运维角度，不必先掌握每个公式，但要理解几类参数：
+
+- 初始速率和最低速率；
+- 收到 CNP 后的降速强度；
+- 拥塞程度估计的平滑权重；
+- 无新 CNP 时的恢复周期；
+- 加性恢复、快速恢复等阶段的步长；
+- CNP 生成和限速相关参数。
+
+参数过于激进，吞吐可能剧烈振荡；参数过于保守，队列降不下来，PFC 会频繁触发。
+
+### 2. DCQCN 为什么不能完全取代 PFC？
+
+ECN、CNP 和源端降速形成闭环需要时间。遇到极强微突发时，交换机队列可能在反馈抵达发送端之前就逼近缓存上限。
+
+PFC 的价值是在这段反馈延迟内提供快速的逐跳保护。反过来，只有 PFC 而没有有效的 ECN/DCQCN，持续拥塞就会不断触发 Pause，容易造成拥塞扩散。
+
+---
+
+## 七、三者是如何配合的？
+
+以多个 GPU 节点同时向一个出口发送为例：
+
+```text
+1. 多个发送端同时突发
+              ↓
+2. 交换机出口队列上涨
+              ↓
+3. 达到 ECN 门限，交换机标记 CE
+              ↓
+4. 接收端 RNIC 返回 CNP
+              ↓
+5. 发送端 DCQCN 降速
+              ↓
+6. 拥塞缓解后，发送端逐步恢复速率
+
+若 3～5 的反馈尚未来得及生效，队列继续上涨：
+
+7. 达到 PFC XOFF 门限
+              ↓
+8. 交换机逐跳 Pause 指定优先级
+              ↓
+9. 队列下降到恢复水位后解除 Pause
+```
+
+推荐的逻辑关系是：
+
+```text
+ECN 标记门限 < PFC XOFF 门限 < 实际丢包水位
+```
+
+三者之间还要留出足够安全距离：ECN 需要时间完成端到端反馈，PFC XOFF 之后需要 Headroom 吸收在途报文。
+
+![GPT 绘制：交换机队列中的 ECN、PFC、Headroom 与丢包水位](assets/rocev2-congestion/gpt-images/04-queue-thresholds.png)
+
+这只是设计原则，不是可以直接下发的数值公式。共享缓存架构、端口速率、扇入比、MTU、线缆长度、ASIC 单元大小和厂商实现都会影响最终配置。
+
+---
+
+## 八、优先级映射：最容易被忽略的基础
+
+很多 RoCE 故障并不是算法失效，而是服务器与交换机对“这是什么流量”理解不一致。
+
+![GPT 信息图：从 RNIC 标记到 Priority、TC 和 Queue 的逐跳映射](assets/rocev2-congestion/gpt-infographics/04-priority-mapping.png)
+
+一个典型链路可能包含：
+
+```text
+应用/NCCL
+   ↓
+RNIC 根据 DSCP 或 PCP 标记报文
+   ↓
+交换机 Trust DSCP/PCP
+   ↓
+映射到 Switch Priority
+   ↓
+映射到 Traffic Class / Queue
+   ↓
+该队列应用 ECN、PFC 和 Buffer 配置
+```
+
+需要逐跳核对：
+
+- RoCEv2 数据报文使用的 DSCP/PCP；
+- 端口的 Trust 模式；
+- DSCP/PCP → Priority → TC/Queue 映射；
+- PFC 启用的 Priority；
+- ECN 生效的 TC/Queue；
+- CNP 使用的 Priority 和调度方式；
+- 主机、Leaf、Spine、边界设备是否保持一致。
+
+只要中间一跳重写 DSCP、Trust 模式错误或队列映射不一致，就可能出现：服务器认为流量属于无损类，交换机却把它放进普通有损队列。
+
+---
+
+## 九、AI 运维应该监控哪些指标？
+
+单看端口利用率远远不够。400G 端口的 1 毫秒平均利用率可能并不高，但一个微秒级突发已经足以触发 ECN 或 PFC。
+
+### 交换机侧
+
+| 指标 | 说明 | 需要警惕的现象 |
+|---|---|---|
+| ECN marked packets | 被标记 CE 的报文数/速率 | 持续高位且伴随吞吐下降 |
+| PFC Tx | 本端向上游发送 Pause | 说明本端下游方向出现积压 |
+| PFC Rx | 本端收到下游 Pause | 本端被下游反压 |
+| PFC pause duration | 处于暂停状态的累计时间 | 比单纯帧数更能反映影响程度 |
+| Queue occupancy | 队列当前/峰值水位 | 长期高水位或频繁触顶 |
+| Buffer max usage | Buffer 峰值使用量 | 接近 Headroom 或共享池上限 |
+| Queue drops / discards | 队列丢包 | 无损类出现丢包通常需要立即调查 |
+| WRED/ECN counters | 标记与丢弃动作 | 确认 ECT 报文被标记而非误丢弃 |
+
+### RNIC 与主机侧
+
+不同厂商和驱动的计数器命名不同，常用入口包括：
+
+```bash
+ethtool -S <netdev>
+rdma link show
+rdma statistic show
+perfquery                 # InfiniBand 场景常用，RoCE 需结合具体驱动
+ls /sys/class/infiniband/<device>/ports/1/hw_counters/
+```
+
+重点寻找：
+
+- CNP 发送和接收；
+- ECN/CE 相关计数；
+- RoCE 重传、序列错误和 retry exceeded；
+- PFC Rx/Tx 和暂停时长；
+- 端口丢包、discard、CRC/FCS、符号错误；
+- RDMA QP/CQ 错误。
+
+### 作业侧
+
+- NCCL bus bandwidth 和 algorithm bandwidth；
+- Collective 的 P50/P95/P99 延迟；
+- 单 Step 时间和长尾；
+- 不同 Rank 的完成时间差异；
+- GPU SM 利用率下降是否与通信阶段重合；
+- 故障是否集中在固定的 Leaf、Spine、Rail 或目的节点。
+
+把作业时间线、RNIC 计数器和交换机队列遥测放到同一个时间轴上，通常比单独看任何一个告警更有效。
+
+---
+
+## 十、常见现象与判断方向
+
+| 现象 | 可能原因 | 优先检查 |
+|---|---|---|
+| ECN 标记上升，CNP 上升，吞吐基本稳定 | DCQCN 正常工作，网络正在主动控速 | 队列是否回落、PFC 是否很少触发 |
+| ECN 为零，但 PFC 频繁触发 | ECN 门限过高、未启用或队列映射错误 | ECN 配置、Trust、TC 映射 |
+| ECN/CNP 很多，队列仍长期很高 | DCQCN 参数偏慢、源端未正确响应或持续过载 | RNIC CC 状态、CNP Rx、速率恢复参数 |
+| PFC Tx/Rx 很高，端口无丢包但作业卡顿 | Pause 传播、HOL 阻塞或 PFC 风暴 | Pause duration、传播路径、watchdog |
+| 无 PFC、无 ECN，但有队列丢包和重传 | 流量进入了错误队列，或功能未生效 | DSCP/PCP、Trust、Queue counters |
+| 只有一个 Leaf/Rail 反复出现 PFC | 局部热点、ECMP 哈希碰撞、链路降速或拓扑不对称 | 路径、端口速率、ECMP、故障链路 |
+| CNP 发出很多，但发送端 CNP Rx 很少 | CNP 路径、优先级或 ACL 有问题 | CNP 队列、路由、ACL、丢包计数 |
+| PFC 后仍有无损队列丢包 | Headroom 不足、XOFF 太晚或 Pause 未被对端接收 | Headroom、线缆长度、PFC Rx/Tx、MTU |
+
+注意：计数器非零不等于故障。ECN 标记本来就是主动拥塞控制的一部分。判断时应该关注**速率、持续时间、基线变化以及它与作业长尾的相关性**。
+
+---
+
+## 十一、推荐排障顺序
+
+### 第一步：先排除物理层和链路问题
+
+检查端口是否降速、FEC 是否异常、CRC/FCS、symbol error、光功率和链路 flap。物理误码与拥塞丢包的处理方向完全不同。
+
+### 第二步：确认 RoCE 流量进入了正确队列
+
+从 RNIC 到 Leaf、Spine 再到对端，逐跳核对 DSCP/PCP、Trust、Priority、TC 和 Queue。不要只看配置命令成功，要看实际队列计数是否增长。
+
+### 第三步：判断拥塞控制链路是否闭环
+
+按事件顺序核对：
+
+```text
+交换机队列上涨
+  → ECN/CE 标记增加
+  → 接收端 CNP Tx 增加
+  → 发送端 CNP Rx 增加
+  → 发送速率下降
+  → 队列回落
+```
+
+在哪一步断掉，就重点检查那一层。
+
+![GPT 信息图：从交换机、RNIC 和训练作业三侧沿闭环排查拥塞](assets/rocev2-congestion/gpt-infographics/09-operations-troubleshooting.png)
+
+### 第四步：检查 PFC 是否只是短暂兜底
+
+少量 PFC 不一定异常；持续 Pause、Pause 时长快速增长或多跳扩散才是危险信号。结合队列水位判断 XOFF 是否过早或过晚。
+
+### 第五步：关联具体通信模式和路径
+
+用 NCCL Tests 或业务的 Collective 指标复现，确认问题出现在 AllReduce、All-to-All，还是某个固定源/目的组合。再结合 ECMP、Rail 和交换机遥测定位热点。
+
+### 第六步：最后再调门限和算法参数
+
+先确认物理层、优先级映射和功能闭环正确，再修改 ECN、PFC 或 DCQCN 参数。一次只改一组参数，保留变更前后的队列、CNP、PFC 和作业性能数据。
+
+---
+
+## 十二、部署与变更检查清单
+
+### 主机/RNIC
+
+- [ ] RoCEv2 模式和 GID 选择正确；
+- [ ] MTU 在端到端路径一致；
+- [ ] RoCE 数据的 DSCP/PCP 符合设计；
+- [ ] PFC 在计划中的优先级启用；
+- [ ] ECN/DCQCN 在 RNIC 和驱动侧启用；
+- [ ] CNP 映射到正确的优先级；
+- [ ] 固件、驱动和 OFED/Inbox Driver 组合经过兼容性验证。
+
+### 交换机
+
+- [ ] 所有端口使用一致的 Trust 与 QoS 映射；
+- [ ] RoCE Priority 映射到正确的无损 TC/Queue；
+- [ ] ECN 对正确队列生效；
+- [ ] ECN 门限早于 PFC XOFF；
+- [ ] Headroom 与端口速率、MTU、线缆长度匹配；
+- [ ] PFC 只对必要优先级启用；
+- [ ] CNP 队列不会被 RoCE 数据长期阻塞；
+- [ ] PFC watchdog/storm protection 已启用并验证动作；
+- [ ] ECMP 哈希字段能够区分 RoCEv2 流；
+- [ ] Telemetry 能采集队列、ECN、PFC、丢包和 Buffer 峰值。
+
+### 验收
+
+- [ ] 单流、多流、Incast 和 All-to-All 均已测试；
+- [ ] 满载时 ECN/CNP 闭环能够使队列回落；
+- [ ] PFC 不长期持续，也不会跨大量端口扩散；
+- [ ] 无损队列没有持续丢包；
+- [ ] NCCL 带宽、Step 时间和尾延迟达到基线；
+- [ ] 故障注入时 watchdog 和告警能够生效。
+
+---
+
+## 十三、几个容易混淆的结论
+
+### “RoCE 必须零丢包”
+
+更准确的说法是：传统 RoCE 部署尽量通过 PFC、ECN 和端到端拥塞控制减少拥塞丢包。RDMA RC 有可靠传输和重传能力，但丢包恢复会显著影响尾延迟和吞吐。现代设备也支持不同程度的 lossy 或 semi-lossless RoCE 方案，不能把某一种部署模式写成协议的绝对要求。
+
+### “只要打开 PFC，RoCE 就不会拥塞”
+
+错误。PFC 不能消除拥塞，只会把压力推回上一跳。没有有效的 ECN/DCQCN，持续热点可能演变成 Pause 传播和队头阻塞。
+
+### “ECN 标记就是丢包”
+
+错误。CE 是报文头中的拥塞标记，报文通常仍会被转发到接收端。它的目的正是在真正丢包前触发源端降速。
+
+### “PFC 和 DCQCN 都是在限速，所以二选一即可”
+
+错误。PFC 是邻居间、按优先级的快速暂停；DCQCN 是面向具体 RoCE 流的端到端速率调节。两者的范围、触发方式和副作用都不同。
+
+### “有 ECN 计数就是网络异常”
+
+不一定。ECN 被触发说明队列曾达到标记门限。若 CNP 随后增加、队列回落、PFC 很少触发、作业性能稳定，反而说明闭环正在工作。
+
+---
+
+## 十四、总结
+
+在 RoCEv2 AI 网络中，拥塞控制可以理解成一套分层防线：
+
+1. **交换机通过 ECN 提前标记拥塞；**
+2. **接收端 RNIC 通过 CNP 把拥塞反馈给发送端；**
+3. **发送端 DCQCN 降低对应流的发送速率，并在拥塞缓解后逐步恢复；**
+4. **如果端到端反馈尚未生效，PFC 在队列接近危险水位时逐跳暂停，保护缓存不被打爆。**
+
+对 AI 运维工程师而言，最重要的不是记住某个厂商的一组门限，而是确认整条链路真正闭环：
+
+```text
+分类正确 → 队列正确 → ECN 能标记 → CNP 能返回
+→ DCQCN 能降速 → 队列能回落 → PFC 只负责兜底
+```
+
+一句话记忆：
+
+> **ECN 是预警，CNP 是回信，DCQCN 是源端刹车，PFC 是最后一道闸门。**
+
+---
+
+## 参考资料
+
+本文全部拥塞控制示意图的可编辑、可导出版本：
+
+- [RoCEv2 拥塞控制图解（HTML，可导出 PNG/PDF）](assets/rocev2-congestion/rocev2-congestion-diagrams.html)
+
+- [微信参考文章 1](https://mp.weixin.qq.com/s/PowmfUGDeKjuLNJfBDk8lA)
+- [微信参考文章 2](https://mp.weixin.qq.com/s/rrWp9-FBcuat1T0r_71qZg)
+- [NVIDIA Cumulus Linux：RDMA over Converged Ethernet](https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-52/Layer-1-and-Switch-Ports/Quality-of-Service/RDMA-over-Converged-Ethernet-RoCE/)
+- [NVIDIA Cumulus Linux：Quality of Service 与 ECN](https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-53/Layer-1-and-Switch-Ports/Quality-of-Service/)
+- [NVIDIA NCCL：RoCE 网络排障](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/networking_troubleshooting.html)
+- [Microsoft Learn：Priority-based Flow Control](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/priority-based-flow-control--pfc)
+- [SIGCOMM 2015：Congestion Control for Large-Scale RDMA Deployments（DCQCN）](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
+- [RFC 3168：The Addition of Explicit Congestion Notification (ECN) to IP](https://www.rfc-editor.org/rfc/rfc3168)

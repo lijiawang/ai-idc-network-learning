@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RoCEv2 拥塞控制图解</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#020617;color:#e2e8f0;font-family:"JetBrains Mono","PingFang SC",monospace}
+    .container{width:1264px;margin:0 auto;padding:32px}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+    h1{font-size:26px;margin:0}.sub{color:#94a3b8;margin-top:8px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 14px #34d399;margin-right:10px}
+    .toolbar{position:relative}.toolbar-toggle{background:#0f172a;border:1px solid #334155;color:#cbd5e1;border-radius:7px;padding:8px 13px;cursor:pointer}.toolbar-actions{display:none;position:absolute;right:0;top:42px;z-index:10;gap:6px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px}.toolbar.open .toolbar-actions{display:flex}.toolbar-actions button{white-space:nowrap;background:#1e293b;border:1px solid #475569;color:#e2e8f0;border-radius:6px;padding:7px 10px;cursor:pointer}
+    .figure{width:1200px;height:675px;margin:0 0 28px;border:1px solid #1e293b;border-radius:14px;overflow:hidden;background:#020617;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+    svg{display:block;width:1200px;height:675px}.title{font-size:26px;font-weight:700;fill:#f8fafc}.subtitle{font-size:13px;fill:#94a3b8}.label{font-size:16px;font-weight:600;fill:#f8fafc}.small{font-size:12px;fill:#cbd5e1}.tiny{font-size:10px;fill:#94a3b8}.num{font-size:16px;font-weight:700;fill:#020617}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{border:1px solid #1e293b;border-radius:10px;padding:16px;background:#0f172a}.card h3{font-size:14px;margin:0 0 8px}.card p{font-size:11px;color:#94a3b8;line-height:1.7;margin:0}.footer{text-align:center;color:#64748b;font-size:10px;margin-top:22px}
+    @media print{.toolbar{display:none!important}}
+  </style>
+</head>
+<body><div class="container" id="report-container">
+  <div class="header"><div><h1><span class="dot"></span>RoCEv2 拥塞控制图解</h1><div class="sub">PFC · ECN · CNP · DCQCN｜面向 AI 运维工程师</div></div><div class="toolbar"><button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('open')">⋯</button><div class="toolbar-actions"><button onclick="copyAsImage()">📋 Copy</button><button onclick="downloadPNG()">🖼️ PNG</button><button onclick="downloadPDF()">📄 PDF</button></div></div></div>
+
+  <div class="figure" id="fig1"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a1" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#fb923c"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g1)"/>
+    <text x="55" y="60" class="title">为什么 AI 集群容易出现 Incast？</text><text x="55" y="88" class="subtitle">多个 GPU 同步结束计算，同时向同一个出口注入大流</text>
+    <g fill="#0f172a" stroke="#22d3ee" stroke-width="2"> <rect x="70" y="145" width="180" height="70" rx="8"/><rect x="70" y="250" width="180" height="70" rx="8"/><rect x="70" y="355" width="180" height="70" rx="8"/><rect x="70" y="460" width="180" height="70" rx="8"/></g>
+    <g class="label" text-anchor="middle"><text x="160" y="177">GPU 节点 A</text><text x="160" y="282">GPU 节点 B</text><text x="160" y="387">GPU 节点 C</text><text x="160" y="492">GPU 节点 D</text></g><g class="tiny" text-anchor="middle"><text x="160" y="198">100/200/400G 突发</text><text x="160" y="303">100/200/400G 突发</text><text x="160" y="408">100/200/400G 突发</text><text x="160" y="513">100/200/400G 突发</text></g>
+    <g stroke="#fb923c" stroke-width="5" marker-end="url(#a1)"><path d="M250 180 C390 180 370 310 510 310"/><path d="M250 285 C390 285 400 315 510 315"/><path d="M250 390 C390 390 400 325 510 325"/><path d="M250 495 C390 495 370 330 510 330"/></g>
+    <rect x="520" y="250" width="210" height="145" rx="10" fill="#0f172a" stroke="#a78bfa" stroke-width="2"/><text x="625" y="290" class="label" text-anchor="middle">Leaf 出口队列</text><g fill="#fb923c"><rect x="555" y="350" width="140" height="18" rx="3"/><rect x="555" y="327" width="140" height="18" rx="3"/><rect x="555" y="304" width="140" height="18" rx="3"/></g><text x="625" y="382" class="tiny" text-anchor="middle">队列在微秒级快速上涨</text>
+    <path d="M730 322H920" stroke="#34d399" stroke-width="8" marker-end="url(#a1)"/><rect x="940" y="265" width="190" height="115" rx="10" fill="#0f172a" stroke="#34d399" stroke-width="2"/><text x="1035" y="308" class="label" text-anchor="middle">单一出口</text><text x="1035" y="337" class="small" text-anchor="middle">能力固定</text><text x="1035" y="360" class="tiny" text-anchor="middle">输入总速率 &gt; 输出速率</text>
+    <rect x="365" y="570" width="470" height="55" rx="8" fill="rgba(136,19,55,.35)" stroke="#fb7185"/><text x="600" y="603" class="small" text-anchor="middle">平均利用率不高 ≠ 没有微突发；毫秒平均值可能掩盖微秒级拥塞</text>
+  </svg></div>
+
+  <div class="figure" id="fig2"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g2" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g2)"/>
+    <text x="55" y="60" class="title">PFC：按优先级、逐跳暂停</text><text x="55" y="88" class="subtitle">下游队列达到 XOFF 后，只暂停直连上游的 RoCE 优先级</text>
+    <g fill="#0f172a" stroke-width="2"><rect x="55" y="245" width="190" height="110" rx="9" stroke="#22d3ee"/><rect x="330" y="245" width="190" height="110" rx="9" stroke="#a78bfa"/><rect x="605" y="220" width="210" height="160" rx="9" stroke="#fb923c"/><rect x="915" y="245" width="210" height="110" rx="9" stroke="#34d399"/></g>
+    <g class="label" text-anchor="middle"><text x="150" y="290">服务器 / RNIC</text><text x="425" y="290">Leaf 交换机</text><text x="710" y="265">拥塞交换机</text><text x="1020" y="290">目的节点</text></g><g class="tiny" text-anchor="middle"><text x="150" y="320">Priority 3: RoCE</text><text x="425" y="320">直接上游</text><text x="710" y="295">出口队列达到 XOFF</text><text x="1020" y="320">接收端</text></g>
+    <path d="M245 300H330M520 300H605M815 300H915" stroke="#34d399" stroke-width="5" marker-end="url(#a2)"/><path d="M605 355H520" stroke="#fb7185" stroke-width="5" stroke-dasharray="10 7" marker-end="url(#a2)"/><text x="560" y="388" class="small" text-anchor="middle" fill="#fb7185">PFC Pause：只回到上一跳</text>
+    <g><rect x="640" y="315" width="140" height="18" rx="3" fill="#fb923c"/><rect x="640" y="338" width="140" height="18" rx="3" fill="#f97316"/></g>
+    <rect x="90" y="460" width="455" height="105" rx="10" fill="rgba(6,78,59,.35)" stroke="#34d399"/><text x="118" y="495" class="label">它能做什么</text><text x="118" y="525" class="small">✓ 快速保护下游缓存，减少拥塞丢包</text><text x="118" y="550" class="small">✓ 只暂停指定优先级，不暂停整条链路</text>
+    <rect x="655" y="460" width="455" height="105" rx="10" fill="rgba(136,19,55,.35)" stroke="#fb7185"/><text x="683" y="495" class="label">它不能做什么</text><text x="683" y="525" class="small">✗ 不知道真正的源端是谁，也不能消除持续热点</text><text x="683" y="550" class="small">✗ 频繁触发会造成 HOL 阻塞与拥塞扩散</text>
+  </svg></div>
+
+  <div class="figure" id="fig3"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g3" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a3g" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#34d399"/></marker><marker id="a3r" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#fb7185"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g3)"/>
+    <text x="55" y="60" class="title">ECN + CNP + DCQCN：端到端拥塞闭环</text><text x="55" y="88" class="subtitle">交换机只负责标记，接收端负责回信，发送端负责真正降速</text>
+    <g fill="#0f172a" stroke-width="2"><rect x="75" y="245" width="235" height="125" rx="10" stroke="#22d3ee"/><rect x="475" y="215" width="250" height="185" rx="10" stroke="#fb923c"/><rect x="890" y="245" width="235" height="125" rx="10" stroke="#34d399"/></g>
+    <text x="192" y="280" class="label" text-anchor="middle">RP：发送端 RNIC</text><text x="192" y="310" class="small" text-anchor="middle">DCQCN 调整发送速率</text><text x="192" y="340" class="tiny" text-anchor="middle">降速 → 稳定 → 逐步恢复</text>
+    <text x="600" y="252" class="label" text-anchor="middle">CP：拥塞交换机</text><text x="600" y="282" class="small" text-anchor="middle">队列超过 ECN 门限</text><rect x="525" y="315" width="150" height="36" rx="6" fill="rgba(251,146,60,.3)" stroke="#fb923c"/><text x="600" y="338" class="small" text-anchor="middle">ECT → CE</text><text x="600" y="377" class="tiny" text-anchor="middle">报文继续转发，不等于丢包</text>
+    <text x="1007" y="280" class="label" text-anchor="middle">NP：接收端 RNIC</text><text x="1007" y="310" class="small" text-anchor="middle">识别 CE，生成 CNP</text><text x="1007" y="340" class="tiny" text-anchor="middle">把拥塞消息反馈给源端</text>
+    <path d="M310 285H475M725 285H890" stroke="#34d399" stroke-width="6" marker-end="url(#a3g)"/><text x="390" y="265" class="tiny" text-anchor="middle">① ECT 数据</text><text x="807" y="265" class="tiny" text-anchor="middle">② CE 数据</text>
+    <path d="M890 365C760 520 445 520 310 365" fill="none" stroke="#fb7185" stroke-width="5" stroke-dasharray="10 7" marker-end="url(#a3r)"/><text x="600" y="502" class="small" text-anchor="middle" fill="#fb7185">③ CNP 反馈：通知真正的发送端</text>
+    <g><circle cx="155" cy="570" r="19" fill="#22d3ee"/><text x="155" y="576" class="num" text-anchor="middle">1</text><text x="185" y="576" class="small">交换机标记</text><circle cx="415" cy="570" r="19" fill="#34d399"/><text x="415" y="576" class="num" text-anchor="middle">2</text><text x="445" y="576" class="small">接收端回 CNP</text><circle cx="725" cy="570" r="19" fill="#fb923c"/><text x="725" y="576" class="num" text-anchor="middle">3</text><text x="755" y="576" class="small">发送端降速</text><circle cx="975" cy="570" r="19" fill="#a78bfa"/><text x="975" y="576" class="num" text-anchor="middle">4</text><text x="1005" y="576" class="small">队列回落</text></g>
+  </svg></div>
+
+  <div class="figure" id="fig4"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g4" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g4)"/>
+    <text x="55" y="60" class="title">队列水位：ECN 先预警，PFC 后兜底</text><text x="55" y="88" class="subtitle">门限之间必须留出反馈时间和在途报文所需的安全空间</text>
+    <rect x="120" y="145" width="960" height="410" rx="12" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+    <rect x="170" y="455" width="860" height="65" fill="rgba(6,78,59,.45)"/><rect x="170" y="345" width="860" height="110" fill="rgba(251,146,60,.25)"/><rect x="170" y="245" width="860" height="100" fill="rgba(136,19,55,.28)"/><rect x="170" y="180" width="860" height="65" fill="rgba(127,29,29,.5)"/>
+    <g stroke-width="2" stroke-dasharray="9 6"><line x1="150" y1="455" x2="1050" y2="455" stroke="#34d399"/><line x1="150" y1="345" x2="1050" y2="345" stroke="#fb923c"/><line x1="150" y1="245" x2="1050" y2="245" stroke="#fb7185"/></g>
+    <g class="label"><text x="190" y="493">正常区：队列较低</text><text x="190" y="408">ECN 区：开始标记 CE，DCQCN 闭环调速</text><text x="190" y="304">PFC Headroom：XOFF 后吸收仍在到达的报文</text><text x="190" y="218">危险区：缓存耗尽 → 丢包</text></g>
+    <g class="small" text-anchor="end"><text x="1020" y="448" fill="#34d399">ECN Kmin</text><text x="1020" y="338" fill="#fb923c">PFC XOFF</text><text x="1020" y="238" fill="#fb7185">实际丢包水位</text></g>
+    <path d="M290 520C350 480 405 430 455 375S560 260 650 212" fill="none" stroke="#22d3ee" stroke-width="5"/><circle cx="290" cy="520" r="7" fill="#22d3ee"/><circle cx="455" cy="375" r="7" fill="#fb923c"/><circle cx="650" cy="212" r="7" fill="#fb7185"/>
+    <rect x="220" y="580" width="760" height="48" rx="8" fill="rgba(76,29,149,.35)" stroke="#a78bfa"/><text x="600" y="610" class="small" text-anchor="middle">设计原则：ECN 门限 &lt; PFC XOFF &lt; 丢包水位；具体数值必须按 ASIC、速率、MTU、线缆计算</text>
+  </svg></div>
+
+  <div class="figure" id="fig5"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g5" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a5" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g5)"/>
+    <text x="55" y="60" class="title">优先级映射：必须逐跳一致</text><text x="55" y="88" class="subtitle">很多“拥塞控制失效”，根因只是 RoCE 报文进错了队列</text>
+    <g fill="#0f172a" stroke-width="2"><rect x="55" y="210" width="170" height="120" rx="9" stroke="#22d3ee"/><rect x="270" y="210" width="170" height="120" rx="9" stroke="#34d399"/><rect x="485" y="210" width="170" height="120" rx="9" stroke="#a78bfa"/><rect x="700" y="210" width="170" height="120" rx="9" stroke="#fb923c"/><rect x="915" y="190" width="220" height="160" rx="9" stroke="#fb7185"/></g>
+    <g class="label" text-anchor="middle"><text x="140" y="250">RNIC 标记</text><text x="355" y="250">端口 Trust</text><text x="570" y="250">Switch Priority</text><text x="785" y="250">TC / Queue</text><text x="1025" y="235">策略真正生效处</text></g>
+    <g class="small" text-anchor="middle"><text x="140" y="285">DSCP / PCP</text><text x="355" y="285">信任 L3 或 L2</text><text x="570" y="285">例如 Priority 3</text><text x="785" y="285">映射到无损队列</text><text x="1025" y="275">ECN 门限</text><text x="1025" y="300">PFC + Buffer</text><text x="1025" y="325">Scheduler</text></g>
+    <g stroke="#64748b" stroke-width="4" marker-end="url(#a5)"><path d="M225 270H270"/><path d="M440 270H485"/><path d="M655 270H700"/><path d="M870 270H915"/></g>
+    <rect x="70" y="420" width="1060" height="120" rx="10" fill="rgba(136,19,55,.25)" stroke="#fb7185" stroke-dasharray="8 5"/><text x="100" y="458" class="label">任何一跳不一致都会破坏闭环</text><text x="100" y="492" class="small">错误示例：RNIC 发 DSCP 26 → Leaf 端口不 Trust DSCP → 报文进入普通有损队列 → 没有 ECN、没有 PFC、直接丢包</text><text x="100" y="520" class="small">验证方法：不要只看配置；观察对应 Priority / TC / Queue 的实际报文与字节计数是否增长</text>
+    <text x="600" y="605" class="small" text-anchor="middle" fill="#34d399">主机 → Leaf → Spine → Leaf → 主机：DSCP/PCP、Priority、TC、PFC、ECN 必须端到端核对</text>
+  </svg></div>
+
+  <div class="figure" id="fig6"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g6" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a6" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g6)"/>
+    <text x="55" y="60" class="title">PFC 拥塞扩散：局部热点如何拖慢整片网络</text><text x="55" y="88" class="subtitle">链路仍然 Up，但 Pause 沿上游传播，健康流量也被同一优先级阻塞</text>
+    <g fill="#0f172a" stroke="#22d3ee" stroke-width="2"><rect x="70" y="145" width="170" height="70" rx="8"/><rect x="70" y="265" width="170" height="70" rx="8"/><rect x="70" y="385" width="170" height="70" rx="8"/></g><g class="small" text-anchor="middle"><text x="155" y="185">健康流 A</text><text x="155" y="305">热点流 B</text><text x="155" y="425">健康流 C</text></g>
+    <g fill="#0f172a" stroke-width="2"><rect x="355" y="230" width="190" height="120" rx="9" stroke="#a78bfa"/><rect x="655" y="230" width="190" height="120" rx="9" stroke="#fb923c"/><rect x="955" y="230" width="190" height="120" rx="9" stroke="#fb7185"/></g><g class="label" text-anchor="middle"><text x="450" y="280">Leaf A</text><text x="750" y="280">Spine</text><text x="1050" y="280">Leaf B 热点</text></g><g class="tiny" text-anchor="middle"><text x="450" y="310">多个流共享 Priority 3</text><text x="750" y="310">Pause 继续向上游传播</text><text x="1050" y="310">下行出口持续拥塞</text></g>
+    <g stroke="#34d399" stroke-width="4" marker-end="url(#a6)"><path d="M240 180C300 180 310 255 355 270"/><path d="M240 300H355"/><path d="M240 420C300 420 310 335 355 320"/><path d="M545 285H655"/><path d="M845 285H955"/></g>
+    <g stroke="#fb7185" stroke-width="5" stroke-dasharray="10 7" marker-end="url(#a6)"><path d="M955 340H845"/><path d="M655 340H545"/><path d="M355 340C310 350 290 405 240 420"/></g><text x="750" y="390" class="small" text-anchor="middle" fill="#fb7185">PFC Pause 向上游扩散</text>
+    <rect x="115" y="520" width="970" height="76" rx="9" fill="rgba(136,19,55,.3)" stroke="#fb7185"/><text x="600" y="552" class="label" text-anchor="middle">结果：HOL Blocking</text><text x="600" y="578" class="small" text-anchor="middle">同一优先级中的健康流 A/C 也可能被暂停；所以要监控 Pause duration，并启用 watchdog</text>
+  </svg></div>
+
+  <div class="figure" id="fig7"><svg viewBox="0 0 1200 675">
+    <defs><pattern id="g7" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width=".5"/></pattern><marker id="a7" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker></defs><rect width="1200" height="675" fill="#020617"/><rect width="1200" height="675" fill="url(#g7)"/>
+    <text x="55" y="60" class="title">AI 运维排障闭环：在哪一步断了？</text><text x="55" y="88" class="subtitle">把作业时间线、RNIC 计数器与交换机队列遥测对齐</text>
+    <g fill="#0f172a" stroke-width="2"><rect x="55" y="210" width="165" height="115" rx="9" stroke="#22d3ee"/><rect x="270" y="210" width="165" height="115" rx="9" stroke="#a78bfa"/><rect x="485" y="210" width="165" height="115" rx="9" stroke="#fb923c"/><rect x="700" y="210" width="165" height="115" rx="9" stroke="#34d399"/><rect x="915" y="210" width="220" height="115" rx="9" stroke="#fb7185"/></g>
+    <g class="label" text-anchor="middle"><text x="137" y="250">① 队列上涨</text><text x="352" y="250">② ECN 标记</text><text x="567" y="250">③ CNP 返回</text><text x="782" y="250">④ 源端降速</text><text x="1025" y="250">⑤ 队列回落</text></g><g class="tiny" text-anchor="middle"><text x="137" y="286">Queue occupancy</text><text x="352" y="286">CE counter</text><text x="567" y="286">CNP Tx / Rx</text><text x="782" y="286">DCQCN rate</text><text x="1025" y="286">PFC 是否停止增长</text></g>
+    <g stroke="#64748b" stroke-width="4" marker-end="url(#a7)"><path d="M220 267H270"/><path d="M435 267H485"/><path d="M650 267H700"/><path d="M865 267H915"/></g>
+    <g><rect x="70" y="405" width="320" height="125" rx="9" fill="rgba(8,51,68,.35)" stroke="#22d3ee"/><text x="95" y="440" class="label">交换机侧</text><text x="95" y="470" class="small">Queue / Buffer / ECN / PFC / Drop</text><text x="95" y="500" class="tiny">看速率、峰值与 Pause 持续时间</text><rect x="440" y="405" width="320" height="125" rx="9" fill="rgba(6,78,59,.35)" stroke="#34d399"/><text x="465" y="440" class="label">RNIC 侧</text><text x="465" y="470" class="small">CNP / Retransmit / PFC / QP Error</text><text x="465" y="500" class="tiny">确认反馈是否抵达、源端是否响应</text><rect x="810" y="405" width="320" height="125" rx="9" fill="rgba(76,29,149,.35)" stroke="#a78bfa"/><text x="835" y="440" class="label">作业侧</text><text x="835" y="470" class="small">NCCL BW / Step Time / P99</text><text x="835" y="500" class="tiny">定位固定 Rail、路径或 Collective</text></g>
+    <rect x="215" y="575" width="770" height="50" rx="8" fill="rgba(251,146,60,.25)" stroke="#fb923c"/><text x="600" y="606" class="small" text-anchor="middle">先验证分类和闭环，再调门限；一次只改一组参数，并保留前后对比数据</text>
+  </svg></div>
+
+  <div class="cards"><div class="card"><h3>ECN / DCQCN</h3><p>主控制环：尽早标记，让真正的发送源降低注入速率。</p></div><div class="card"><h3>PFC</h3><p>快速兜底：吸收反馈生效前的微突发，不应成为常态限速器。</p></div><div class="card"><h3>运维原则</h3><p>逐跳核对分类；同时观察队列、CNP、PFC 与作业长尾。</p></div></div>
+  <div class="footer">RoCEv2 Congestion Control · 7 diagrams · 1200 × 675</div>
+</div>
+<script>
+  const capture=async()=>{const e=document.getElementById('report-container'),r=e.getBoundingClientRect();return html2canvas(document.body,{x:r.left-32,y:r.top-32,width:r.width+64,height:r.height+64,scale:2,backgroundColor:'#020617',ignoreElements:e=>e.classList&&e.classList.contains('toolbar')})};
+  async function copyAsImage(){const c=await capture();c.toBlob(async b=>navigator.clipboard.write([new ClipboardItem({'image/png':b})]));}
+  async function downloadPNG(){const c=await capture(),a=document.createElement('a');a.download='rocev2-congestion-diagrams.png';a.href=c.toDataURL('image/png');a.click();}
+  async function downloadPDF(){const c=await capture(),{jsPDF}=window.jspdf,p=new jsPDF({orientation:'portrait',unit:'px',format:[c.width,c.height]});p.addImage(c.toDataURL('image/png'),'PNG',0,0,c.width,c.height);p.save('rocev2-congestion-diagrams.pdf');}
+</script></body></html>
