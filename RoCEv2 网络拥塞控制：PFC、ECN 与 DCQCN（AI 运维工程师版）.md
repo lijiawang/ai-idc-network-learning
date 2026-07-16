@@ -189,13 +189,6 @@ ECN 全称 Explicit Congestion Notification。对于 RoCEv2，它使用 IP 头�
 
 发送端发出 ECT 报文。交换机检测到 RoCE 队列超过 ECN 门限后，不必立即丢包，而是把部分或全部经过报文的 ECN 字段改成 CE：
 
-```text
-发送端 RNIC → 交换机队列 → 接收端 RNIC
-   ECT          达到门限          收到 CE
-                  │
-                  └─ 把 ECT 改为 CE，报文继续转发
-```
-
 CE 标记不会阻止报文继续转发，而是向端点传递路径拥塞信号。
 
 ![GPT 信息图：交换机在丢包前将 ECT 报文标记为 CE](assets/rocev2-congestion/infographics/ecn-marking.png)
@@ -210,7 +203,9 @@ CE 标记不会阻止报文继续转发，而是向端点传递路径拥塞信�
 - 绝对门限或动态门限；
 - 生效的 Traffic Class/Queue。
 
-一种常见策略是：队列低于 Kmin 不标记；从 Kmin 到 Kmax 逐步提高标记概率；超过 Kmax 后高概率或全部标记。具体行为取决于交换机 ASIC 和 NOS。
+达到 ECN 门限不等于立即给每个报文标记 CE。一种常见策略是：队列低于 Kmin 不标记；从 Kmin 到 Kmax 按概率标记，并随队列水位升高逐步提高标记概率；超过 Kmax 后高概率或全部标记。具体行为取决于交换机 ASIC、NOS 和配置模式。
+
+只有 `ECT(01)` 或 `ECT(10)` 报文能够被改写为 `CE(11)`。对于 `Not-ECT(00)` 报文，交换机不能用 CE 表示拥塞，可能按照 WRED 配置执行丢弃。
 
 排障时应确认以下配置是否匹配：
 
