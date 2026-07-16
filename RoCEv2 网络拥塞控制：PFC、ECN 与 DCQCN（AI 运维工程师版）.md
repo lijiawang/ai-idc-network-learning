@@ -315,18 +315,6 @@ ECN、CNP 和源端降速形成闭环需要时间。遇到极强微突发时，�
 
 PFC 的价值是在这段反馈延迟内提供快速的逐跳保护。反过来，只有 PFC 而没有有效的 ECN/DCQCN，持续拥塞就会不断触发 Pause，容易造成拥塞扩散。
 
-### 3. DCQCN 不是唯一方案
-
-DCQCN 是 RoCEv2 中常见的拥塞控制方案，但不是唯一技术路线。下面几种方案作为扩展了解即可：
-
-- **TIMELY、Swift** 主要利用 RTT 或延迟变化判断拥塞；
-- **HPCC** 利用 INT（In-band Network Telemetry）携带更精细的链路和队列信息；
-- **HPCC-PINT** 用概率化遥测降低 INT 的报文开销。
-
-> **说明：**笔者目前没有实际部署或生产调优 TIMELY、Swift、HPCC、HPCC-PINT 的经验，这里只做概念性介绍，不提供参数配置或选型建议。
-
-这些方案不是 DCQCN 的简单“增强版”，反馈信号和控制逻辑并不相同。如果需要评估，应进一步查阅论文、设备文档以及 RNIC、交换机、驱动和固件的正式支持矩阵。
-
 ---
 
 ## 七、三者是如何配合的？
@@ -580,8 +568,4 @@ ECN / CNP / PFC / Queue Occupancy / Buffer Drop → 拥塞控制方向
 - [NVIDIA MFT：mlxreg Utility](https://docs.nvidia.com/networking/display/mftv4240/mlxreg%2Butility)
 - [Microsoft Learn：Priority-based Flow Control](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/priority-based-flow-control--pfc)
 - [SIGCOMM 2015：Congestion Control for Large-Scale RDMA Deployments（DCQCN）](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf)
-- [Google Research：TIMELY](https://research.google/pubs/timely-rtt-based-congestion-control-for-the-datacenter/)
-- [Google Research：Swift](https://research.google/pubs/swift-delay-is-simple-and-effective-for-congestion-control-in-the-datacenter/)
-- [HPCC：High Precision Congestion Control](https://hpcc-group.github.io/)
-- [PINT：Probabilistic In-band Network Telemetry](https://arxiv.org/abs/2007.03731)
 - [RFC 3168：The Addition of Explicit Congestion Notification (ECN) to IP](https://www.rfc-editor.org/rfc/rfc3168)
