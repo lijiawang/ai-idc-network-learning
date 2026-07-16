@@ -96,13 +96,7 @@ PFC 全称 Priority-based Flow Control，来自数据中心桥接（DCB）体系
 
 当交换机发现某个无损队列达到 XOFF 门限时，会向直接相连的上游设备发送 PFC Pause 帧：
 
-```text
-服务器 A ──→ Leaf 1 ──→ Spine ──→ Leaf 2
-                         队列拥塞
-                             │
-              PFC Pause ←────┘
-              只通知直接上游，且只暂停指定优先级
-```
+![GPT 信息图：Leaf 2 队列达到 XOFF 后向直连上游 Spine 发送 PFC Pause](assets/rocev2-congestion/infographics/pfc-pause-hop-direction.png)
 
 上游收到 Pause 后，暂时停止发送对应优先级的流量。队列下降到 XON 恢复条件后，下游再允许上游继续发送。
 
