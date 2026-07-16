@@ -485,6 +485,23 @@ mlxlink -d <PCI_BDF或MST设备> # 查看链路、FEC、误码等物理层信息
 
 检查端口是否降速、FEC 是否异常、CRC/FCS、symbol error、光功率和链路 flap。物理误码与拥塞丢包的处理方向完全不同。
 
+这些指标分别表示：
+
+| 指标 | 是什么 | 异常时通常说明什么 |
+|---|---|---|
+| FEC | Forward Error Correction，接收端利用冗余编码修复少量比特错误 | `corrected` 持续快速增长表示链路质量变差；`uncorrectable` 表示错误已经无法修复，可能直接丢包 |
+| CRC/FCS | 以太网帧完整性校验；接收端计算结果与帧尾校验值不一致时记错 | 报文在物理传输中损坏，常见于模块、光纤、DAC/AOC 或端口异常 |
+| Symbol Error | 接收端识别到了无效的物理层编码符号 | 信号衰减、噪声、线缆质量、模块兼容性或端口硬件存在问题 |
+| 光功率 | 光模块的发送功率 `Tx Power` 和接收功率 `Rx Power`，通常以 dBm 表示 | Rx 过低常见于光纤衰减、接头脏污或弯折；过高可能使接收器过载，需要与模块规格范围比较 |
+| Link Flap | 端口在 Up 和 Down 状态之间反复切换 | 模块接触不良、光纤故障、FEC 模式不匹配、端口故障或对端重启 |
+
+其中，少量 FEC corrected 并不必然代表故障，关键是观察增长速率和历史基线；CRC/FCS、FEC uncorrectable、链路 flap 持续增加则应优先处理。不要在物理层错误仍在增长时直接调整 ECN、PFC 或 DCQCN 参数。
+
+```text
+FEC / CRC / Symbol Error / 光功率 / Link Flap → 物理链路方向
+ECN / CNP / PFC / Queue Occupancy / Buffer Drop → 拥塞控制方向
+```
+
 ### 第二步：确认 RoCE 流量进入了正确队列
 
 从 RNIC 到 Leaf、Spine 再到对端，逐跳核对 DSCP/PCP、Trust、Priority、TC 和 Queue。不要只看配置命令成功，要看实际队列计数是否增长。
