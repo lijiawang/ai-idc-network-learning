@@ -137,7 +137,7 @@ git log -1 --oneline
 
 直接使用 `main` 就能跑。这里记下提交号，只是方便以后对照；如果哪天 `main` 更新了，想复现这次的环境，再切回这个提交即可。
 
-仓库里虽然有现成脚本，但这里不要执行：
+仓库里虽然有现成脚本，但这环境里不要执行：
 
 ```bash
 bash build_musa.sh
@@ -175,7 +175,7 @@ command -v python
 source /root/venvs/vllm-musa/bin/activate
 ```
 
-### 4.2 把几个关键版本锁住
+### 4.2 固定几个关键版本
 
 constraints 的作用很简单：普通依赖照常解析，但 Torch、Transformers、Ray 和 Triton 不要乱升级。
 
