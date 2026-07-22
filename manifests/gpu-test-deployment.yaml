@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-test
+  namespace: default
+  labels:
+    app: gpu-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-test
+  template:
+    metadata:
+      labels:
+        app: gpu-test
+    spec:
+      containers:
+        - name: gpu-test
+          image: nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda12.5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - nvidia-smi; while true; do sleep 3600; done
+          resources:
+            limits:
+              nvidia.com/gpu: 1
