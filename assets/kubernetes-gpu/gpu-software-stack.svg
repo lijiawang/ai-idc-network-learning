@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#172236" stroke-width=".7"/>
+    </pattern>
+    <linearGradient id="flow-line" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset=".55" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#76b900"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6Z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-cyan" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6Z" fill="#22d3ee"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6Z" fill="#34d399"/>
+    </marker>
+    <style>
+      text { font-family: "JetBrains Mono", "PingFang SC", "Microsoft YaHei", monospace; }
+      .title { fill: #f8fafc; font-size: 22px; font-weight: 700; }
+      .eyebrow { fill: #76b900; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+      .zone { font-size: 11px; font-weight: 700; letter-spacing: .7px; }
+      .step { fill: #07101f; font-size: 10px; font-weight: 700; }
+      .box-title { fill: #f8fafc; font-size: 13px; font-weight: 700; }
+      .box-sub { fill: #94a3b8; font-size: 9px; }
+      .explain { fill: #cbd5e1; font-size: 9px; font-weight: 600; }
+      .small { fill: #94a3b8; font-size: 8px; }
+      line, path { stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" rx="18" fill="#07101f"/>
+  <rect x="1" y="1" width="1198" height="758" rx="17" fill="none" stroke="#26344c" stroke-width="2"/>
+  <rect x="20" y="76" width="1160" height="654" fill="url(#grid)"/>
+
+  <text x="30" y="43" class="eyebrow">FIGURE 01</text>
+  <text x="142" y="43" class="title">Kubernetes 怎么把一块 GPU 交给 Pod？</text>
+  <text x="1165" y="43" fill="#94a3b8" font-size="10" text-anchor="end">沿中间主线向下阅读</text>
+
+  <!-- Background zones: boundaries explain ownership without extra connector lines -->
+  <rect x="52" y="102" width="830" height="196" rx="15" fill="#081322" fill-opacity=".82"
+        stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="9 6"/>
+  <text x="74" y="130" fill="#22d3ee" class="zone">KUBERNETES 控制面</text>
+  <text x="228" y="130" class="small">回答：任务放到哪台机器？</text>
+
+  <rect x="52" y="316" width="830" height="318" rx="15" fill="#0b1321" fill-opacity=".82"
+        stroke="#34d399" stroke-width="1.5" stroke-dasharray="9 6"/>
+  <text x="74" y="344" fill="#34d399" class="zone">GPU 节点</text>
+  <text x="148" y="344" class="small">回答：使用哪块卡，以及怎样把卡交给容器？</text>
+
+  <rect x="52" y="650" width="830" height="70" rx="15" fill="#10170f" fill-opacity=".85"
+        stroke="#76b900" stroke-width="1.5" stroke-dasharray="9 6"/>
+  <text x="74" y="679" fill="#76b900" class="zone">物理硬件</text>
+  <text x="148" y="679" class="small">真正执行 CUDA 计算</text>
+
+  <!-- Main flow: one straight vertical line, drawn before boxes -->
+  <line x1="467" y1="200" x2="467" y2="236" stroke="#22d3ee" stroke-width="2.3" marker-end="url(#arrow-cyan)"/>
+  <line x1="467" y1="294" x2="467" y2="374" stroke="#22d3ee" stroke-width="2.3" marker-end="url(#arrow-cyan)"/>
+  <line x1="467" y1="432" x2="467" y2="474" stroke="#34d399" stroke-width="2.3" marker-end="url(#arrow-green)"/>
+  <line x1="467" y1="532" x2="467" y2="574" stroke="#34d399" stroke-width="2.3" marker-end="url(#arrow-green)"/>
+  <line x1="467" y1="632" x2="467" y2="664" stroke="#76b900" stroke-width="2.3" marker-end="url(#arrow)"/>
+
+  <!-- Step 1 -->
+  <rect x="207" y="144" width="520" height="58" rx="10" fill="#0f172a"/>
+  <rect x="207" y="144" width="520" height="58" rx="10" fill="#083344" fill-opacity=".48"
+        stroke="#22d3ee" stroke-width="2"/>
+  <circle cx="237" cy="173" r="15" fill="#22d3ee"/>
+  <text x="237" y="177" class="step" text-anchor="middle">1</text>
+  <text x="272" y="168" class="box-title">Pod 申请 1 块 GPU</text>
+  <text x="272" y="187" class="box-sub">resources.limits: nvidia.com/gpu: 1</text>
+  <rect x="747" y="151" width="116" height="43" rx="7" fill="#07101f" stroke="#164e63"/>
+  <text x="805" y="169" fill="#22d3ee" font-size="8" text-anchor="middle">资源声明</text>
+  <text x="805" y="184" class="small" text-anchor="middle">还没选择节点</text>
+
+  <!-- Step 2 -->
+  <rect x="207" y="236" width="520" height="58" rx="10" fill="#0f172a"/>
+  <rect x="207" y="236" width="520" height="58" rx="10" fill="#2e1065" fill-opacity=".4"
+        stroke="#a78bfa" stroke-width="2"/>
+  <circle cx="237" cy="265" r="15" fill="#a78bfa"/>
+  <text x="237" y="269" class="step" text-anchor="middle">2</text>
+  <text x="272" y="260" class="box-title">Scheduler 选择一台 GPU 节点</text>
+  <text x="272" y="279" class="box-sub">根据节点剩余的 nvidia.com/gpu 数量做决定</text>
+  <rect x="747" y="243" width="116" height="43" rx="7" fill="#07101f" stroke="#4c1d95"/>
+  <text x="805" y="261" fill="#a78bfa" font-size="8" text-anchor="middle">只选机器</text>
+  <text x="805" y="276" class="small" text-anchor="middle">不选择具体 GPU</text>
+
+  <!-- Step 3 -->
+  <rect x="207" y="374" width="520" height="58" rx="10" fill="#0f172a"/>
+  <rect x="207" y="374" width="520" height="58" rx="10" fill="#064e3b" fill-opacity=".4"
+        stroke="#34d399" stroke-width="2"/>
+  <circle cx="237" cy="403" r="15" fill="#34d399"/>
+  <text x="237" y="407" class="step" text-anchor="middle">3</text>
+  <text x="272" y="398" class="box-title">Device Plugin 挑选一块健康 GPU</text>
+  <text x="272" y="417" class="box-sub">NVIDIA Device Plugin 返回具体 GPU UUID</text>
+  <rect x="747" y="381" width="116" height="43" rx="7" fill="#07101f" stroke="#065f46"/>
+  <text x="805" y="399" fill="#34d399" font-size="8" text-anchor="middle">这里选卡</text>
+  <text x="805" y="414" class="small" text-anchor="middle">例如 GPU-xxxx</text>
+
+  <!-- Step 4 -->
+  <rect x="207" y="474" width="520" height="58" rx="10" fill="#0f172a"/>
+  <rect x="207" y="474" width="520" height="58" rx="10" fill="#064e3b" fill-opacity=".34"
+        stroke="#34d399" stroke-width="2"/>
+  <circle cx="237" cy="503" r="15" fill="#34d399"/>
+  <text x="237" y="507" class="step" text-anchor="middle">4</text>
+  <text x="272" y="498" class="box-title">Container Toolkit 把 GPU 交给容器</text>
+  <text x="272" y="517" class="box-sub">注入设备文件，并挂载宿主机 NVIDIA 驱动库</text>
+  <rect x="747" y="481" width="116" height="43" rx="7" fill="#07101f" stroke="#065f46"/>
+  <text x="805" y="499" fill="#34d399" font-size="8" text-anchor="middle">容器获得权限</text>
+  <text x="805" y="514" class="small" text-anchor="middle">可以调用 GPU</text>
+
+  <!-- Step 5 -->
+  <rect x="207" y="574" width="520" height="58" rx="10" fill="#0f172a"/>
+  <rect x="207" y="574" width="520" height="58" rx="10" fill="#78350f" fill-opacity=".38"
+        stroke="#fbbf24" stroke-width="2"/>
+  <circle cx="237" cy="603" r="15" fill="#fbbf24"/>
+  <text x="237" y="607" class="step" text-anchor="middle">5</text>
+  <text x="272" y="598" class="box-title">NVIDIA Driver 与物理 GPU 通信</text>
+  <text x="272" y="617" class="box-sub">CUDA 调用经过驱动进入 GPU 执行</text>
+  <rect x="747" y="581" width="116" height="43" rx="7" fill="#07101f" stroke="#92400e"/>
+  <text x="805" y="599" fill="#fbbf24" font-size="8" text-anchor="middle">宿主机能力</text>
+  <text x="805" y="614" class="small" text-anchor="middle">不是 Pod 内驱动</text>
+
+  <!-- Physical GPU -->
+  <rect x="207" y="664" width="520" height="48" rx="10" fill="#0f172a"/>
+  <rect x="207" y="664" width="520" height="48" rx="10" fill="#365314" fill-opacity=".42"
+        stroke="#76b900" stroke-width="2"/>
+  <text x="467" y="685" class="box-title" text-anchor="middle">NVIDIA RTX 3080 Ti</text>
+  <text x="467" y="702" fill="#76b900" font-size="8" text-anchor="middle">训练 / 推理真正开始执行</text>
+
+  <!-- GPU Operator management panel: no crossing arrows -->
+  <rect x="910" y="145" width="238" height="487" rx="16" fill="#130d28" fill-opacity=".9"
+        stroke="#a78bfa" stroke-width="1.8"/>
+  <rect x="928" y="164" width="202" height="54" rx="9" fill="#2e1065" fill-opacity=".55"
+        stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="1029" y="187" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">NVIDIA GPU Operator</text>
+  <text x="1029" y="205" fill="#a78bfa" font-size="8" text-anchor="middle">GPU 软件栈管理员</text>
+
+  <text x="935" y="253" fill="#f8fafc" font-size="10" font-weight="700">它负责统一管理：</text>
+
+  <g>
+    <circle cx="942" cy="285" r="5" fill="#fbbf24"/>
+    <text x="959" y="289" class="explain">NVIDIA Driver</text>
+    <text x="959" y="306" class="small">安装与升级驱动</text>
+
+    <circle cx="942" cy="340" r="5" fill="#34d399"/>
+    <text x="959" y="344" class="explain">Container Toolkit</text>
+    <text x="959" y="361" class="small">配置容器运行时</text>
+
+    <circle cx="942" cy="395" r="5" fill="#22d3ee"/>
+    <text x="959" y="399" class="explain">Device Plugin</text>
+    <text x="959" y="416" class="small">发现并分配 GPU</text>
+
+    <circle cx="942" cy="450" r="5" fill="#a78bfa"/>
+    <text x="959" y="454" class="explain">GFD / DCGM</text>
+    <text x="959" y="471" class="small">节点标签与 GPU 监控</text>
+
+    <circle cx="942" cy="505" r="5" fill="#a78bfa"/>
+    <text x="959" y="509" class="explain">MIG Manager</text>
+    <text x="959" y="526" class="small">管理支持 MIG 的 GPU 分区</text>
+  </g>
+
+  <rect x="928" y="555" width="202" height="57" rx="9" fill="#07101f" stroke="#4c1d95"/>
+  <text x="1029" y="578" fill="#fb7185" font-size="9" font-weight="700" text-anchor="middle">它不负责选择运行节点</text>
+  <text x="1029" y="598" class="small" text-anchor="middle">调度仍由 Scheduler 完成</text>
+
+  <!-- Plain-language takeaway -->
+  <rect x="910" y="650" width="238" height="70" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.4"/>
+  <text x="1029" y="677" fill="#76b900" font-size="10" font-weight="700" text-anchor="middle">一句话记忆</text>
+  <text x="1029" y="698" class="small" text-anchor="middle">Plugin 负责“交卡”</text>
+  <text x="1029" y="713" class="small" text-anchor="middle">Operator 负责“管好整套软件”</text>
+</svg>
