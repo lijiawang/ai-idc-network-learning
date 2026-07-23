@@ -131,7 +131,7 @@ Broadcast down：
 
 图里更直观：
 
-![单二叉树 AllReduce](nccl-single-binary-tree.png)
+![单二叉树 AllReduce](assets/nccl-tree-allreduce/nccl-single-binary-tree.png)
 
 接下来我们按时间顺序，把这棵树上的 AllReduce 跑一遍。
 
@@ -464,7 +464,7 @@ NCCL Tree AllReduce 最关键的优化，不是简单地“把 Ring 换成 Tree�
 
 先看图：
 
-![Double Binary Tree](nccl-double-binary-tree.png)
+![Double Binary Tree](assets/nccl-tree-allreduce/nccl-double-binary-tree.png)
 
 核心动作有两个：
 

@@ -2,7 +2,7 @@
 
 为了学习 Kubernetes 如何调度 GPU 资源，我在优云智算租了两台 GPU 虚拟机。两台机器各有一块 NVIDIA GeForce RTX 3080 Ti，其中一台作为 control-plane，另一台作为 worker。这篇笔记从集群搭建写到 GPU Pod 调度，过程中遇到的镜像下载和 GPU 识别问题也记了下来。
 
-![优云智算租用的两台 GPU 虚拟机](images/ucloud-two-gpu-vms.png)
+![优云智算租用的两台 GPU 虚拟机](assets/kubernetes-gpu/ucloud-two-gpu-vms.png)
 
 *图：优云智算上的两台实验用 GPU 虚拟机 gpu-01 与 gpu-02。*
 
