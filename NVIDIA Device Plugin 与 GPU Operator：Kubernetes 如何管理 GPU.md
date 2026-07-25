@@ -2,11 +2,9 @@
 
 ![GPU Operator 管理 NVIDIA GPU](assets/kubernetes-gpu/kubernetes-gpu-operator-wechat-cover-scifi.png)
 
-上一篇用两台 RTX 3080 Ti 跑通了 Kubernetes 整卡调度。当时的做法很直接：宿主机装驱动和 NVIDIA Container Toolkit，集群里单独部署 NVIDIA Device Plugin，Pod 通过 `nvidia.com/gpu` 申请显卡。
+上一篇用两台 RTX 3080 Ti 跑通了 Kubernetes 整卡调度：宿主机安装驱动和 NVIDIA Container Toolkit，集群中单独部署 NVIDIA Device Plugin，Pod 通过 `nvidia.com/gpu` 申请显卡。
 
-这套方案能跑任务，但 GPU 节点上的东西比较散。驱动和运行时在宿主机，Device Plugin 是一份单独的 YAML，节点标签、监控和 CUDA 校验还要另外处理。节点只有两台时问题不大，节点一多，组件版本和运行状态就不好管了。
-
-这篇仍使用原来的两台机器，改由 GPU Operator 统一管理 Device Plugin。宿主机已有的驱动和 Container Toolkit 保留，不让 Operator 重装。
+节点只有两台时，这套方案足够直接；但节点增多后，Device Plugin、节点标签、监控和 CUDA 校验分散维护，版本和运行状态会越来越难管。本文保留宿主机已有的驱动和 Container Toolkit，改由 GPU Operator 统一管理 Kubernetes 中的 GPU 组件。
 
 ## 1. 为什么要装 GPU Operator
 
@@ -65,6 +63,12 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 | NVIDIA Container Toolkit | 1.19.1 |
 | 原 Device Plugin | v0.17.1，独立 DaemonSet |
 
+> **实验边界**
+>
+> 本文验证的是两台 RTX 3080 Ti、Kubernetes v1.36.2、宿主机预装 NVIDIA Driver 570.153.02 和 Container Toolkit 1.19.1 的组合。GPU Operator v25.3.4 是本环境实际通过验证的版本，不代表生产环境的推荐版本。
+>
+> 生产集群应根据 NVIDIA Platform Support、Release Notes，以及自身的 GPU、操作系统、Kubernetes 和驱动版本选择受支持的组合。
+
 驱动和 Toolkit 已经工作正常，没有必要为了 Operator 再装一次。因此 Helm 安装时关闭这两个组件：
 
 ```bash
@@ -74,8 +78,6 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 ```
 
 CDI（Container Device Interface）是容器运行时读取设备描述并向容器注入 GPU 的开放规范。GPU Operator v25.3 开启 `cdi.enabled` 后会启用 CDI 设备注入能力。本环境的 containerd 已沿用上一篇配置好的 `nvidia` runtime，且这次不测试 CDI，因此显式关闭它，保持原有的 GPU 注入路径不变。
-
-RTX 3080 Ti 属于消费级 GPU，不支持 MIG，也不在 GPU Operator 官方的数据中心 GPU 支持列表中。再加上这里使用的是 Kubernetes v1.36.2，这套组合更适合作为兼容性实验，不能当成 NVIDIA 官方支持的生产基线。
 
 ## 4. 版本选择：为什么最终没有使用 v26.3.3
 
@@ -366,6 +368,10 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 - 将镜像仓库替换为 DaoCloud，避开官方仓库拉取超时。
 
 这些选择都和具体的 GPU、驱动与网络环境有关。换到另一套集群时，仍应先小范围验证，再决定版本和镜像策略。
+
+### 本文范围
+
+本文只验证 GPU Operator 接管已有节点上的 GPU 软件栈，以及整卡 GPU 调度是否正常。MIG、多 GPU/NVLink 拓扑、Time-Slicing/MPS 共享、Prometheus 监控接入和多租户队列调度不在本文展开。
 
 ## 10. 官方参考资料
 
