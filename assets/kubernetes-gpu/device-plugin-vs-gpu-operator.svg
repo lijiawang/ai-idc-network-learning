@@ -47,14 +47,16 @@
   <!-- Operator heading -->
   <circle cx="94" cy="150" r="20" fill="#76b900"/>
   <path d="M84 150H104M94 140V160M87 143L101 157M101 143L87 157" stroke="#07101f" stroke-width="2.2"/>
-  <text x="130" y="145" class="operator-title">GPU Operator</text>
-  <text x="130" y="169" class="operator-sub">统一安装 · 配置 · 升级 · 健康检查</text>
+  <text x="130" y="145" class="operator-title">GPU Operator 管理范围</text>
+  <text x="130" y="169" class="operator-sub">外层管理者：统一安装 · 配置 · 升级 · 健康检查</text>
 
   <rect x="820" y="128" width="290" height="44" rx="22" fill="#0d2619" stroke="#76b900"/>
-  <text x="965" y="146" fill="#76b900" font-size="9" font-weight="700" text-anchor="middle">一个 Operator</text>
-  <text x="965" y="163" fill="#f8fafc" font-size="10" font-weight="700" text-anchor="middle">管理整套 NVIDIA GPU 软件</text>
+  <text x="965" y="146" fill="#76b900" font-size="9" font-weight="700" text-anchor="middle">外层管理者</text>
+  <text x="965" y="163" fill="#f8fafc" font-size="10" font-weight="700" text-anchor="middle">统一管理整套 NVIDIA GPU 软件</text>
 
   <!-- Five managed component cards; containment conveys management, no spaghetti lines -->
+  <rect x="80" y="202" width="145" height="18" rx="9" fill="#16320e" stroke="#315c20"/>
+  <text x="152" y="214" fill="#a3e635" font-size="8" font-weight="700" text-anchor="middle">被统一管理的组件</text>
   <rect x="80" y="225" width="170" height="180" rx="13" fill="#0f172a" stroke="#fbbf24" stroke-width="1.7"/>
   <rect x="98" y="244" width="66" height="24" rx="12" fill="#2b210d"/>
   <text x="131" y="260" fill="#fbbf24" class="tag" text-anchor="middle">DRIVER</text>
@@ -97,18 +99,19 @@
   <rect x="968" y="244" width="76" height="24" rx="12" fill="#351322"/>
   <text x="1006" y="260" fill="#fb7185" class="tag" text-anchor="middle">HEALTH</text>
   <circle cx="985" cy="305" r="10" fill="#fb7185"/>
-  <text x="1008" y="301" class="card-title">DCGM / Validator</text>
-  <text x="975" y="337" class="card-main">监控并检查 GPU</text>
-  <text x="975" y="365" class="card-sub">导出健康与性能指标</text>
-  <text x="975" y="383" class="card-sub">验证 CUDA 链路</text>
+  <text x="1008" y="295" class="card-title">DCGM /</text>
+  <text x="1008" y="315" fill="#f8fafc" font-size="10" font-weight="700">Operator Validator</text>
+  <text x="975" y="347" class="card-main">监控并检查 GPU</text>
+  <text x="975" y="372" class="card-sub">导出健康与性能指标</text>
+  <text x="975" y="390" class="card-sub">校验 CUDA 链路</text>
 
   <!-- Two short takeaways leave a clean center corridor for the vertical connector -->
   <rect x="100" y="450" width="365" height="46" rx="23" fill="#111827" stroke="#334155"/>
-  <text x="282" y="469" fill="#cbd5e1" font-size="9" font-weight="700" text-anchor="middle">GPU Operator：管理整套软件生命周期</text>
+  <text x="282" y="469" fill="#cbd5e1" font-size="9" font-weight="700" text-anchor="middle">外层：GPU Operator 统一维护组件</text>
   <text x="282" y="486" fill="#94a3b8" font-size="8" text-anchor="middle">安装 · 配置 · 升级 · 健康检查</text>
 
   <rect x="735" y="450" width="365" height="46" rx="23" fill="#111827" stroke="#334155"/>
-  <text x="917" y="469" fill="#cbd5e1" font-size="9" font-weight="700" text-anchor="middle">Device Plugin：只负责 GPU 设备资源</text>
+  <text x="917" y="469" fill="#cbd5e1" font-size="9" font-weight="700" text-anchor="middle">其中之一：Device Plugin 负责设备资源</text>
   <text x="917" y="486" fill="#94a3b8" font-size="8" text-anchor="middle">发现 · 上报 · 分配</text>
 
   <!-- Only one vertical connector: Device Plugin registers the Kubernetes resource -->

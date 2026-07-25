@@ -1,18 +1,18 @@
 # GPU Operator 到底管什么？Kubernetes 管理 NVIDIA GPU 实战
 
+![GPU Operator 管理 NVIDIA GPU](assets/kubernetes-gpu/kubernetes-gpu-operator-wechat-cover-scifi.png)
+
 上一篇用两台 RTX 3080 Ti 跑通了 Kubernetes 整卡调度。当时的做法很直接：宿主机装驱动和 NVIDIA Container Toolkit，集群里单独部署 NVIDIA Device Plugin，Pod 通过 `nvidia.com/gpu` 申请显卡。
 
 这套方案能跑任务，但 GPU 节点上的东西比较散。驱动和运行时在宿主机，Device Plugin 是一份单独的 YAML，节点标签、监控和 CUDA 校验还要另外处理。节点只有两台时问题不大，节点一多，组件版本和运行状态就不好管了。
 
 这篇仍使用原来的两台机器，改由 GPU Operator 统一管理 Device Plugin。宿主机已有的驱动和 Container Toolkit 保留，不让 Operator 重装。
 
-先说明版本：Helm 仓库中的最新稳定版本是 v26.3.3，但它在这套 RTX 3080 Ti 与 570.153.02 驱动组合上过不了 CUDA Validator，最终安装的是 v25.3.4。这个选择只是本次实验的实测结果，不是生产环境的版本建议。
-
 ## 1. 为什么要装 GPU Operator
 
 Device Plugin 的核心工作，是发现节点上的 GPU，向 kubelet 注册 `nvidia.com/gpu`，并在 Pod 启动时分配设备。它不会替你安装驱动，也不负责部署监控、维护节点标签或检查 CUDA 链路。
 
-GPU Operator 管的范围要大得多。它读取 `ClusterPolicy`，根据配置部署 Driver、Container Toolkit、Device Plugin、NFD、GFD、DCGM Exporter、Validator 等组件，并持续检查它们的状态。
+GPU Operator 管的范围要大得多。它读取 `ClusterPolicy`，根据配置部署 Driver、Container Toolkit、Device Plugin、NFD、GFD、DCGM Exporter、Operator Validator 等组件，并持续检查它们的状态。
 
 ![Kubernetes GPU 软件栈](assets/kubernetes-gpu/gpu-software-stack.png)
 
@@ -40,8 +40,8 @@ resources:
 | Node Feature Discovery（NFD） | 发现 CPU、内核、PCI 设备等通用节点特征，生成 `feature.node.kubernetes.io/*` 标签 |
 | GPU Feature Discovery（GFD） | 读取 GPU 型号、数量、显存、计算能力和驱动版本，生成 `nvidia.com/*` 标签 |
 | DCGM / DCGM Exporter | 读取 GPU 健康和性能数据，并以 Prometheus 指标暴露 |
-| MIG Manager | 根据节点标签配置 MIG。RTX 3080 Ti 不支持 MIG，所以本实验不会启用 |
-| Operator Validator | 依次检查 Driver、Toolkit、Device Plugin 和 CUDA 工作负载 |
+| MIG Manager | 根据节点标签配置 MIG，仅在支持 MIG 的 GPU 节点上启用 |
+| Operator Validator | 负责执行 Driver、Toolkit、Device Plugin 和 CUDA 工作负载的校验 |
 
 NFD 和 GFD 很容易混淆。NFD 先从 PCI 设备里发现 NVIDIA 厂商 ID `10de`，GPU Operator 据此判断哪些节点需要部署 GPU 组件；GFD 再读取 NVIDIA GPU 的详细信息，写入 `nvidia.com/gpu.product`、`nvidia.com/gpu.memory` 等标签。
 
@@ -49,7 +49,7 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 
 ![NVIDIA Device Plugin 与 GPU Operator 的职责边界](assets/kubernetes-gpu/device-plugin-vs-gpu-operator.png)
 
-*图 2：Device Plugin 是 GPU Operator 管理的软件组件之一。*
+*图 2：GPU Operator 是外层管理者；Device Plugin 是其管理的组件之一，负责把 GPU 资源注册给 kubelet。*
 
 ## 3. 本次环境和安装取舍
 
@@ -73,11 +73,15 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 --set cdi.enabled=false
 ```
 
-这里关闭 CDI，是因为当前 containerd 已按上一篇的方式配置好 NVIDIA runtime。本次只把 Device Plugin、NFD/GFD、DCGM Exporter 和 Validator 交给 Operator。
+CDI（Container Device Interface）是容器运行时读取设备描述并向容器注入 GPU 的开放规范。GPU Operator v25.3 开启 `cdi.enabled` 后会启用 CDI 设备注入能力。本环境的 containerd 已沿用上一篇配置好的 `nvidia` runtime，且这次不测试 CDI，因此显式关闭它，保持原有的 GPU 注入路径不变。
 
 RTX 3080 Ti 属于消费级 GPU，不支持 MIG，也不在 GPU Operator 官方的数据中心 GPU 支持列表中。再加上这里使用的是 Kubernetes v1.36.2，这套组合更适合作为兼容性实验，不能当成 NVIDIA 官方支持的生产基线。
 
 ## 4. 版本选择：为什么最终没有使用 v26.3.3
+
+本文测试时，Helm 仓库中的最新稳定版本为 v26.3.3。它在这套 RTX 3080 Ti 与 570.153.02 驱动组合上无法通过 CUDA Validator，因此实验最终使用 v25.3.4。
+
+这只是本次环境的实测结果，不代表 v25.3.4 更适合所有生产环境。
 
 先添加 NVIDIA Helm 仓库并查看版本：
 
@@ -91,14 +95,18 @@ helm search repo nvidia/gpu-operator --versions | head
 
 *图 3：Helm 仓库中能查到 v26.3.3，本文最后使用 v25.3.4。*
 
-我最开始测试的是 v26.3.3。Operator、NFD、GFD、DCGM Exporter 和 Device Plugin 都能启动，CUDA Validator 运行到 GPU 计算时失败：
+我最开始测试的是 v26.3.3。Operator、NFD、GFD、DCGM Exporter 和 Device Plugin 都能启动，但 Operator Validator 中的 CUDA Validator 运行到 GPU 计算时失败：
 
 ```text
 Failed to allocate device vector A
 (error code forward compatibility was attempted on non supported HW)
 ```
 
-Device Plugin 已经成功注册 GPU，问题出在 Validator 所用 CUDA 运行时与 RTX 3080 Ti、570.153.02 驱动组合的兼容性上。期间也试过给 v26 Operator 单独换用 v25 Validator，结果旧 Validator 的 `driver-validation` 又以退出码 127 失败。因此没有继续采用混用组件版本的方案。
+Device Plugin 已经成功注册 GPU，问题出在 CUDA Validator 所用 CUDA 运行时与 RTX 3080 Ti、570.153.02 驱动组合的兼容性上。
+
+这个报错对应 CUDA 的 forward compatibility（前向兼容）机制。它面向的场景是：基于较新 CUDA Toolkit 构建的应用或容器，需要运行在较旧、且处于不同主版本分支的宿主机 NVIDIA Linux GPU 驱动上；CUDA 会通过兼容库尝试桥接这个版本差。NVIDIA 将这条路径限定在数据中心 GPU、部分 NGC Server Ready RTX SKU 和 Jetson；RTX 3080 Ti 不在支持范围。因此，v26.3.3 的 CUDA Validator 在本环境进入这条兼容路径后直接失败。
+
+期间也试过给 v26 Operator 单独换用 v25 的校验镜像，结果其中的 `driver-validation` 又以退出码 127 失败。因此没有继续采用混用组件版本的方案。完整的 v25.3.4 组件组合则通过了本环境的 CUDA 校验；这说明它适合本次实验，不代表它对所有 GPU、驱动组合都更合适。
 
 换成完整的 v25.3.4 后，两台节点的 CUDA Validator 都能通过。因此本文使用的版本固定为：
 
@@ -154,7 +162,7 @@ kubectl -n kube-system get daemonset nvidia-device-plugin-daemonset
 Operator、Device Plugin、GFD：
 m.daocloud.io/nvcr.io/nvidia
 
-Validator：
+Operator Validator（包括 CUDA Validator）：
 m.daocloud.io/nvcr.io/nvidia/cloud-native
 
 Node Feature Discovery：
@@ -164,6 +172,8 @@ m.daocloud.io/registry.k8s.io/nfd/node-feature-discovery
 这里只替换仓库前缀，镜像名称和版本仍由 v25.3.4 的 Helm Chart 决定。
 
 ### 5.3 执行 Helm 安装
+
+这条命令的核心是保留宿主机已有的 Driver 和 Container Toolkit，同时把 Device Plugin、NFD/GFD、监控和校验组件交给 GPU Operator。
 
 本次实际使用的完整命令如下：
 
@@ -209,7 +219,7 @@ kubectl get pods -n gpu-operator \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .spec.initContainers[*]}{"  init: "}{.image}{"\n"}{end}{range .spec.containers[*]}{"  container: "}{.image}{"\n"}{end}{end}'
 ```
 
-输出应显示：Operator、Device Plugin 和 GFD 使用 NVIDIA 的 DaoCloud 前缀；Validator 与 NFD 分别使用前面设置的对应仓库。
+输出应显示：Operator、Device Plugin 和 GFD 使用 NVIDIA 的 DaoCloud 前缀；Operator Validator 与 NFD 分别使用前面设置的对应仓库。
 
 如果 Operator 已经安装，只需要修改镜像仓库，可以保留现有值执行：
 
@@ -225,7 +235,11 @@ helm upgrade gpu-operator nvidia/gpu-operator \
   --set node-feature-discovery.image.repository=m.daocloud.io/registry.k8s.io/nfd/node-feature-discovery
 ```
 
-如果首次安装失败，需要恢复原方案，应先卸载没有完成的 GPU Operator，确认 Operator 管理的 Device Plugin 不再运行，再应用前面备份的旧 DaemonSet YAML。
+如果首次安装失败，需要回到独立部署方案，先卸载未完成的 GPU Operator，确认 Operator 管理的 Device Plugin 已停止，再恢复第 5.1 节备份的 YAML：
+
+```bash
+kubectl apply -f ~/nvidia-device-plugin-daemonset-before-gpu-operator.yaml
+```
 
 ## 6. 检查安装结果
 
@@ -237,7 +251,7 @@ kubectl -n gpu-operator get all
 
 ![GPU Operator 组件运行状态](assets/kubernetes-gpu/gpu-operator-resources-running.png)
 
-*图 4：两个节点上的 Device Plugin、GFD、DCGM Exporter 和 Validator 都已运行。*
+*图 4：两个节点上的 Device Plugin、GFD、DCGM Exporter 和 Operator Validator 都已就绪；CUDA Validator 已完成校验。*
 
 截图里的 MIG Manager 和 MPS Control Daemon 的期望副本数为 `0`，不是安装失败。RTX 3080 Ti 不支持 MIG，这次也没有开启 MPS。
 
@@ -280,7 +294,7 @@ kubectl logs -n gpu-operator <nvidia-cuda-validator-pod>
 cuda workload validation is successful
 ```
 
-Validator 通过以后，我又手动跑了一次 `vectoradd`，确认普通 Pod 确实能申请 GPU：
+CUDA Validator 通过以后，我又手动跑了一次 `vectoradd`，确认普通 Pod 确实能申请 GPU：
 
 ```bash
 kubectl run gpu-operator-smoke-test \
@@ -311,10 +325,16 @@ kubectl delete pod gpu-operator-smoke-test
 我排查时主要看下面几项：
 
 ```bash
+# 先看整体状态和 Device Plugin 日志
 kubectl get pods -n gpu-operator -o wide
 kubectl describe clusterpolicy cluster-policy
 kubectl logs -n gpu-operator daemonset/nvidia-device-plugin-daemonset
-kubectl logs -n gpu-operator <validator-pod-name> --all-containers
+
+# 取 CUDA Validator Pod 名
+kubectl get pods -n gpu-operator -l app=nvidia-cuda-validator -o wide
+
+# 用上一步显示的 Pod 名查看完整日志
+kubectl logs -n gpu-operator <nvidia-cuda-validator-pod> --all-containers
 ```
 
 实际遇到过三类问题：
@@ -325,7 +345,7 @@ kubectl logs -n gpu-operator <validator-pod-name> --all-containers
 
 前两类问题在切换到 DaoCloud 镜像仓库后解决。第三类不能靠重启 Pod 解决，最后换成完整的 v25.3.4 组件组合才通过。
 
-如果宿主机上的 `nvidia-smi` 本身就失败，应先修驱动。驱动没有正常工作时，后续的 Device Plugin、Validator 等 Kubernetes 组件也无法绕过这个问题。
+如果宿主机上的 `nvidia-smi` 本身就失败，应先修驱动。驱动没有正常工作时，后续的 Device Plugin、Operator Validator 等 Kubernetes 组件也无法绕过这个问题。
 
 ## 8. 装上 Operator 后，调度没有变
 
@@ -337,18 +357,15 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 
 ## 9. 收尾
 
-这次安装没有动宿主机驱动和 Container Toolkit，变化主要发生在 Kubernetes 里：旧 Device Plugin 被删除，新的 Device Plugin、NFD/GFD、DCGM Exporter 和 Validator 由 GPU Operator 统一维护。
+这次没有重装驱动，也没有改变 Pod 申请 GPU 的 YAML。变化发生在 Kubernetes：旧 Device Plugin 被删除，新的 Device Plugin、NFD/GFD、DCGM Exporter 和 Operator Validator 由 GPU Operator 统一维护。
 
-在这套环境里，下面两个参数最关键：
+能够跑通，主要依赖三个决策：
 
-```bash
---set driver.enabled=false
---set toolkit.enabled=false
-```
+- 设置 `driver.enabled=false` 和 `toolkit.enabled=false`，不改动宿主机已经验证可用的驱动和 Container Toolkit；
+- 选用 v25.3.4，而不是本环境 CUDA Validator 无法通过的 v26.3.3；
+- 将镜像仓库替换为 DaoCloud，避开官方仓库拉取超时。
 
-它们决定了 Operator 是否会碰宿主机已有的软件栈。版本选择和镜像仓库，是这次踩坑最多的两个方面：v26.3.3 没通过 CUDA Validator，官方镜像仓库也多次超时，最终用 v25.3.4 加 DaoCloud 镜像完成安装。
-
-Pod 的 YAML 没有变化，两个节点仍然各提供一个 `nvidia.com/gpu`。区别在于，除 Device Plugin 外，节点标签、监控和校验组件也不再需要逐个手工部署。
+这些选择都和具体的 GPU、驱动与网络环境有关。换到另一套集群时，仍应先小范围验证，再决定版本和镜像策略。
 
 ## 10. 官方参考资料
 
@@ -359,3 +376,4 @@ Pod 的 YAML 没有变化，两个节点仍然各提供一个 `nvidia.com/gpu`�
 - NVIDIA GPU Operator 安装指南：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html>
 - NVIDIA GPU Operator Platform Support：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/platform-support.html>
 - NVIDIA Container Toolkit：<https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/>
+- CUDA Forward Compatibility：<https://docs.nvidia.com/deploy/cuda-compatibility/forward-compatibility.html>
