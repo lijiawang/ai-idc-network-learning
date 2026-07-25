@@ -79,11 +79,9 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 
 CDI（Container Device Interface）是容器运行时读取设备描述并向容器注入 GPU 的开放规范。GPU Operator v25.3 开启 `cdi.enabled` 后会启用 CDI 设备注入能力。本环境的 containerd 已沿用上一篇配置好的 `nvidia` runtime，且这次不测试 CDI，因此显式关闭它，保持原有的 GPU 注入路径不变。
 
-## 4. 版本选择：为什么最终没有使用 v26.3.3
+## 4. GPU Operator 版本选择
 
-本文测试时，Helm 仓库中的最新稳定版本为 v26.3.3。它在这套 RTX 3080 Ti 与 570.153.02 驱动组合上无法通过 CUDA Validator，因此实验最终使用 v25.3.4。
-
-这只是本次环境的实测结果，不代表 v25.3.4 更适合所有生产环境。
+本文测试时，Helm 仓库中的最新稳定版本为 v26.3.3。它与本实验的 RTX 3080 Ti、570.153.02 驱动组合不兼容，无法通过 CUDA Validator，因此最终使用 v25.3.4。
 
 先添加 NVIDIA Helm 仓库并查看版本：
 
@@ -97,20 +95,14 @@ helm search repo nvidia/gpu-operator --versions | head
 
 *图 3：Helm 仓库中能查到 v26.3.3，本文最后使用 v25.3.4。*
 
-我最开始测试的是 v26.3.3。Operator、NFD、GFD、DCGM Exporter 和 Device Plugin 都能启动，但 Operator Validator 中的 CUDA Validator 运行到 GPU 计算时失败：
+测试 v26.3.3 时，Operator、NFD、GFD、DCGM Exporter 和 Device Plugin 都能启动，但 CUDA Validator 运行到 GPU 计算时失败：
 
 ```text
 Failed to allocate device vector A
 (error code forward compatibility was attempted on non supported HW)
 ```
 
-Device Plugin 已经成功注册 GPU，问题出在 CUDA Validator 所用 CUDA 运行时与 RTX 3080 Ti、570.153.02 驱动组合的兼容性上。
-
-这个报错对应 CUDA 的 forward compatibility（前向兼容）机制。它面向的场景是：基于较新 CUDA Toolkit 构建的应用或容器，需要运行在较旧、且处于不同主版本分支的宿主机 NVIDIA Linux GPU 驱动上；CUDA 会通过兼容库尝试桥接这个版本差。NVIDIA 将这条路径限定在数据中心 GPU、部分 NGC Server Ready RTX SKU 和 Jetson；RTX 3080 Ti 不在支持范围。因此，v26.3.3 的 CUDA Validator 在本环境进入这条兼容路径后直接失败。
-
-期间也试过给 v26 Operator 单独换用 v25 的校验镜像，结果其中的 `driver-validation` 又以退出码 127 失败。因此没有继续采用混用组件版本的方案。完整的 v25.3.4 组件组合则通过了本环境的 CUDA 校验；这说明它适合本次实验，不代表它对所有 GPU、驱动组合都更合适。
-
-换成完整的 v25.3.4 后，两台节点的 CUDA Validator 都能通过。因此本文使用的版本固定为：
+因此本文改用完整的 v25.3.4 组件组合；两台节点的 CUDA Validator 都能通过。本文使用的版本固定为：
 
 ```text
 GPU Operator Helm Chart：v25.3.4
@@ -343,7 +335,7 @@ kubectl logs -n gpu-operator <nvidia-cuda-validator-pod> --all-containers
 
 - NFD 为 `ImagePullBackOff`：`registry.k8s.io` 跳转到 `*.docker.pkg.dev` 后超时；
 - GFD 或 Device Plugin 为 `ImagePullBackOff`：访问 `nvcr.io` 时 TLS 握手超时；
-- CUDA Validator 报 `forward compatibility was attempted on non supported HW`：镜像已经启动，GPU 也已注册，但 CUDA 校验与 GPU、驱动组合不兼容。
+- CUDA Validator 报 `forward compatibility was attempted on non supported HW`：镜像已经启动，GPU 也已注册，但 v26.3.3 与本实验的 GPU、驱动组合不兼容。
 
 前两类问题在切换到 DaoCloud 镜像仓库后解决。第三类不能靠重启 Pod 解决，最后换成完整的 v25.3.4 组件组合才通过。
 
@@ -382,4 +374,3 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 - NVIDIA GPU Operator 安装指南：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html>
 - NVIDIA GPU Operator Platform Support：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/platform-support.html>
 - NVIDIA Container Toolkit：<https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/>
-- CUDA Forward Compatibility：<https://docs.nvidia.com/deploy/cuda-compatibility/forward-compatibility.html>
