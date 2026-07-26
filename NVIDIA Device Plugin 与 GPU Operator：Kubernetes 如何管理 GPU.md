@@ -4,11 +4,11 @@
 
 上一篇用两台 RTX 3080 Ti 跑通了 Kubernetes 整卡调度：宿主机安装驱动和 NVIDIA Container Toolkit，集群中单独部署 NVIDIA Device Plugin，Pod 通过 `nvidia.com/gpu` 申请显卡。
 
-节点只有两台时，这套方案足够直接；但节点增多后，Device Plugin、节点标签、监控和 CUDA 校验分散维护，版本和运行状态会越来越难管。本文保留宿主机已有的驱动和 Container Toolkit，改由 GPU Operator 统一管理 Kubernetes 中的 GPU 组件。
+节点一多，Device Plugin、节点标签、监控这些散在各处就不好管了。这篇保留宿主机已有的驱动和 Container Toolkit，把 Kubernetes 里的 GPU 组件交给 GPU Operator 统一管。
 
 ## 1. 为什么要装 GPU Operator
 
-Device Plugin 的核心工作，是发现节点上的 GPU，向 kubelet 注册 `nvidia.com/gpu`，并在 Pod 启动时分配设备。它不会替你安装驱动，也不负责部署监控、维护节点标签或检查 CUDA 链路。
+Device Plugin 的职责很集中：发现节点上的 GPU，向 kubelet 注册 `nvidia.com/gpu`，并在 Pod 启动时分配设备。装驱动、配监控、打节点标签、检查 CUDA 链路，这些它都不管。
 
 GPU Operator 管的范围要大得多。它读取 `ClusterPolicy`，根据配置部署 Driver、Container Toolkit、Device Plugin、NFD、GFD、DCGM Exporter、Operator Validator 等组件，并持续检查它们的状态。
 
@@ -24,7 +24,7 @@ resources:
     nvidia.com/gpu: 1
 ```
 
-默认 Scheduler 仍然只看节点上还有多少个可分配的 `nvidia.com/gpu`，不会因为安装了 Operator 就按显存、温度或实时利用率调度。
+默认 Scheduler 仍按节点可分配的 `nvidia.com/gpu` 数量调度；安装 Operator 不会让它按显存、温度或实时利用率决策。
 
 ## 2. GPU Operator 里都有哪些组件
 
@@ -78,6 +78,19 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 ```
 
 CDI（Container Device Interface）是容器运行时读取设备描述并向容器注入 GPU 的开放规范。GPU Operator v25.3 开启 `cdi.enabled` 后会启用 CDI 设备注入能力。本环境的 containerd 已沿用上一篇配置好的 `nvidia` runtime，且这次不测试 CDI，因此显式关闭它，保持原有的 GPU 注入路径不变。
+
+这三个参数是否设为 `true`，取决于节点现状：节点没有 NVIDIA 驱动时开启 `driver.enabled`；没有安装 Container Toolkit 或没有配置 NVIDIA runtime 时开启 `toolkit.enabled`；计划让 Pod 使用 `runtimeClassName: nvidia-cdi` 时开启 `cdi.enabled`。不需要把三项同时开启。
+
+如果是在新节点上把 Driver 和 Toolkit 都交给 GPU Operator 管理，可以这样设置：
+
+```bash
+--set driver.enabled=true
+--set toolkit.enabled=true
+```
+
+这样就不需要执行上一篇的 **第 6 节“安装 NVIDIA Container Toolkit”**：包括添加 NVIDIA APT 源、`apt-get install nvidia-container-toolkit`、`nvidia-ctk runtime configure`，以及为该配置手工重启 containerd 和 kubelet。Operator 会在节点上部署对应组件，并配置 NVIDIA runtime。上一篇开头把 `nvidia-smi` 当作前置检查的做法也要调整为：等 Operator 的 Driver 和 Validator 就绪后再验证。
+
+不过，Kubernetes、containerd 及其基础配置仍要按上一篇完成；GPU Operator 不会替你安装 Kubernetes 或 containerd。`cdi.enabled=true` 不会省去任何安装步骤，它只启用 CDI 设备注入方式，不会替代 Driver 或 Toolkit 的安装。使用 CDI 时，Pod 需要指定 `runtimeClassName: nvidia-cdi`。
 
 ## 4. GPU Operator 版本选择
 
@@ -167,7 +180,7 @@ m.daocloud.io/registry.k8s.io/nfd/node-feature-discovery
 
 ### 5.3 执行 Helm 安装
 
-这条命令的核心是保留宿主机已有的 Driver 和 Container Toolkit，同时把 Device Plugin、NFD/GFD、监控和校验组件交给 GPU Operator。
+这条命令干两件事：不碰宿主机已有的 Driver 和 Container Toolkit，把 Device Plugin、NFD/GFD、监控和校验组件交给 Operator。
 
 本次实际使用的完整命令如下：
 
@@ -187,7 +200,7 @@ helm install gpu-operator nvidia/gpu-operator \
   --set node-feature-discovery.image.repository=m.daocloud.io/registry.k8s.io/nfd/node-feature-discovery
 ```
 
-`devicePlugin.enabled=true` 虽然是默认值，这里仍然显式写出来，避免看命令时误以为 Device Plugin 还在集群外单独维护。
+`devicePlugin.enabled=true` 本来就是默认值，写出来是为了提醒：Device Plugin 这次是 Operator 管的，不是集群外单独那份了。
 
 安装后查看 Helm 状态：
 
@@ -353,17 +366,13 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 
 这次没有重装驱动，也没有改变 Pod 申请 GPU 的 YAML。变化发生在 Kubernetes：旧 Device Plugin 被删除，新的 Device Plugin、NFD/GFD、DCGM Exporter 和 Operator Validator 由 GPU Operator 统一维护。
 
-能够跑通，主要依赖三个决策：
-
-- 设置 `driver.enabled=false` 和 `toolkit.enabled=false`，不改动宿主机已经验证可用的驱动和 Container Toolkit；
-- 选用 v25.3.4，而不是本环境 CUDA Validator 无法通过的 v26.3.3；
-- 将镜像仓库替换为 DaoCloud，避开官方仓库拉取超时。
+能跑通靠三件事：没碰宿主机驱动和 Toolkit、退到 v25.3.4、镜像换 DaoCloud。
 
 这些选择都和具体的 GPU、驱动与网络环境有关。换到另一套集群时，仍应先小范围验证，再决定版本和镜像策略。
 
 ### 本文范围
 
-本文只验证 GPU Operator 接管已有节点上的 GPU 软件栈，以及整卡 GPU 调度是否正常。MIG、多 GPU/NVLink 拓扑、Time-Slicing/MPS 共享、Prometheus 监控接入和多租户队列调度不在本文展开。
+MIG、NVLink 拓扑、共享调度、Prometheus 这些本文不碰，后面单独写。
 
 ## 10. 官方参考资料
 
