@@ -8,7 +8,7 @@
 
 ## 1. 为什么要装 GPU Operator
 
-Device Plugin 的职责很集中：发现节点上的 GPU，向 kubelet 注册 `nvidia.com/gpu`，并在 Pod 启动时分配设备。装驱动、配监控、打节点标签、检查 CUDA 链路，这些它都不管。
+Device Plugin 的工作范围很单一：发现节点上的 GPU，向 kubelet 注册 `nvidia.com/gpu`，并在 Pod 启动时分配设备。装驱动、配监控、打节点标签、检查 CUDA 链路，这些它都不管。
 
 GPU Operator 管的范围要大得多。它读取 `ClusterPolicy`，根据配置部署 Driver、Container Toolkit、Device Plugin、NFD、GFD、DCGM Exporter、Operator Validator 等组件，并持续检查它们的状态。
 
@@ -49,7 +49,7 @@ Device Plugin 仍然是 NVIDIA 的 Kubernetes Device Plugin，只是它的 Daemo
 
 *图 2：GPU Operator 是外层管理者；Device Plugin 是其管理的组件之一，负责把 GPU 资源注册给 kubelet。*
 
-## 3. 本次环境和安装取舍
+## 3. 实验环境与部署选择
 
 两台节点的配置如下：
 
