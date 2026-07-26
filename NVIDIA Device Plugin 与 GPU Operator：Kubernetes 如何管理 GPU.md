@@ -325,7 +325,9 @@ kubectl delete pod gpu-operator-smoke-test
 
 到这里，Helm 状态为 `deployed`，`ClusterPolicy` 为 `ready`，两台节点都重新上报 `nvidia.com/gpu=1`，实际 CUDA Pod 也能运行。
 
-## 7. `ClusterPolicy` 卡在 notReady 时怎么看
+## 7. 调度与排障
+
+### `ClusterPolicy` 卡在 notReady 时怎么看
 
 这次最耗时间的不是 Helm 命令，而是镜像拉取和 CUDA Validator。`ClusterPolicy=notReady` 只表示整条链路里还有组件没通过，单看这个状态找不到原因。
 
@@ -354,7 +356,7 @@ kubectl logs -n gpu-operator <nvidia-cuda-validator-pod> --all-containers
 
 如果宿主机上的 `nvidia-smi` 本身就失败，应先修驱动。驱动没有正常工作时，后续的 Device Plugin、Operator Validator 等 Kubernetes 组件也无法绕过这个问题。
 
-## 8. 装上 Operator 后，调度没有变
+### 装上 Operator 后，调度没有变
 
 GPU Operator 管理的是 GPU 软件栈，不是训练任务队列。默认情况下，`nvidia.com/gpu: 1` 仍然表示申请一整块 GPU，不能写成 `0.5`。这两台机器各一张卡，因此最多同时满足两个单卡 Pod。
 
@@ -362,7 +364,7 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 
 训练排队、配额、Gang Scheduling、多租户公平共享，以及对 NVLink、NUMA 和网络拓扑的感知，都不属于 GPU Operator 的职责。这些能力需要 Kueue、Volcano 或其他调度扩展。
 
-## 9. 收尾
+## 8. 总结
 
 这次没有重装驱动，也没有改变 Pod 申请 GPU 的 YAML。变化发生在 Kubernetes：旧 Device Plugin 被删除，新的 Device Plugin、NFD/GFD、DCGM Exporter 和 Operator Validator 由 GPU Operator 统一维护。
 
@@ -370,11 +372,11 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 
 这些选择都和具体的 GPU、驱动与网络环境有关。换到另一套集群时，仍应先小范围验证，再决定版本和镜像策略。
 
-### 本文范围
+### 本文没有展开的内容
 
-MIG、NVLink 拓扑、共享调度、Prometheus 这些本文不碰，后面单独写。
+本文主要聚焦 GPU Operator 的安装、验证和整卡调度。MIG、NVLink 拓扑、GPU 共享（Time-Slicing/MPS）、Prometheus 监控和调度，会在后续文章中单独展开讲解。
 
-## 10. 官方参考资料
+## 9. 官方参考资料
 
 - Kubernetes Device Plugins：<https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/>
 - Kubernetes GPU 调度：<https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/>
