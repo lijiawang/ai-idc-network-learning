@@ -4,7 +4,17 @@
 
 本文面向第一次接触 Linux、vLLM 和 MetaX 的读者。命令默认都在 C500 容器内执行。
 
-> 本文的关键原则：不编译 vLLM，不把系统盘写满，不在服务启动时加载另一套完整 vLLM 做压测，模型、环境、缓存和日志统一放在数据盘 `/home/waas`。
+> 本文的关键原则：不编译 vLLM，不把系统盘写满，不为压测再启动第二个模型服务，模型、环境、缓存和日志统一放在数据盘 `/home/waas`。`vllm bench serve` 只作为客户端请求已经运行的服务。
+
+## 开始前：申请 MetaX C500 实例
+
+打开 [WaaS 云容器创建实例页面](https://waas.aigate.cc/productService)，在算力产品中选择“沐曦 C500-64GB”，再按需要选择区域和计费方式。页面价格和库存会变化，请以申请时显示的信息为准。
+
+![在 WaaS 申请沐曦 C500-64GB 实例](assets/metax-c500/waas-create-metax-c500-instance.png)
+
+实例创建并进入运行状态后，在控制台的“实例管理”中确认 GPU、CPU、显存和系统盘规格。点击系统工具中的“ssh”可以查看登录信息并进入容器；也可以使用 VS Code、云扉 OS 或 JupyterLab。
+
+![WaaS 沐曦 C500 实例管理与连接入口](assets/metax-c500/waas-metax-c500-instance-management.png)
 
 ## 一、本次部署结果
 
@@ -48,7 +58,7 @@
 
 ## 二、为什么这次不需要编译 vLLM
 
-MetaX 官方文档同时介绍了 wheel 安装和源码构建，它们是两条不同路线。已经有匹配 Python、MACA 和 Torch 的官方预编译包时，应优先使用 wheel；源码构建不是必经步骤。
+MetaX 官方文档分别提供了[安装 wheel 包](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#wheel)和[源代码构建教程](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#n2mflikvtm6z1)，它们是两条不同路线。已经有匹配 Python、MACA 和 Torch 的官方预编译包时，应优先使用 wheel；源码构建不是必经步骤。
 
 本次使用的是：
 
@@ -106,6 +116,8 @@ ls -ld /opt/maca
 
 ## 五、先创建 venv，再安装官方 wheel
 
+本章是**首次部署**时执行的安装步骤。已经完成安装后，不要在每次启动模型时重复创建 venv 或安装 wheel。
+
 ### 5.1 创建并激活环境
 
 ```bash
@@ -125,6 +137,8 @@ apt-get install -y python3.12-venv python3.12-dev
 `python3.12-dev` 只提供 Python 头文件，供 Triton 第一次运行时生成辅助模块；它不用于编译 vLLM。
 
 ### 5.2 配置 MACA 环境
+
+下面这些环境变量只在当前终端会话中有效。首次安装时需要设置；以后打开新终端或重启容器后，也需要重新设置。为了方便第一次接触 Linux 的读者，第八章启动服务时会完整重复一次。
 
 ```bash
 export MACA_PATH=/opt/maca
@@ -199,14 +213,23 @@ print("矩阵乘成功:", y.shape, y.device)
 PY
 ```
 
+实测输出如下，Torch 能识别单张 MetaX C500，FP16 矩阵乘在 `cuda:0` 上执行成功：
+
+![MetaX C500 Torch GPU 与矩阵乘验证](assets/metax-c500/torch-gpu-matrix-verification.png)
+
 检查 vLLM 插件：
 
 ```bash
-VLLM_PLUGINS=metax python - <<'PY'
+export VLLM_PLUGINS=metax
+python - <<'PY'
 from vllm.platforms import current_platform
 print(current_platform)
 PY
 ```
+
+日志显示 `metax` 插件已经激活，当前平台成功识别为 `vllm_metax.platform.MxsmlMacaPlatform`：
+
+![vLLM-MetaX 插件激活与平台识别](assets/metax-c500/vllm-metax-plugin-activation.png)
 
 0.21 版 mcoplib 不再提供旧文档中的 `mcoplib_init` 命令。导入插件并看到 MACA 主次版本匹配成功，就是当前版本的检查方式。
 
@@ -292,7 +315,9 @@ source /etc/waas-script/unset_proxy.sh
 
 ### 8.1 后台启动
 
-先进入虚拟环境并设置运行环境：
+下面是**每次启动服务**都可以完整复制执行的命令。这里重复列出环境变量是为了让读者在新终端中直接操作，不需要来回拼接第五章和第六章的命令。
+
+先进入已经创建好的虚拟环境并设置运行环境：
 
 ```bash
 source /home/waas/venvs/vllm-metax/bin/activate
@@ -581,7 +606,7 @@ Qwen3.5-4B 会被识别为支持多模态的架构。纯文本服务应加入 `-
 
 ## 十二、容器重启后的恢复
 
-容器重启后按顺序执行：
+容器重启后，数据盘中的模型、venv、兼容配置和日志通常仍然存在，因此不要重新下载模型或重装全部 wheel。先按顺序检查数据盘、GPU 和 Python 头文件：
 
 ```bash
 df -h / /home/waas
@@ -600,7 +625,7 @@ fatal error: Python.h: No such file or directory
 
 补装 `python3.12-dev` 后，Triton 成功生成小型运行时辅助模块，服务正常启动。这进一步说明数据盘中的模型和 venv 可以持久保存，但系统层软件包未必会随容器重建保留。这个过程不是编译 vLLM。
 
-然后重新执行第八章中的环境变量和 `setsid nohup vllm serve` 命令。启动后检查：
+然后完整重新执行第八章中的环境变量和 `setsid nohup vllm serve` 命令。环境变量不会随着容器重启自动恢复，因此这一步不能省略。启动后检查：
 
 ```bash
 tail -f /home/waas/logs/qwen35-4b-vllm.log
@@ -611,6 +636,8 @@ curl http://127.0.0.1:8000/v1/models
 模型、venv、兼容配置和日志都在 `/home/waas`。如果平台的数据盘挂载发生变化，应先确认该目录存在，再启动服务。
 
 ## 十三、常用命令速查
+
+本节有意汇总前文已经使用过的检查和管理命令，方便部署完成后日常复制，不是需要重新执行一遍的部署步骤。
 
 ```bash
 # 服务进程
