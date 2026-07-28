@@ -6,7 +6,7 @@
 
 DSpark 要解决的，正是这个“逐个生成比较慢”的问题。
 
-![DSpark 总体原理](images/dspark/01-overview.png)
+![DSpark 总体原理](assets/dspark/01-overview.png)
 
 ---
 
@@ -72,7 +72,7 @@ DSpark 给生成过程安排了两个角色：
 3. 草稿正确的部分直接采用；
 4. 从第一个错误的位置停止采用。
 
-![老师与助教类比](images/dspark/02-teacher-analogy.png)
+![老师与助教类比](assets/dspark/02-teacher-analogy.png)
 
 这里最重要的一点是：
 
@@ -121,7 +121,7 @@ DSpark 给生成过程安排了两个角色：
 
 系统会接受前面连续正确的 3 个 Token，从第 4 个位置重新处理。
 
-![五轮串行与一轮并行检查](images/dspark/03-serial-vs-parallel.png)
+![五轮串行与一轮并行检查](assets/dspark/03-serial-vs-parallel.png)
 
 因此，更准确的说法是：
 
@@ -279,7 +279,7 @@ DSpark 会参考：
 - 主模型检查不同长度草稿的效率；
 - 当前服务器的繁忙程度。
 
-![投机解码的收益与成本](images/dspark/04-cost-benefit.png)
+![投机解码的收益与成本](assets/dspark/04-cost-benefit.png)
 
 ---
 
@@ -348,4 +348,3 @@ DSpark 的作用，就是提高草稿质量、动态调整检查长度，让左�
 最终可以把 DSpark 概括成一句话：
 
 > **用少量、便宜的小模型计算，换掉多轮、昂贵的大模型串行等待；再通过动态控制验证长度，减少猜错造成的算力浪费。**
-
