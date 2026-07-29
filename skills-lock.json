@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "compshare-cli": {
+      "source": "compshare-cn/compshare-cli",
+      "sourceType": "github",
+      "skillPath": "skills/compshare-cli/SKILL.md",
+      "computedHash": "beb40b35d95b311b738548dca915ccadbaf7b81d5e5bb11ea1a7b69044e2f335"
+    }
+  }
+}

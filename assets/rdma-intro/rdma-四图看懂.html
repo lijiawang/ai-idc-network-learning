@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四张图看懂 RDMA</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #020617;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', 'PingFang SC', 'Microsoft YaHei', monospace;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    .header { margin-bottom: 1.5rem; }
+    .header-row { display: flex; align-items: center; gap: 0.9rem; }
+    .pulse-dot { width: 12px; height: 12px; border-radius: 50%; background: #22d3ee; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+    h1 { font-size: 1.5rem; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: .82rem; margin: .55rem 0 0 1.8rem; line-height: 1.7; }
+    .toolbar { display: flex; gap: .5rem; margin-left: auto; align-items: center; }
+    .toolbar-toggle { background: transparent; border: 0; border-radius: .375rem; color: #64748b; cursor: pointer; font-size: 1.25rem; padding: .25rem .5rem; }
+    .toolbar-toggle:hover { background: rgba(30, 41, 59, .7); color: #cbd5e1; }
+    .toolbar-actions { display: none; gap: .5rem; }
+    .toolbar.expanded .toolbar-actions { display: flex; }
+    .toolbar-actions button { background: rgba(30, 41, 59, .85); border: 1px solid #334155; border-radius: .375rem; color: #cbd5e1; cursor: pointer; font: inherit; font-size: .72rem; padding: .38rem .7rem; white-space: nowrap; }
+    .toolbar-actions button:hover { border-color: #64748b; color: white; }
+    .diagram-container { background: rgba(15, 23, 42, .72); border: 1px solid #1e293b; border-radius: 1rem; overflow-x: auto; padding: 1.2rem; }
+    svg { display: block; min-width: 1040px; width: 100%; }
+    .cards { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 1.2rem; }
+    .card { background: rgba(15, 23, 42, .62); border: 1px solid #1e293b; border-radius: .75rem; padding: 1.1rem; }
+    .card-header { align-items: center; display: flex; gap: .5rem; margin-bottom: .7rem; }
+    .card-dot { border-radius: 50%; height: 8px; width: 8px; }
+    .cyan { background: #22d3ee; } .emerald { background: #34d399; } .violet { background: #a78bfa; }
+    .card h3 { font-size: .82rem; } .card ul { color: #94a3b8; font-size: .72rem; line-height: 1.8; list-style: none; }
+    .footer { color: #475569; font-size: .7rem; margin: 1.1rem 0 0; text-align: center; }
+    @media (max-width: 800px) { body { padding: 1rem; } .cards { grid-template-columns: 1fr; } }
+    @media print { body { background: #020617; padding: 1rem; } .toolbar { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="container" id="report-container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>四张图看懂 RDMA</h1>
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <button onclick="copyAsImage(this)">📋 Copy</button>
+            <button onclick="downloadPNG(this)">🖼️ PNG</button>
+            <button onclick="downloadPDF(this)">📄 PDF</button>
+          </div>
+          <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="导出选项" aria-label="导出选项">⋯</button>
+        </div>
+      </div>
+      <p class="subtitle">从数据路径、对象模型、操作语义到 RoCEv2 拥塞闭环：先看全景，再读正文。</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 900" role="img" aria-labelledby="diagram-title diagram-desc">
+        <title id="diagram-title">四张图解释 RDMA</title>
+        <desc id="diagram-desc">展示传统 Socket 与 RDMA 路径、MR QP CQ 对象关系、RDMA 操作语义，以及 RoCEv2 的拥塞反馈闭环。</desc>
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrow-slate" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#22d3ee"/></marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#34d399"/></marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#a78bfa"/></marker>
+          <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#fbbf24"/></marker>
+          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#fb7185"/></marker>
+        </defs>
+        <rect width="1200" height="900" fill="url(#grid)"/>
+
+        <!-- Panel boundaries -->
+        <rect x="18" y="20" width="560" height="375" rx="12" fill="#020617" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4"/>
+        <rect x="622" y="20" width="560" height="375" rx="12" fill="#020617" stroke="#a78bfa" stroke-width="1" stroke-dasharray="8,4"/>
+        <rect x="18" y="430" width="560" height="375" rx="12" fill="#020617" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <rect x="622" y="430" width="560" height="375" rx="12" fill="#020617" stroke="#fbbf24" stroke-width="1" stroke-dasharray="8,4"/>
+
+        <!-- Panel 1 arrows: Socket vs RDMA -->
+        <path d="M 112 172 L 112 208 L 276 208 L 276 208 L 442 208 L 442 172" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-dasharray="5,5" marker-end="url(#arrow-amber)"/>
+        <path d="M 112 292 L 180 292 L 276 292 L 374 292 L 442 292" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+        <line x1="112" y1="248" x2="112" y2="273" stroke="#64748b" stroke-width="1.3" marker-end="url(#arrow-slate)"/>
+        <line x1="442" y1="273" x2="442" y2="248" stroke="#64748b" stroke-width="1.3" marker-end="url(#arrow-slate)"/>
+
+        <!-- Panel 1 boxes -->
+        <text x="38" y="49" fill="#22d3ee" font-size="13" font-weight="700">01 · 传统 Socket 与 RDMA 数据路径</text>
+        <rect x="52" y="74" width="120" height="266" rx="10" fill="rgba(30,41,59,.55)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="112" y="94" fill="#cbd5e1" font-size="10" font-weight="700" text-anchor="middle">节点 A</text>
+        <rect x="67" y="112" width="90" height="42" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.4"/>
+        <text x="112" y="130" fill="white" font-size="10" font-weight="600" text-anchor="middle">应用 Buffer</text><text x="112" y="144" fill="#94a3b8" font-size="8" text-anchor="middle">用户态内存</text>
+        <rect x="67" y="218" width="90" height="42" rx="6" fill="rgba(120,53,15,.28)" stroke="#fbbf24" stroke-width="1.4"/>
+        <text x="112" y="236" fill="white" font-size="10" font-weight="600" text-anchor="middle">TCP/IP</text><text x="112" y="250" fill="#94a3b8" font-size="8" text-anchor="middle">内核协议栈</text>
+        <rect x="67" y="274" width="90" height="42" rx="6" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.4"/>
+        <text x="112" y="292" fill="white" font-size="10" font-weight="600" text-anchor="middle">RNIC</text><text x="112" y="306" fill="#94a3b8" font-size="8" text-anchor="middle">DMA + Transport</text>
+        <rect x="222" y="240" width="108" height="86" rx="8" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.4"/>
+        <text x="276" y="273" fill="white" font-size="11" font-weight="700" text-anchor="middle">网络 Fabric</text><text x="276" y="290" fill="#94a3b8" font-size="8" text-anchor="middle">IB / RoCE / iWARP</text><text x="276" y="305" fill="#a78bfa" font-size="8" text-anchor="middle">交换机与链路</text>
+        <rect x="382" y="74" width="120" height="266" rx="10" fill="rgba(30,41,59,.55)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="442" y="94" fill="#cbd5e1" font-size="10" font-weight="700" text-anchor="middle">节点 B</text>
+        <rect x="397" y="112" width="90" height="42" rx="6" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.4"/>
+        <text x="442" y="130" fill="white" font-size="10" font-weight="600" text-anchor="middle">应用 Buffer</text><text x="442" y="144" fill="#94a3b8" font-size="8" text-anchor="middle">用户态内存</text>
+        <rect x="397" y="218" width="90" height="42" rx="6" fill="rgba(120,53,15,.28)" stroke="#fbbf24" stroke-width="1.4"/>
+        <text x="442" y="236" fill="white" font-size="10" font-weight="600" text-anchor="middle">TCP/IP</text><text x="442" y="250" fill="#94a3b8" font-size="8" text-anchor="middle">内核协议栈</text>
+        <rect x="397" y="274" width="90" height="42" rx="6" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.4"/>
+        <text x="442" y="292" fill="white" font-size="10" font-weight="600" text-anchor="middle">RNIC</text><text x="442" y="306" fill="#94a3b8" font-size="8" text-anchor="middle">DMA + Transport</text>
+        <text x="276" y="194" fill="#fbbf24" font-size="9" text-anchor="middle">传统：应用 → 内核 → NIC → 网络 → 内核 → 应用</text>
+        <text x="276" y="363" fill="#22d3ee" font-size="9" text-anchor="middle">RDMA：注册 Buffer 之间由 RNIC 直接搬运，CPU 留在控制面</text>
+
+        <!-- Panel 2 arrows: object model -->
+        <line x1="714" y1="195" x2="770" y2="195" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+        <line x1="874" y1="195" x2="951" y2="195" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+        <line x1="826" y1="258" x2="826" y2="319" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <line x1="998" y1="258" x2="1046" y2="300" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+        <!-- Panel 2 boxes -->
+        <text x="642" y="49" fill="#a78bfa" font-size="13" font-weight="700">02 · MR / QP / CQ：谁负责内存、谁负责工作</text>
+        <rect x="650" y="118" width="64" height="150" rx="8" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.4"/>
+        <text x="682" y="142" fill="white" font-size="10" font-weight="700" text-anchor="middle">应用</text><text x="682" y="159" fill="#94a3b8" font-size="8" text-anchor="middle">post WR</text><text x="682" y="174" fill="#94a3b8" font-size="8" text-anchor="middle">poll CQ</text><text x="682" y="225" fill="#22d3ee" font-size="8" text-anchor="middle">用户态</text>
+        <rect x="742" y="98" width="274" height="198" rx="10" fill="rgba(251,191,36,.04)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="753" y="116" fill="#fbbf24" font-size="8" font-weight="700">PD · Protection Domain</text>
+        <rect x="770" y="144" width="112" height="112" rx="7" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="826" y="166" fill="white" font-size="11" font-weight="700" text-anchor="middle">QP</text><text x="826" y="184" fill="#34d399" font-size="8" text-anchor="middle">SQ：提交 Send / Read / Write</text><text x="826" y="202" fill="#34d399" font-size="8" text-anchor="middle">RQ：提前 Post Receive</text><line x1="784" y1="215" x2="868" y2="215" stroke="#34d399" stroke-width=".8"/><text x="826" y="238" fill="#94a3b8" font-size="8" text-anchor="middle">一对工作队列</text>
+        <rect x="928" y="144" width="72" height="112" rx="7" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="964" y="168" fill="white" font-size="11" font-weight="700" text-anchor="middle">MR</text><text x="964" y="188" fill="#a78bfa" font-size="8" text-anchor="middle">Buffer</text><text x="964" y="205" fill="#a78bfa" font-size="8" text-anchor="middle">lkey / rkey</text><text x="964" y="232" fill="#94a3b8" font-size="8" text-anchor="middle">权限与映射</text>
+        <rect x="776" y="319" width="100" height="48" rx="7" fill="rgba(76,29,149,.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="826" y="340" fill="white" font-size="10" font-weight="700" text-anchor="middle">CQ</text><text x="826" y="355" fill="#a78bfa" font-size="8" text-anchor="middle">WC / CQE</text>
+        <rect x="1046" y="278" width="104" height="74" rx="7" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1098" y="305" fill="white" font-size="11" font-weight="700" text-anchor="middle">RNIC</text><text x="1098" y="323" fill="#94a3b8" font-size="8" text-anchor="middle">取 WQE、DMA、传输</text><text x="1098" y="340" fill="#34d399" font-size="8" text-anchor="middle">写 CQE</text>
+        <text x="900" y="384" fill="#94a3b8" font-size="9" text-anchor="middle">MR 决定“能访问哪块内存” · QP 承接工作 · CQ 汇报完成</text>
+
+        <!-- Panel 3 arrows: operations -->
+        <line x1="140" y1="522" x2="440" y2="522" stroke="#22d3ee" stroke-width="1.6" marker-end="url(#arrow-cyan)"/>
+        <line x1="140" y1="600" x2="440" y2="600" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-emerald)"/>
+        <line x1="440" y1="680" x2="140" y2="680" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#arrow-violet)"/>
+        <line x1="140" y1="753" x2="440" y2="753" stroke="#fb923c" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+        <path d="M 440 753 L 493 753 L 493 725" fill="none" stroke="#fb923c" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#arrow-amber)"/>
+
+        <!-- Panel 3 boxes -->
+        <text x="38" y="459" fill="#34d399" font-size="13" font-weight="700">03 · Send / Write / Read：数据放在哪里、谁会知道</text>
+        <rect x="62" y="487" width="78" height="284" rx="8" fill="rgba(8,51,68,.4)" stroke="#22d3ee" stroke-width="1.3"/>
+        <text x="101" y="510" fill="white" font-size="10" font-weight="700" text-anchor="middle">本地</text><text x="101" y="529" fill="#94a3b8" font-size="8" text-anchor="middle">SQ / Buffer</text>
+        <rect x="440" y="487" width="80" height="284" rx="8" fill="rgba(76,29,149,.28)" stroke="#a78bfa" stroke-width="1.3"/>
+        <text x="480" y="510" fill="white" font-size="10" font-weight="700" text-anchor="middle">远端</text><text x="480" y="529" fill="#94a3b8" font-size="8" text-anchor="middle">RQ / MR / CQ</text>
+        <rect x="210" y="498" width="148" height="42" rx="6" fill="rgba(8,51,68,.35)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="284" y="516" fill="white" font-size="10" font-weight="700" text-anchor="middle">Send / Recv</text><text x="284" y="531" fill="#94a3b8" font-size="8" text-anchor="middle">写入远端预先 Post 的 RQ Buffer</text>
+        <rect x="210" y="576" width="148" height="48" rx="6" fill="rgba(6,78,59,.35)" stroke="#34d399" stroke-width="1"/>
+        <text x="284" y="596" fill="white" font-size="10" font-weight="700" text-anchor="middle">RDMA Write</text><text x="284" y="612" fill="#94a3b8" font-size="8" text-anchor="middle">推入 remote_addr + rkey 指定 MR</text>
+        <rect x="210" y="656" width="148" height="48" rx="6" fill="rgba(76,29,149,.35)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="284" y="676" fill="white" font-size="10" font-weight="700" text-anchor="middle">RDMA Read</text><text x="284" y="692" fill="#94a3b8" font-size="8" text-anchor="middle">从远端 MR 拉回本地 Buffer</text>
+        <rect x="190" y="729" width="188" height="48" rx="6" fill="rgba(251,146,60,.25)" stroke="#fb923c" stroke-width="1"/>
+        <text x="284" y="749" fill="white" font-size="10" font-weight="700" text-anchor="middle">Write with Immediate</text><text x="284" y="765" fill="#94a3b8" font-size="8" text-anchor="middle">Write 数据 + 远端 Receive CQE 通知</text>
+        <rect x="448" y="710" width="64" height="30" rx="5" fill="rgba(251,146,60,.25)" stroke="#fb923c" stroke-width="1"/>
+        <text x="480" y="729" fill="#fb923c" font-size="8" font-weight="700" text-anchor="middle">CQE + Imm</text>
+        <text x="284" y="796" fill="#94a3b8" font-size="8" text-anchor="middle">Atomic：对远端已授权字段执行 FetchAdd / CompareSwap（取决于设备能力）</text>
+
+        <!-- Panel 4 arrows: RoCEv2 congestion loop -->
+        <line x1="733" y1="620" x2="856" y2="620" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+        <line x1="966" y1="620" x2="1088" y2="620" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+        <path d="M 1088 706 L 732 706" fill="none" stroke="#a78bfa" stroke-width="1.8" stroke-dasharray="6,4" marker-end="url(#arrow-violet)"/>
+        <path d="M 856 558 L 732 558" fill="none" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow-rose)"/>
+
+        <!-- Panel 4 boxes -->
+        <text x="642" y="459" fill="#fbbf24" font-size="13" font-weight="700">04 · RoCEv2：PFC 应急刹车 + ECN / CNP 端到端调速</text>
+        <rect x="658" y="584" width="76" height="78" rx="7" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="696" y="610" fill="white" font-size="10" font-weight="700" text-anchor="middle">发送端</text><text x="696" y="627" fill="#34d399" font-size="9" text-anchor="middle">RNIC</text><text x="696" y="645" fill="#94a3b8" font-size="8" text-anchor="middle">注入速率</text>
+        <rect x="856" y="576" width="110" height="94" rx="7" fill="rgba(120,53,15,.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="911" y="606" fill="white" font-size="11" font-weight="700" text-anchor="middle">交换机队列</text><text x="911" y="625" fill="#fbbf24" font-size="8" text-anchor="middle">拥塞时 ECN 标记 CE</text><text x="911" y="643" fill="#94a3b8" font-size="8" text-anchor="middle">队列接近水位</text>
+        <rect x="1088" y="584" width="76" height="78" rx="7" fill="rgba(6,78,59,.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1126" y="610" fill="white" font-size="10" font-weight="700" text-anchor="middle">接收端</text><text x="1126" y="627" fill="#34d399" font-size="9" text-anchor="middle">RNIC</text><text x="1126" y="645" fill="#94a3b8" font-size="8" text-anchor="middle">回送 CNP</text>
+        <text x="795" y="607" fill="#22d3ee" font-size="8" text-anchor="middle">RoCEv2 数据流</text><text x="1027" y="607" fill="#22d3ee" font-size="8" text-anchor="middle">携带 CE 标记</text>
+        <text x="910" y="728" fill="#a78bfa" font-size="9" text-anchor="middle">CNP 反馈 → 发送端降低速率，拥塞缓解后逐步恢复</text>
+        <text x="792" y="548" fill="#fb7185" font-size="9" text-anchor="middle">PFC Pause：逐跳暂停指定优先级，防止缓冲区溢出</text>
+        <rect x="670" y="752" width="480" height="32" rx="6" fill="rgba(251,191,36,.08)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="910" y="772" fill="#fbbf24" font-size="8" text-anchor="middle">PFC 不是拥塞控制本身；QoS 映射、ECN 阈值、路由与 Buffer 配置必须端到端一致</text>
+
+        <!-- Legend outside panel boundaries -->
+        <text x="32" y="844" fill="white" font-size="10" font-weight="700">图例</text>
+        <line x1="80" y1="840" x2="108" y2="840" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)"/><text x="118" y="844" fill="#94a3b8" font-size="8">数据路径</text>
+        <line x1="190" y1="840" x2="218" y2="840" stroke="#a78bfa" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow-violet)"/><text x="228" y="844" fill="#94a3b8" font-size="8">反馈 / 完成</text>
+        <line x1="330" y1="840" x2="358" y2="840" stroke="#fb7185" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow-rose)"/><text x="368" y="844" fill="#94a3b8" font-size="8">PFC 暂停</text>
+        <text x="32" y="875" fill="#475569" font-size="8">提示：RDMA 优化的是数据快路径；连接、内存注册、权限、通知与异常恢复仍由软件控制面协作完成。</text>
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="card-header"><div class="card-dot cyan"></div><h3>先看数据路径</h3></div><ul><li>• RDMA 减少协议栈中转与额外复制</li><li>• RNIC 执行 DMA 与传输快路径</li><li>• CPU 仍负责创建、注册与同步</li></ul></div>
+      <div class="card"><div class="card-header"><div class="card-dot emerald"></div><h3>再记三个对象</h3></div><ul><li>• MR：已授权、已映射的内存</li><li>• QP：提交 Send / Read / Write 的队列</li><li>• CQ：检查请求是否真正完成</li></ul></div>
+      <div class="card"><div class="card-header"><div class="card-dot violet"></div><h3>最后分清通知</h3></div><ul><li>• 普通 Write 不会通知远端应用</li><li>• Write with Immediate 会产生远端 Receive CQE</li><li>• 本地成功 CQE 不等于业务已消费</li></ul></div>
+    </div>
+    <p class="footer">AI 集群 IDC 网络架构学习 · RDMA 入门配图 · 可通过右上角导出 PNG / PDF</p>
+  </div>
+
+  <script>
+    async function copyAsImage(btn) {
+      const orig = btn.textContent;
+      try {
+        const el = document.getElementById('report-container'); const r = el.getBoundingClientRect(); const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: e => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); btn.textContent = '✓ Copied!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+    async function downloadPNG(btn) {
+      const orig = btn.textContent; btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container'); const r = el.getBoundingClientRect(); const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: e => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const link = document.createElement('a'); link.download = 'rdma-四图看懂.png'; link.href = canvas.toDataURL('image/png'); link.click(); btn.textContent = '✓ Done!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+    async function downloadPDF(btn) {
+      const orig = btn.textContent; btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container'); const r = el.getBoundingClientRect(); const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: e => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
+        const pdf = new jsPDF({ orientation, unit: 'px', format: [canvas.width, canvas.height], hotfixes: ['px_scaling'] }); pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height); pdf.save('rdma-四图看懂.pdf'); btn.textContent = '✓ Done!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+  </script>
+</body>
+</html>

@@ -497,6 +497,12 @@ Done
 
 测试结束后删除该 Pod。
 
+## 下一篇
+
+本篇完成了 GPU 节点准备和整卡调度实验。下一篇继续拆解 Device Plugin 的资源注册与分配过程，并介绍如何在当前两节点环境中使用预装驱动和 Toolkit 的方式迁移到 GPU Operator：
+
+- [NVIDIA Device Plugin 与 GPU Operator：Kubernetes 如何管理 GPU](NVIDIA%20Device%20Plugin%20与%20GPU%20Operator：Kubernetes%20如何管理%20GPU.md)
+
 ## 14. 官方参考资料
 
 - Kubernetes kubeadm 安装：<https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
