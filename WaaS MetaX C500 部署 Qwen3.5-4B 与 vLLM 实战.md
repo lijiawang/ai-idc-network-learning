@@ -1,18 +1,16 @@
-# WaaS MetaX C500 部署 Qwen3.5-4B：vLLM-MetaX 安装、模型服务与性能测试
+# WaaS MetaX C500 跑 Qwen3.5-4B，vLLM-MetaX 安装、服务与性能测试
 
-这篇文章记录一次真实可复现的部署：在 WaaS 的单张 MetaX C500 容器中，使用 Python venv 和官方预编译 wheel 安装 vLLM-MetaX 0.21，部署 Qwen3.5-4B 的 OpenAI 兼容接口，并完成并发性能测试。
+这次是在 WaaS 的一张 MetaX C500 上实跑 Qwen3.5-4B。环境用 Python venv，vLLM-MetaX 用官方预编译 wheel，OpenAI 接口和并发压测也都跑了一遍。
 
-本文面向第一次接触 Linux、vLLM 和 MetaX 的读者。命令默认都在 C500 容器内执行。
-
-> 本文的关键原则：不编译 vLLM，不把系统盘写满，不为压测再启动第二个模型服务，模型、环境、缓存和日志统一放在数据盘 `/home/waas`。`vllm bench serve` 只作为客户端请求已经运行的服务。
+命令都在 C500 容器里执行。模型、虚拟环境、缓存和日志放在 `/home/waas`，别往 100 GB 的系统盘里堆大文件。这里没有编译 vLLM；`vllm bench serve` 只是向已运行的服务发请求。
 
 ## 开始前：申请 MetaX C500 实例
 
-打开 [WaaS 云容器创建实例页面](https://waas.aigate.cc/productService)，在算力产品中选择“沐曦 C500-64GB”，再按需要选择区域和计费方式。页面价格和库存会变化，请以申请时显示的信息为准。
+打开 [WaaS 云容器创建实例页面](https://waas.aigate.cc/productService)，在算力产品中选「沐曦 C500-64GB」，然后选择区域和计费方式。价格和库存以页面当时显示的为准。
 
 ![在 WaaS 申请沐曦 C500-64GB 实例](assets/metax-c500/waas-create-metax-c500-instance.png)
 
-实例创建并进入运行状态后，在控制台的“实例管理”中确认 GPU、CPU、显存和系统盘规格。点击系统工具中的“ssh”可以查看登录信息并进入容器；也可以使用 VS Code、云扉 OS 或 JupyterLab。
+实例进入运行状态后，到「实例管理」里确认 GPU、CPU、显存和系统盘规格。控制台可以查看登录信息，也可以从 VS Code、云扉 OS 或 JupyterLab 进入容器。
 
 ![WaaS 沐曦 C500 实例管理与连接入口](assets/metax-c500/waas-metax-c500-instance-management.png)
 
@@ -36,14 +34,11 @@
 | API | `http://127.0.0.1:8000/v1` |
 | 最大上下文 | 8192 token |
 
-### 1.2 实际验证结果
+### 1.2 跑通情况
 
-- MetaX 插件成功激活，平台类为 `vllm_metax.platform.MxsmlMacaPlatform`。
-- mcoplib 检查通过：构建 MACA 3.7.1.5 与运行时 MACA 3.7 主次版本匹配。
-- Qwen3.5 架构成功识别为 `Qwen3_5ForConditionalGeneration`。
-- `/v1/models` 与 `/v1/chat/completions` 均返回 HTTP 200。
-- 官方 `vllm bench serve` 的随机集测试中，40 个请求、最大并发 4，成功 40、失败 0。
-- 官方 Sonnet 测试中，10 个请求同时发出，成功 10、失败 0。
+启动日志里能看到 `vllm_metax.platform.MxsmlMacaPlatform`，mcoplib 也确认构建时与运行时的 MACA 主次版本一致。模型被识别为 `Qwen3_5ForConditionalGeneration`，`/v1/models` 和 `/v1/chat/completions` 都返回了 HTTP 200。
+
+后面的两轮压测也都跑完了。Random 数据集 40 个请求、并发 4，成功 40 个；Sonnet 数据集一次发 10 个请求，成功 10 个。
 
 ### 1.3 性能测试结果
 
@@ -54,25 +49,25 @@
 | Random，输入 128、输出 64 | 40 | 4 | 100% | 21.22 s | 1.89 req/s | 120.66 token/s | 96.97 ms | 32.12 ms/token |
 | Sonnet，输入 256、输出 64、前缀 100 | 10 | 10 | 100% | 2.40 s | 4.16 req/s | 266.30 token/s | 195.57 ms | 34.90 ms/token |
 
-这些数字是本机、本版本和本文参数下的实测结果，不应直接当成所有 C500 环境的理论峰值。输入长度、输出长度、并发、采样参数和图优化都会影响结果。
+这是这张卡、这套版本和这组参数下的结果。换输入长度、输出长度、并发或图优化开关，数值都会变。
 
-## 二、为什么这次不需要编译 vLLM
+## 二、这次为什么没编译 vLLM
 
-MetaX 官方文档分别提供了[安装 wheel 包](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#wheel)和[源代码构建教程](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#n2mflikvtm6z1)，它们是两条不同路线。已经有匹配 Python、MACA 和 Torch 的官方预编译包时，应优先使用 wheel；源码构建不是必经步骤。
+MetaX 官方文档同时给了 [wheel 安装](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#wheel) 和 [源码构建](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#n2mflikvtm6z1) 两种路子。这台机器有匹配 Python、MACA、Torch 的预编译包，直接装 wheel 就行。
 
-本次使用的是：
+这次实际装的是：
 
 1. MetaX 官方 PyPI 仓库中的 MACA 适配 wheel：`https://repos.metax-tech.com/r/maca-pypi/simple`。
 2. MetaX 软件中心列出的 `maca-vllm-metax-0.21.0-py312-3.7.1.106-linux-x86_64.tar.xz` 对应版本信息。
 3. vLLM 0.21.0 的预编译 `cp38-abi3-manylinux_2_24_x86_64.whl`，没有从源码执行 `setup.py`、`pip wheel .` 或 CMake 构建。
 
-MetaX 软件中心下载接口需要登录令牌，因此不能在匿名 shell 中直接下载软件中心压缩包。这个限制不代表必须编译：MetaX 依赖仍可以直接从官方 PyPI 安装，vLLM 核心也使用预编译 wheel。
+软件中心下载需要登录令牌，匿名 shell 不能直接拉那个压缩包。不过 MetaX 的依赖能从官方 PyPI 装，vLLM 核心也有预编译 wheel。
 
-启动日志中可能出现 `mcoplib during compilation`、Triton helper 或 Torch extension 的字样。这是预编译软件第一次运行时生成很小的运行时辅助模块，不是重新编译 vLLM。
+第一次启动时，日志可能会写 `mcoplib during compilation`、Triton helper 或 Torch extension。那是在生成很小的运行时辅助模块，vLLM 本身没有重新编译。
 
 ## 三、规划目录，避免写满系统盘
 
-本机系统盘为 100 GB，而 `/home/waas` 是容量充足的数据盘。因此把所有大文件放到数据盘：
+系统盘只有 100 GB，模型和缓存都往 `/home/waas` 放：
 
 ```bash
 mkdir -p /home/waas/{venvs,models,packages,logs,compat}
@@ -83,7 +78,7 @@ export HF_HOME=/home/waas/.cache/huggingface
 export TORCH_EXTENSIONS_DIR=/home/waas/.cache/torch_extensions
 ```
 
-随时检查空间：
+看空间和内存：
 
 ```bash
 df -h / /home/waas
@@ -91,7 +86,7 @@ du -sh /home/waas/models /home/waas/.cache 2>/dev/null
 free -h
 ```
 
-本次完成安装后，系统盘只使用约 1.4 GB；模型、虚拟环境和缓存都位于 `/home/waas`。
+安装完成时系统盘用了约 1.4 GB，模型、虚拟环境和缓存都在 `/home/waas`。
 
 ## 四、检查原始环境
 
@@ -102,7 +97,7 @@ mx-smi
 mx-smi --show-memory
 ```
 
-应能看到 `MXC500`、一张卡和约 64 GiB 显存。
+看到 `MXC500`、一张卡和约 64 GiB 显存就对了。
 
 ### 4.2 查看 Python 和 MACA
 
@@ -112,11 +107,11 @@ python3 --version
 ls -ld /opt/maca
 ```
 
-本机输出为 `/usr/bin/python3` 和 `Python 3.12.3`，MACA 安装在 `/opt/maca`。
+这台机器输出的是 `/usr/bin/python3`、`Python 3.12.3`，MACA 在 `/opt/maca`。
 
 ## 五、先创建 venv，再安装官方 wheel
 
-本章是**首次部署**时执行的安装步骤。已经完成安装后，不要在每次启动模型时重复创建 venv 或安装 wheel。
+这一章只在第一次部署时做一次。服务重启不需要重建 venv，也不用再装 wheel。
 
 ### 5.1 创建并激活环境
 
@@ -127,18 +122,18 @@ source /home/waas/venvs/vllm-metax/bin/activate
 python -m pip install -U pip setuptools wheel
 ```
 
-如果 `venv` 命令报缺少组件，再执行：
+如果 `venv` 报缺组件，再装：
 
 ```bash
 apt-get update
 apt-get install -y python3.12-venv python3.12-dev
 ```
 
-`python3.12-dev` 只提供 Python 头文件，供 Triton 第一次运行时生成辅助模块；它不用于编译 vLLM。
+`python3.12-dev` 里是 Python 头文件，Triton 第一次运行时会用到。它不是拿来编译 vLLM 的。
 
 ### 5.2 配置 MACA 环境
 
-下面这些环境变量只在当前终端会话中有效。首次安装时需要设置；以后打开新终端或重启容器后，也需要重新设置。为了方便第一次接触 Linux 的读者，第八章启动服务时会完整重复一次。
+这些变量只对当前终端有效。换一个终端或重启容器后要重新设置。第八章会再贴一遍，直接复制就能启动。
 
 ```bash
 export MACA_PATH=/opt/maca
@@ -153,13 +148,13 @@ export VLLM_PLUGINS=metax
 
 ### 5.3 使用 MetaX 官方 PyPI
 
-官方索引地址：
+官方索引：
 
 ```text
 https://repos.metax-tech.com/r/maca-pypi/simple
 ```
 
-实际安装的关键包版本如下：
+这次锁定的关键包版本：
 
 ```text
 torch==2.8.0+metax3.7.2.0
@@ -170,7 +165,7 @@ flashinfer==0.2.6+metax3.7.2.0torch2.8
 triton==3.0.0+metax3.7.2.0
 ```
 
-安装时让 pip 直接访问官方仓库：
+安装时让 pip 直接走这个仓库：
 
 ```bash
 export PIP_CACHE_DIR=/home/waas/.cache/pip
@@ -181,7 +176,7 @@ python -m pip install --extra-index-url "$METAX_INDEX" \
   'vllm-metax==0.21.0+gfbfedf.d20260626.maca3.7.1.5.torch2.8'
 ```
 
-如果从 MetaX 软件中心下载了官方 0.21 安装包，应优先按压缩包中的版本清单和安装脚本操作。不要把不同 MACA、Torch、vLLM-MetaX 版本随意混装。
+如果你从 MetaX 软件中心拿到了官方 0.21 安装包，按包里的版本清单装。MACA、Torch、vLLM-MetaX 的版本别混着拼。
 
 本机 vLLM 核心预编译包保存在：
 
@@ -189,13 +184,13 @@ python -m pip install --extra-index-url "$METAX_INDEX" \
 /home/waas/packages/vllm-0.21.0-1-cp38-abi3-manylinux_2_24_x86_64.whl
 ```
 
-安装命令：
+安装：
 
 ```bash
 python -m pip install /home/waas/packages/vllm-0.21.0-1-cp38-abi3-manylinux_2_24_x86_64.whl
 ```
 
-> 不要执行 `git clone vllm`、`pip install .` 或 `python setup.py bdist_wheel`。本环境没有源码编译 vLLM。
+> 这套环境不需要 `git clone vllm`、`pip install .` 或 `python setup.py bdist_wheel`。
 
 ### 5.4 验证 Torch、GPU 和插件
 
@@ -213,7 +208,7 @@ print("矩阵乘成功:", y.shape, y.device)
 PY
 ```
 
-实测输出如下，Torch 能识别单张 MetaX C500，FP16 矩阵乘在 `cuda:0` 上执行成功：
+实测中 Torch 识别到一张 MetaX C500，FP16 矩阵乘跑在 `cuda:0`：
 
 ![MetaX C500 Torch GPU 与矩阵乘验证](assets/metax-c500/torch-gpu-matrix-verification.png)
 
@@ -227,15 +222,15 @@ print(current_platform)
 PY
 ```
 
-日志显示 `metax` 插件已经激活，当前平台成功识别为 `vllm_metax.platform.MxsmlMacaPlatform`：
+日志里 `metax` 插件已激活，平台识别为 `vllm_metax.platform.MxsmlMacaPlatform`：
 
 ![vLLM-MetaX 插件激活与平台识别](assets/metax-c500/vllm-metax-plugin-activation.png)
 
-0.21 版 mcoplib 不再提供旧文档中的 `mcoplib_init` 命令。导入插件并看到 MACA 主次版本匹配成功，就是当前版本的检查方式。
+0.21 版 mcoplib 已经没有旧文档里的 `mcoplib_init`。导入插件后看到 MACA 主次版本匹配成功，就说明检查过了。
 
 ## 六、MetaX Torch 2.8 最小兼容层
 
-本次组合中，vLLM 0.21 会调用新版 `torch.accelerator` API，而 MetaX Torch 2.8 的具体实现仍在 `torch.cuda` 命名空间。不要修改 vLLM 源码，在独立目录增加最小别名即可。
+vLLM 0.21 会调用新版 `torch.accelerator` API，MetaX Torch 2.8 的同类能力还挂在 `torch.cuda` 下。这里不改 vLLM 源码，只在单独目录补几个别名。
 
 创建 `/home/waas/compat/sitecustomize.py`：
 
@@ -260,19 +255,19 @@ if hasattr(torch, "accelerator"):
             setattr(torch.accelerator, name, function)
 ```
 
-启用方式：
+启动前加上：
 
 ```bash
 export PYTHONPATH=/home/waas/compat
 ```
 
-这是运行时 API 别名，不会编译或修改任何 wheel。以后升级到原生提供完整 `torch.accelerator` 的 MetaX Torch 后，可以先测试移除此兼容层。
+这只是运行时 API 别名，不改 wheel，也不编译东西。以后 MetaX Torch 原生补齐 `torch.accelerator` 后，可以试着去掉这层。
 
 ## 七、准备 Qwen3.5-4B 模型
 
-### 7.1 为什么使用 4B
+### 7.1 本次测试模型
 
-用户要求使用小一些的模型。Qwen3.5-4B 的 BF16 权重约 8.68 GiB，单张 64 GiB C500 有足够空间留给 KV Cache，比 9B 更适合作为首次部署和接口验证模型。
+本次测试使用 Qwen3.5-4B。模型 BF16 权重约 8.68 GiB。
 
 模型目录：
 
@@ -287,7 +282,7 @@ du -sh /home/waas/models/Qwen3.5-4B
 find /home/waas/models/Qwen3.5-4B -maxdepth 1 -type f -printf '%f\n' | sort
 ```
 
-如果需要重新下载，可使用 ModelScope，并将缓存和目标目录放到数据盘：
+模型不在时，可以用 ModelScope 下载到数据盘：
 
 ```bash
 source /home/waas/venvs/vllm-metax/bin/activate
@@ -299,13 +294,13 @@ setsid nohup modelscope download \
   > /home/waas/logs/download-qwen35-4b.log 2>&1 &
 ```
 
-下载时可以临时启用 WaaS 网络代理：
+下载慢时可以临时开 WaaS 代理：
 
 ```bash
 source /etc/waas-script/proxy.sh
 ```
 
-下载结束后如不再需要代理：
+下载结束后关掉：
 
 ```bash
 source /etc/waas-script/unset_proxy.sh
@@ -315,9 +310,7 @@ source /etc/waas-script/unset_proxy.sh
 
 ### 8.1 后台启动
 
-下面是**每次启动服务**都可以完整复制执行的命令。这里重复列出环境变量是为了让读者在新终端中直接操作，不需要来回拼接第五章和第六章的命令。
-
-先进入已经创建好的虚拟环境并设置运行环境：
+每次启动服务，把下面整段复制到新终端里即可。环境变量再写一遍，省得在第五章和第六章之间来回找。
 
 ```bash
 source /home/waas/venvs/vllm-metax/bin/activate
@@ -334,7 +327,7 @@ export TORCH_EXTENSIONS_DIR=/home/waas/.cache/torch_extensions
 export HF_HOME=/home/waas/.cache/huggingface
 ```
 
-然后直接用 `setsid` 和 `nohup` 启动：
+接着用 `setsid` 和 `nohup` 起服务：
 
 ```bash
 setsid nohup vllm serve /home/waas/models/Qwen3.5-4B \
@@ -353,12 +346,12 @@ echo $! > /home/waas/logs/qwen35-4b-vllm.pid
 echo "服务进程 PID: $!"
 ```
 
-两个参数尤其重要：
+这里有两个参数要留着：
 
-- `--enforce-eager`：避开当前 MetaX Torch 2.8 缺少的 functorch 编译配置项。会关闭 Torch Compile 和 CUDA Graph，性能可能低于图优化模式，但本次实测稳定。
-- `--language-model-only`：Qwen3.5 本身具有多模态能力；本服务只提供文本推理，因此关闭视觉编码器 profiling，显著减少无用的启动内存。
+- `--enforce-eager` 会绕开 MetaX Torch 2.8 缺失的 functorch 编译配置。它关掉了 Torch Compile 和 CUDA Graph，跑起来会慢一点，但这套版本组合能稳定启动。
+- `--language-model-only` 让 Qwen3.5 按纯文本模型启动，跳过不需要的视觉编码器 profiling。
 
-`setsid nohup` 可以让服务在退出终端后继续运行。PID 被记录到数据盘，停止服务时会用到。
+`setsid nohup` 让服务脱离终端继续跑。PID 写在数据盘里，停服务时直接用。
 
 ### 8.2 查看状态和日志
 
@@ -370,7 +363,7 @@ mx-smi --show-memory
 free -h
 ```
 
-看到 `Application startup complete` 才表示服务真正可用。仅看到 Python 进程不代表 8000 端口已经就绪。
+日志出现 `Application startup complete` 后再去调接口。只有 Python 进程还不够，8000 端口可能没起来。
 
 ### 8.3 停止
 
@@ -379,14 +372,14 @@ PID=$(cat /home/waas/logs/qwen35-4b-vllm.pid)
 kill -TERM -- "-$PID"
 ```
 
-这里停止的是整个进程组，包括 API Server 和 EngineCore。确认已经停止：
+这个命令会停掉 API Server 和 EngineCore 所在的整个进程组。再查一下：
 
 ```bash
 ps -fp "$PID"
 ss -ltnp | grep :8000
 ```
 
-重新启动时不需要再次安装软件，重新执行本节的环境变量和启动命令即可。
+下次重启服务，重新执行本节的环境变量和启动命令就行。
 
 ## 九、调用 OpenAI 兼容 API
 
@@ -396,7 +389,7 @@ ss -ltnp | grep :8000
 curl http://127.0.0.1:8000/v1/models
 ```
 
-应返回模型 ID `Qwen3.5-4B`。
+能看到模型 ID `Qwen3.5-4B` 就行。
 
 ### 9.2 发送聊天请求
 
@@ -414,15 +407,15 @@ curl http://127.0.0.1:8000/v1/chat/completions \
   }'
 ```
 
-本次实际回复：
+这次实测返回：
 
 ```text
 MetaX C500 服务器上的 vLLM 服务已成功启动并处于就绪状态，能够正常处理推理请求。
 ```
 
-该次调用的统计为：输入 31 token，输出 28 token，共 59 token。
+这次请求输入 31 token，输出 28 token，共 59 token。
 
-API 返回成功只能证明推理链路可用，不能证明回答中的事实正确。复验时，模型曾把 MetaX C500 错误描述为其他厂商的 5G 设备，属于模型幻觉。验证部署时应检查 HTTP 状态码、返回结构和 token 统计；验证专业知识时应另用可靠资料、检索增强或人工评估。
+接口返回 200，只能说明推理链路通了，不代表模型说的每句话都对。复验时它曾把 MetaX C500 说成别家的 5G 设备，这就是典型幻觉。验部署看 HTTP 状态、返回结构和 token 统计；验专业内容得靠可靠资料、检索或人工复核。
 
 ### 9.3 Python SDK
 
@@ -447,17 +440,17 @@ print(response.choices[0].message.content)
 
 ### 10.1 测试方法
 
-vLLM 0.21 已将旧的 `benchmarks/benchmark_serving.py` 标记为弃用。直接执行该脚本只会提示改用 CLI 并退出，因此本文使用官方等价入口：
+vLLM 0.21 已经弃用了旧的 `benchmarks/benchmark_serving.py`。直接跑它只会提示改用 CLI，于是这里改用官方入口：
 
 ```bash
 vllm bench serve
 ```
 
-Benchmark 使用流式请求，能够统计 TTFT（首 token 延迟）、TPOT（除首 token 外的平均单 token 时间）和 ITL（token 间延迟）。运行前后都应检查主存和显存；本次客户端退出后主存恢复正常，模型服务保持健康。
+Benchmark 走流式请求，所以能看到 TTFT（首 token 延迟）、TPOT（首 token 之后平均每个 token 的时间）和 ITL（token 间延迟）。跑前跑后都看一眼主存和显存。这次客户端退出后内存回落，服务还在。
 
 ### 10.2 Random 数据集，并发 4
 
-测试条件：固定输入 128 token、输出 64 token，2 个预热请求，40 个正式请求，最大并发 4。
+参数很简单：输入 128 token，输出 64 token，先预热 2 个，再跑 40 个，最大并发 4。
 
 ```bash
 vllm bench serve \
@@ -496,7 +489,7 @@ P99 ITL:                            33.21 ms
 
 ### 10.3 Sonnet 数据集，10 请求同时发送
 
-从 vLLM 0.21 官方仓库取得同版本测试文本：
+测试文本直接取 vLLM 0.21 官方仓库里的同版本文件：
 
 ```bash
 mkdir -p /home/waas/benchmarks /home/waas/benchmark-results
@@ -505,7 +498,7 @@ curl -fL \
   -o /home/waas/benchmarks/sonnet.txt
 ```
 
-按照输入 256 token、输出 64 token、公共前缀 100 token、10 个请求和无限请求速率测试：
+这轮设成输入 256 token、输出 64 token、公共前缀 100 token，一次发 10 个请求：
 
 ```bash
 vllm bench serve \
@@ -543,7 +536,7 @@ Mean ITL:                           34.90 ms
 P99 ITL:                           217.07 ms
 ```
 
-`--request-rate inf` 表示请求会尽快发出。没有设置 `--max-concurrency` 时，本轮 10 个请求的峰值并发就是 10，因此它不能与并发 4 的结果直接横向比较。
+`--request-rate inf` 会尽快把请求发出去。这轮没设 `--max-concurrency`，10 个请求的峰值并发就是 10，别拿它和上面的并发 4 直接对比。
 
 结果文件：
 
@@ -551,7 +544,7 @@ P99 ITL:                           217.07 ms
 /home/waas/benchmark-results/qwen35-4b-sonnet-10-20260726.json
 ```
 
-跑更高并发前，先检查：
+想继续加并发，先看：
 
 ```bash
 free -h
@@ -559,21 +552,21 @@ mx-smi --show-memory
 df -h / /home/waas
 ```
 
-不要只看聚合 TPS。并发升高通常会提高整卡吞吐，但也会增加 TTFT、ITL 和尾延迟。建议固定输入、输出和数据集，按并发 1、4、8、16 逐级测试，并同时观察错误率、P99 延迟、主存和显存。
+别只盯着聚合 TPS。并发上去后，整卡吞吐常会变高，TTFT、ITL 和尾延迟也会一起涨。固定输入、输出和数据集，再按 1、4、8、16 逐级试，顺手盯着错误率、P99、主存和显存。
 
 ## 十一、这次修正的几个问题
 
-### 11.1 “必须编译纯 Python vLLM 核心”不合理
+### 11.1 把编译 vLLM 当成必选步骤
 
-旧方案把源码构建当成必选步骤。实际已经有匹配的预编译 wheel，本次没有编译 vLLM。只有官方没有提供匹配 Python、MACA、Torch 和架构的包时，才需要评估源码构建。
+旧方案默认要从源码构建。这台机器已经有匹配的预编译 wheel，直接装就能用。真遇到官方没有适配包的 Python、MACA、Torch 组合，再考虑源码构建。
 
-### 11.2 只安装 `vllm-metax` 而不核对核心版本不够安全
+### 11.2 只装 `vllm-metax`
 
-`vllm-metax` 是平台插件，仍需匹配的 vLLM 核心。不能随意安装一个最新版 vLLM。应按 MetaX 发布包的版本矩阵锁定整个组合。
+`vllm-metax` 是平台插件，vLLM 核心版本也得对上。不要随手装一个最新版 vLLM，照 MetaX 发布包的版本矩阵配。
 
-### 11.3 旧版 `mcoplib_init` 不适用于 0.21
+### 11.3 还在找 `mcoplib_init`
 
-旧文档中的初始化命令属于早期发布。0.21 的 mcoplib 安装后会在加载插件时输出构建版本和运行时 MACA 匹配结果，不需要另跑不存在的命令。
+这是早期版本的命令。0.21 的 mcoplib 在加载插件时会自己输出构建版本和运行时 MACA 的匹配结果，不用再跑这个不存在的命令。
 
 ### 11.4 `torch.accelerator.*` 缺失
 
@@ -584,7 +577,7 @@ AttributeError: module 'torch.accelerator' has no attribute 'empty_cache'
 AttributeError: module 'torch.accelerator' has no attribute 'memory_stats'
 ```
 
-原因是 vLLM 0.21 使用新 API，而 MetaX Torch 2.8 仍通过 `torch.cuda` 暴露相同能力。使用第六章的独立兼容层即可，不应修改 site-packages 中的 vLLM 源码。
+vLLM 0.21 用了新 API，MetaX Torch 2.8 还通过 `torch.cuda` 暴露同样的能力。按第六章加独立兼容层就够了，别直接改 site-packages 里的 vLLM。
 
 ### 11.5 Functorch 配置项不存在
 
@@ -594,19 +587,19 @@ AttributeError: module 'torch.accelerator' has no attribute 'memory_stats'
 torch._functorch.config.autograd_cache_normalize_inputs does not exist
 ```
 
-当前稳定解决方法是 `--enforce-eager`。不要为了绕过它在 Torch 内部配置中随意伪造大量字段。等 MetaX 发布与 vLLM 0.21 图编译路径完全匹配的 Torch 后，再移除该参数做 A/B 测试。
+眼下能稳定跑的办法是 `--enforce-eager`。别为了绕过它在 Torch 内部硬塞一堆配置字段。以后 MetaX 给出和 vLLM 0.21 图编译路径完全匹配的 Torch，再去掉这个参数做 A/B 测试。
 
 ### 11.6 权重加载后长时间不监听端口
 
-Qwen3.5-4B 会被识别为支持多模态的架构。纯文本服务应加入 `--language-model-only`，否则启动阶段还会为视觉编码器准备缓存并做 profiling，额外消耗时间和主存。
+Qwen3.5-4B 会被识别成支持多模态的架构。这里只跑纯文本，加上 `--language-model-only`，它就不会在启动时给视觉编码器准备缓存和做 profiling。
 
 ### 11.7 为什么显存显示约 85%
 
-`--gpu-memory-utilization 0.85` 会让 vLLM 为模型权重和 KV Cache 规划约 85% 的显存。这不表示模型权重本身有 50 多 GiB，也不表示内存泄漏。空闲时 KV Cache 使用率可以为 0，但预留的显存仍由服务持有。
+`--gpu-memory-utilization 0.85` 会让 vLLM 给模型权重和 KV Cache 预留约 85% 显存。模型权重没有 50 多 GiB，也不是显存泄漏。空闲时 KV Cache 使用率可以是 0，服务还是会占着那块预留显存。
 
 ## 十二、容器重启后的恢复
 
-容器重启后，数据盘中的模型、venv、兼容配置和日志通常仍然存在，因此不要重新下载模型或重装全部 wheel。先按顺序检查数据盘、GPU 和 Python 头文件：
+容器重启后，数据盘里的模型、venv、兼容配置和日志通常还在，没必要重新下载模型或重装 wheel。先看数据盘、GPU 和 Python 头文件：
 
 ```bash
 df -h / /home/waas
@@ -623,9 +616,9 @@ fi
 fatal error: Python.h: No such file or directory
 ```
 
-补装 `python3.12-dev` 后，Triton 成功生成小型运行时辅助模块，服务正常启动。这进一步说明数据盘中的模型和 venv 可以持久保存，但系统层软件包未必会随容器重建保留。这个过程不是编译 vLLM。
+补上 `python3.12-dev` 后，Triton 生成了小型运行时辅助模块，服务就起来了。数据盘里的模型和 venv 能留住，系统层软件包未必会留住。这一步依然不是编译 vLLM。
 
-然后完整重新执行第八章中的环境变量和 `setsid nohup vllm serve` 命令。环境变量不会随着容器重启自动恢复，因此这一步不能省略。启动后检查：
+接着重新执行第八章的环境变量和 `setsid nohup vllm serve`。环境变量重启后不会自己回来。启动后查：
 
 ```bash
 tail -f /home/waas/logs/qwen35-4b-vllm.log
@@ -633,11 +626,11 @@ ss -ltnp | grep :8000
 curl http://127.0.0.1:8000/v1/models
 ```
 
-模型、venv、兼容配置和日志都在 `/home/waas`。如果平台的数据盘挂载发生变化，应先确认该目录存在，再启动服务。
+模型、venv、兼容配置和日志都在 `/home/waas`。数据盘挂载有变化时，先确认这个目录还在，再启动。
 
 ## 十三、常用命令速查
 
-本节有意汇总前文已经使用过的检查和管理命令，方便部署完成后日常复制，不是需要重新执行一遍的部署步骤。
+前面用过的常用命令放在一起，平时直接复制。
 
 ```bash
 # 服务进程
@@ -675,7 +668,3 @@ df -h / /home/waas
 4. MetaX 开发者社区 vLLM 搜索：<https://developer.metax-tech.com/search?q=vllm>
 5. vLLM 官方文档：<https://docs.vllm.ai/>
 6. Qwen 官方模型页面：<https://modelscope.cn/organization/qwen>
-
----
-
-本次部署的核心结论：MetaX C500 上有匹配的官方预编译 vLLM-MetaX 组件时，不需要自行编译 vLLM。先创建 venv，锁定 MACA、Torch、vLLM 和插件版本，把模型及缓存放到数据盘，再用 eager 和纯文本模式解决当前版本组合的兼容性问题，即可稳定提供 OpenAI 兼容服务。
