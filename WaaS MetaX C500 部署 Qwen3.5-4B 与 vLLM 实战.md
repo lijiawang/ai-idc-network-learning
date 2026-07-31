@@ -556,19 +556,15 @@ df -h / /home/waas
 
 ## 十一、这次修正的几个问题
 
-### 11.1 把编译 vLLM 当成必选步骤
-
-旧方案默认要从源码构建。这台机器已经有匹配的预编译 wheel，直接装就能用。真遇到官方没有适配包的 Python、MACA、Torch 组合，再考虑源码构建。
-
-### 11.2 只装 `vllm-metax`
+### 11.1 只装 `vllm-metax`
 
 `vllm-metax` 是平台插件，vLLM 核心版本也得对上。不要随手装一个最新版 vLLM，照 MetaX 发布包的版本矩阵配。
 
-### 11.3 还在找 `mcoplib_init`
+### 11.2 还在找 `mcoplib_init`
 
 这是早期版本的命令。0.21 的 mcoplib 在加载插件时会自己输出构建版本和运行时 MACA 的匹配结果，不用再跑这个不存在的命令。
 
-### 11.4 `torch.accelerator.*` 缺失
+### 11.3 `torch.accelerator.*` 缺失
 
 表现：
 
@@ -579,7 +575,7 @@ AttributeError: module 'torch.accelerator' has no attribute 'memory_stats'
 
 vLLM 0.21 用了新 API，MetaX Torch 2.8 还通过 `torch.cuda` 暴露同样的能力。按第六章加独立兼容层就够了，别直接改 site-packages 里的 vLLM。
 
-### 11.5 Functorch 配置项不存在
+### 11.4 Functorch 配置项不存在
 
 表现：
 
@@ -589,11 +585,11 @@ torch._functorch.config.autograd_cache_normalize_inputs does not exist
 
 眼下能稳定跑的办法是 `--enforce-eager`。别为了绕过它在 Torch 内部硬塞一堆配置字段。以后 MetaX 给出和 vLLM 0.21 图编译路径完全匹配的 Torch，再去掉这个参数做 A/B 测试。
 
-### 11.6 权重加载后长时间不监听端口
+### 11.5 权重加载后长时间不监听端口
 
 Qwen3.5-4B 会被识别成支持多模态的架构。这里只跑纯文本，加上 `--language-model-only`，它就不会在启动时给视觉编码器准备缓存和做 profiling。
 
-### 11.7 为什么显存显示约 85%
+### 11.6 为什么显存显示约 85%
 
 `--gpu-memory-utilization 0.85` 会让 vLLM 给模型权重和 KV Cache 预留约 85% 显存。模型权重没有 50 多 GiB，也不是显存泄漏。空闲时 KV Cache 使用率可以是 0，服务还是会占着那块预留显存。
 
