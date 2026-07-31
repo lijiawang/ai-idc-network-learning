@@ -51,7 +51,7 @@
 
 这是这张卡、这套版本和这组参数下的结果。换输入长度、输出长度、并发或图优化开关，数值都会变。
 
-## 二、使用预编译 wheel 安装 vLLM
+## 二、使用预编译好的 wheel 安装 vLLM
 
 MetaX 官方文档同时给了 [wheel 安装](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#wheel) 和 [源码构建](https://developer.metax-tech.com/api/client/document/preview/1360/split_files/macart_vllm_metax.html#n2mflikvtm6z1) 两种路子。这台机器有匹配 Python、MACA、Torch 的预编译包，直接装 wheel 就行。
 
