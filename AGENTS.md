@@ -27,6 +27,12 @@ git push origin main
 
 仍然不得把无关的已修改文件或未跟踪文件一并提交。
 
+每次 `git push origin main` 成功后，回复用户时必须提供本次提交的 GitHub 访问地址，优先使用：
+
+```text
+https://github.com/<owner>/<repository>/commit/<commit-sha>
+```
+
 ## 画图
 
 用户要求生成、绘制或编辑图片时，必须使用 GPT 图片生成工具完成。不要以外部图库、占位图或手工拼凑图片替代。
