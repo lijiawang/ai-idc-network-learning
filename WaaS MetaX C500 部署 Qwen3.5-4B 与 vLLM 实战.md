@@ -282,7 +282,7 @@ du -sh /home/waas/models/Qwen3.5-4B
 find /home/waas/models/Qwen3.5-4B -maxdepth 1 -type f -printf '%f\n' | sort
 ```
 
-模型不在时，可以用 ModelScope 下载到数据盘：
+如果未提前下载模型，可以用 ModelScope 下载模型到数据盘：
 
 ```bash
 source /home/waas/venvs/vllm-metax/bin/activate
