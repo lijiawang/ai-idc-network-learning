@@ -228,7 +228,7 @@ PY
 
 0.21 版 mcoplib 已经没有旧文档里的 `mcoplib_init`。导入插件后看到 MACA 主次版本匹配成功，就说明检查过了。
 
-## 六、MetaX Torch 2.8 最小兼容层
+## 六、MetaX Torch 2.8 兼容配置
 
 vLLM 0.21 会调用新版 `torch.accelerator` API，MetaX Torch 2.8 的同类能力还挂在 `torch.cuda` 下。这里不改 vLLM 源码，只在单独目录补几个别名。
 
