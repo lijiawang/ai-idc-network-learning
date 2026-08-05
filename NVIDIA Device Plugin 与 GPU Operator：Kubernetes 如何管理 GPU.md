@@ -376,6 +376,10 @@ Time-Slicing 和 MPS 由 Device Plugin 的共享配置控制。Time-Slicing 不�
 
 本文主要聚焦 GPU Operator 的安装、验证和整卡调度。MIG、NVLink 拓扑、GPU 共享（Time-Slicing/MPS）、Prometheus 监控和调度，会在后续文章中单独展开讲解。
 
+下一篇先继续向下拆 Driver 生命周期：
+
+- [GPU Operator 进阶：一个容器如何把 NVIDIA 驱动装进宿主机？](GPU%20Operator%20进阶：一个容器如何把%20NVIDIA%20驱动装进宿主机？.md)
+
 ## 9. 官方参考资料
 
 - Kubernetes Device Plugins：<https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/>
