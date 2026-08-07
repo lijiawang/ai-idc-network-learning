@@ -15,13 +15,15 @@
 
 容器不是应该和宿主机隔离吗？驱动为什么不会随着 Pod 删除而消失？内核模块究竟装在容器里还是宿主机里？驱动、Container Toolkit 和 Device Plugin 又按什么顺序启动？
 
-这篇不重复 Helm 入门和整卡调度，而是沿着 GPU Operator v25.3.4 的控制器源码、Driver DaemonSet 清单和 Driver Container 启动脚本，把这条链路拆开。
+这篇不重复 Helm 入门和整卡调度，而是沿着当前稳定版 GPU Operator v26.3.3 的控制器源码、Driver DaemonSet 清单和 Driver Container 启动流程，把这条链路拆开。
 
 > **实验边界**
 >
 > 当前两台 RTX 3080 Ti 节点已经预装 Driver 570.153.02 和 Container Toolkit 1.19.1，上一篇也按 `driver.enabled=false`、`toolkit.enabled=false` 完成了验证。本文没有在这两台节点上直接切换到容器化驱动，以免覆盖正在工作的宿主机驱动。
 >
-> 文中的原理分析以 GPU Operator v25.3.4 源码为主；安装命令是供干净且可回滚的 GPU 节点使用的实验方案。实际版本必须按 NVIDIA Platform Support、Component Matrix 和目标 GPU、操作系统、内核选择，不能直接照抄版本号。
+> 截至 2026 年 8 月，NVIDIA 将 v26.3.x 标为 `Supported`，v25.10.x 标为 `Deprecated`，v25.3.x 及以下已经 `End of Support`。本文固定使用 v26.3.3；这不代表上一篇的现有集群已经升级。
+>
+> 安装命令是供干净且可回滚的 GPU 节点使用的实验方案。GPU Operator 版本固定为 v26.3.3，但 Driver 仍必须按 NVIDIA Platform Support、Component Matrix 和目标 GPU、操作系统、内核选择，不能只照抄一个驱动版本号。
 
 ## 1. 先说结论：驱动容器不是普通业务容器
 
@@ -31,7 +33,7 @@ GPU Operator 管理驱动时，并不是让 CUDA 程序隔着一个 Driver Pod �
 2. Operator 为这些节点创建 `nvidia-driver-daemonset`；
 3. Driver Pod 以特权模式运行，针对宿主机正在运行的内核准备并加载 NVIDIA 内核模块；
 4. Driver Container 把自己的驱动用户态文件系统暴露到宿主机 `/run/nvidia/driver`；
-5. Container Toolkit 根据这个路径配置容器运行时；
+5. Container Toolkit 根据这个路径配置 CDI 与容器注入链路；
 6. Device Plugin 最后才向 kubelet 注册 `nvidia.com/gpu`。
 
 这里有两个关键事实。
@@ -40,7 +42,7 @@ GPU Operator 管理驱动时，并不是让 CUDA 程序隔着一个 Driver Pod �
 
 第二，GPU Operator 的“容器化驱动”通常不会像 `apt install nvidia-driver-*` 那样，把完整驱动安装进宿主机的 `/usr`。内核模块进入宿主机内核，驱动用户态文件则通过 `/run/nvidia/driver` 提供给后续组件。它更像一个随节点运行的驱动安装器和生命周期管理器。
 
-因此，内核模块不会仅仅因为容器的 mount namespace 消失就自动消失；但 Driver Container 的退出流程或下一次 Driver Manager 初始化可以主动卸载它们。与此同时，`/run/nvidia/driver` 的用户态文件视图和就绪标记会失效，后续组件也不再满足运行条件。Operator 会重新创建 Pod，把期望状态恢复回来。
+因此，内核模块不会仅仅因为容器的 mount namespace 消失就自动消失。Driver Manager 会在真正的驱动升级、配置变化或卸载流程中协调客户端并主动卸载模块；如果只是 Driver Pod 被删除，且 Driver 版本和配置没有变化，v26.3 会复用节点上已经存在的内核模块，避免再次卸载和编译。Operator 仍会重建 Pod，重新暴露 Driver Root 并恢复校验状态。
 
 ## 2. Helm、ClusterPolicy、Controller 和 Operand 是四层关系
 
@@ -63,7 +65,7 @@ kubectl get clusterpolicy cluster-policy -o yaml
 kubectl get daemonset -n gpu-operator
 ```
 
-在 v25.3.4 的 `ClusterPolicy` 控制器中，主要协调步骤按下面的顺序执行。下面省略了末尾与沙箱、vGPU、VFIO、Kata 和机密计算相关的可选状态：
+在 v26.3.3 的 `ClusterPolicy` 控制器中，主要协调步骤仍按下面的顺序执行。下面省略了末尾与沙箱、vGPU、VFIO、Kata 和机密计算相关的可选状态：
 
 ```text
 pre-requisites
@@ -138,7 +140,7 @@ kubectl get nodes \
 
 ## 4. 拆开 Driver DaemonSet 看它为什么能碰宿主机
 
-GPU Operator v25.3.4 的 Driver DaemonSet 不是普通 DaemonSet。几个关键字段决定了它有能力管理宿主机驱动。
+GPU Operator v26.3.3 的 Driver DaemonSet 不是普通 DaemonSet。几个关键字段决定了它有能力管理宿主机驱动。
 
 ### 4.1 每个 GPU 节点运行一个 Driver Pod
 
@@ -175,7 +177,7 @@ Driver Pod 因此拥有接近节点管理员的权限。`gpu-operator` 命名空
 
 ### 4.4 hostPath 和挂载传播把两边接起来
 
-v25.3.4 的 Driver Pod 会使用这些关键宿主机路径：
+v26.3.3 的 Driver Pod 会使用这些关键宿主机路径：
 
 | 宿主机路径 | 在驱动链路中的作用 |
 | --- | --- |
@@ -185,7 +187,7 @@ v25.3.4 的 Driver Pod 会使用这些关键宿主机路径：
 | `/var/log`、`/dev/log` | 写入或转发驱动与 Fabric Manager 日志 |
 | `/run/mellanox/drivers` | 启用 GPUDirect RDMA 等场景时与网络驱动栈衔接 |
 
-一个容易写错的细节是：v25.3.4 的 Driver DaemonSet 并不是简单把宿主机 `/lib/modules` 挂进容器，然后执行一次 `apt install`。实际清单和启动脚本要复杂得多。
+一个容易写错的细节是：v26.3.3 的 Driver DaemonSet 并不是简单把宿主机 `/lib/modules` 挂进容器，然后执行一次 `apt install`。实际清单和启动流程要复杂得多。
 
 ![Driver Pod 通过 privileged、hostPID 和 hostPath 触达宿主机内核](assets/kubernetes-gpu/gpu-operator-driver-pod-host-boundary.png)
 
@@ -207,7 +209,7 @@ kubectl get daemonset nvidia-driver-daemonset \
   -o jsonpath='{range .spec.template.spec.volumes[*]}{.name}{"\t"}{.hostPath.path}{"\n"}{end}'
 ```
 
-### 4.5 v25.3.4 使用 `OnDelete` 更新 Driver Pod
+### 4.5 v26.3.3 仍使用 `OnDelete` 更新 Driver Pod
 
 Driver DaemonSet 还设置了：
 
@@ -216,7 +218,7 @@ updateStrategy:
   type: OnDelete
 ```
 
-原因是驱动更新不能只靠 DaemonSet 自动滚动。旧模块还在宿主机内核里，GPU 客户端也可能仍在运行，必须先由 Driver Upgrade Controller 或 Driver Manager 协调客户端、节点和模块，再删除并重建 Driver Pod。
+原因是驱动更新不能只靠 DaemonSet 自动滚动。旧模块还在宿主机内核里，GPU 客户端也可能仍在运行，必须先由 Driver Upgrade Controller 或 Driver Manager 协调客户端、节点和模块，再删除并重建 Driver Pod。这里要和“相同配置下删除 Pod”区分：后者在 v26.3 可以走模块复用快路径，真正换 Driver 版本时仍必须卸载旧模块。
 
 ## 5. Driver Container 启动时到底做了什么
 
@@ -285,7 +287,7 @@ Driver Container 安装完成后，会把自己的根文件系统递归绑定到
 
 ### 5.5 通过 startupProbe 建立驱动就绪标记
 
-v25.3.4 的 Driver Container 使用 `nvidia-smi` 作为启动探针。成功后还会写入：
+v26.3.3 的 Driver DaemonSet 挂载专用 `startup-probe.sh`。探针验证 `nvidia-smi`，成功后写入：
 
 ```text
 /run/nvidia/validations/.driver-ctr-ready
@@ -299,11 +301,13 @@ Driver Validator 随后会区分两种情况：先检查宿主机预装驱动；
 
 这个文件不只是一个空标志，还记录 `IS_HOST_DRIVER`、`NVIDIA_DRIVER_ROOT`、`DRIVER_ROOT_CTR_PATH` 等环境信息。Toolkit 启动前读取这份契约，就能同时兼容“宿主机驱动根目录为 `/`”和“容器化驱动根目录为 `/run/nvidia/driver`”两种模式。
 
+v26.3.3 仍部署 `nvidia-operator-validator` DaemonSet，但 Validator 可执行程序已经随 `gpu-operator` 镜像发布，不再使用旧的独立 Validator 镜像。Pod 名称和校验链路仍然存在，不要把“镜像合并”误解成“Validator 被删除”。
+
 后续组件的 initContainer 会等待对应依赖通过。这样 Toolkit、Device Plugin 和 DCGM Exporter 不会在驱动不可用时被误判为就绪。
 
 ![Driver Container 从识别内核到向 Toolkit 交付就绪状态的流程](assets/kubernetes-gpu/gpu-operator-driver-install-flow.png)
 
-*图 3：Driver Container 先识别宿主机环境，再现场构建或选择预编译模块；`nvidia-smi` 通过后，Validator 把 `.driver-ctr-ready` 转换为下游读取的 `driver-ready` 契约，Toolkit 最后启动。*
+*图 3：Operator 在 Pod 启动前决定使用传统还是预编译 Driver 镜像；Driver Container 完成模块准备和加载后，`nvidia-smi` 建立 `.driver-ctr-ready`，Validator 再生成下游读取的 `driver-ready` 契约。*
 
 ## 6. 传统 Driver Container 和预编译 Driver Container
 
@@ -340,7 +344,7 @@ GPU Operator 管理驱动时有两条主要路径。
 
 预编译不等于“任意节点都不用管内核”。正好相反，它把内核匹配从节点启动时的编译问题，变成镜像发布时的精确匹配问题。节点升级内核后，如果仓库没有带对应标签的镜像，Driver Pod 仍然起不来。
 
-官方还限制了预编译驱动支持的架构、操作系统、内核变体和驱动分支，并明确说明它不支持 vGPU 和 GPUDirect Storage。生产使用前必须先查支持表和 NGC 镜像标签。
+v26.3 文档将官方预编译驱动限制在 x86_64、列出的操作系统和内核变体，并只支持最近发布的 LTSB Driver 分支；它仍不支持 vGPU 和 GPUDirect Storage。生产使用前必须先查支持表和 NGC 镜像标签。
 
 ## 7. Driver 装好以后，Toolkit 还要做什么
 
@@ -352,15 +356,25 @@ Driver 和 NVIDIA Container Toolkit 经常被混成一件事，实际上两者�
 | NVIDIA Container Toolkit | containerd、CRI-O 或 Docker 启动容器时，如何注入指定 GPU、设备节点和驱动用户态库 |
 | Device Plugin | Kubernetes 如何发现可分配 GPU，并把设备选择结果交给容器启动链路 |
 
-Toolkit DaemonSet 会先等待 Driver Validator 通过，然后以特权模式和 hostPath 修改节点上的容器运行时配置。使用 GPU Operator 管理的容器化驱动时，它把驱动根目录指向：
+Toolkit DaemonSet 会先等待 Driver Validator 通过，再以特权模式和 hostPath 配置节点上的 GPU 容器注入链路。使用 GPU Operator 管理的容器化驱动时，它把驱动根目录指向：
 
 ```text
 /run/nvidia/driver
 ```
 
-在 v25.3.4 清单里，宿主机驱动根目录在 Toolkit Container 内的挂载点是 `/driver-root`。Toolkit 还会把自己的二进制安装到宿主机默认的 `/usr/local/nvidia`，并根据探测到的 containerd、CRI-O 或 Docker 配置文件和 socket 修改运行时配置。
+在 v26.3.3 清单里，宿主机驱动根目录在 Toolkit Container 内的挂载点仍是 `/driver-root`。Toolkit 还会把自己的二进制安装到宿主机默认的 `/usr/local/nvidia`，并生成 CDI 规范文件。
 
-在 v25.3.4 且关闭 CDI 的配置下，Toolkit 会为 containerd 配置 `nvidia` runtime handler。较新的 GPU Operator 已调整 CDI 默认行为，因此复现实验时必须以所选 Chart 的文档为准，不能把 v25.3.4 的 runtime 配置原样套到所有新版本。
+v26.3.3 默认启用 CDI，默认不启用 NRI：
+
+```yaml
+cdi:
+  enabled: true
+  nriPluginEnabled: false
+```
+
+标准业务 Pod 通过 Device Plugin 申请 GPU 时，containerd 或 CRI-O 使用原生 CDI 支持注入设备。绕过 Kubernetes 资源分配、直接使用 `NVIDIA_VISIBLE_DEVICES` 的 GPU 管理容器，在这个默认模式下仍需要 `runtimeClassName: nvidia`。
+
+如果显式启用 NRI Plugin，Toolkit 会在每个 GPU 节点运行 NRI Plugin，不再创建 `nvidia` RuntimeClass，也不再修改 containerd 的 `config.toml`。NRI 当前仍受上游实现成熟度和容器运行时版本限制，因此本文实验保持默认的 `CDI=true、NRI=false`。
 
 Toolkit 不是 CUDA Toolkit，也不负责构建 `nvidia` 内核模块。它解决的是“容器启动时怎么把已经可用的 GPU 和驱动库放进去”。
 
@@ -370,7 +384,7 @@ Toolkit 不是 CUDA Toolkit，也不负责构建 `nvidia` 内核模块。它解�
 NFD 发现 PCI 设备
   -> Driver 安装并加载模块
   -> Driver Validator
-  -> Toolkit 配置容器运行时
+  -> Toolkit 配置 CDI 与容器注入链路
   -> Toolkit Validator
   -> Device Plugin 注册 nvidia.com/gpu
   -> CUDA Validator
@@ -385,7 +399,11 @@ NFD 发现 PCI 设备
 
 不要在上一篇的现有 `gpu-operator` Release 上直接执行本节的 Helm 命令。`driver.enabled=true` 是 `ClusterPolicy` 的集群级配置，默认会影响所有匹配的 GPU 节点，不会自动只作用于“新加的干净节点”。`helm upgrade` 还可能把未写入新 values 文件的 DaoCloud 镜像、CDI 和其他现有配置恢复成 Chart 默认值。
 
-如果必须在同一集群混合预装驱动节点和 Operator 管理驱动节点，应先按所用版本的官方能力设计 `NVIDIADriver` CRD、`nodeSelector` 或受支持的节点选择策略，导出并合并现有完整 values，再确认 Driver DaemonSet 的实际匹配节点。这个混合模式不在本文实验范围内。
+v26.3.3 的 `NVIDIADriver` CRD 能在新安装中按节点、Driver 类型、Driver 版本和操作系统生成不同的 Driver DaemonSet；使用预编译驱动时，还会按内核版本拆分 DaemonSet。但它与 `ClusterPolicy` 驱动管理互斥，也不支持从已有 `ClusterPolicy` 原地切换。当前两节点实验集群不能靠打开一个 Helm 开关安全迁移到该模式。
+
+Chart 默认仍使用 `ClusterPolicy` 管 Driver，即 `driver.nvidiaDriverCRD.enabled=false`。如果新安装时启用该 CRD，Chart 默认还会创建一个匹配所有 GPU 节点的 `default` CR；准备自己划分节点池时，应从安装开始设置 `driver.nvidiaDriverCRD.deployDefaultCR=false`，避免选择器重叠。
+
+如果只需在同一集群混合“宿主机预装 Driver”和“Operator 管理 Driver”，可以继续使用 `ClusterPolicy`：先给预装驱动节点设置 `nvidia.com/gpu.deploy.driver=false`，再启用集群级 `driver.enabled=true`，并确认其他目标节点的部署标签和 Driver DaemonSet 实际匹配结果。若还需要多个 Driver 类型、版本或多种 GPU 节点操作系统，再从新安装开始设计 `NVIDIADriver` CR；已有 `ClusterPolicy` 安装仍不支持原地切换到该模式。这个混合模式不在本文实验范围内。
 
 ### 8.1 准备安全的实验节点
 
@@ -420,9 +438,15 @@ command -v nvidia-smi
 3. 目标 GPU 支持的 Driver 分支；
 4. 目标内核是否有 headers 或预编译镜像。
 
+v26.3.3 的 Component Matrix 将 580.126.20 标为默认 Driver、580.173.02 标为推荐 Driver。这两个数字只能说明它们进入了当前支持矩阵，不能代替目标 GPU、操作系统和内核的兼容性检查，所以下面的 values 仍保留 Driver 占位符。
+
 将版本选择和配置保存到 values 文件，而不是只留一条不可追踪的命令：
 
 ```yaml
+cdi:
+  enabled: true
+  nriPluginEnabled: false
+
 driver:
   enabled: true
   version: "REPLACE_WITH_SUPPORTED_DRIVER_VERSION"
@@ -433,10 +457,10 @@ toolkit:
   enabled: true
 ```
 
-下面是一份命令模板。先把变量替换为经过支持矩阵核对的真实版本，再在独立实验集群执行：
+下面固定使用当前稳定版 v26.3.3。Driver 版本仍需替换为支持矩阵中的真实值，再在独立实验集群执行：
 
 ```bash
-GPU_OPERATOR_VERSION='REPLACE_WITH_VALIDATED_GPU_OPERATOR_VERSION'
+GPU_OPERATOR_VERSION='v26.3.3'
 
 helm install gpu-operator nvidia/gpu-operator \
   --namespace gpu-operator \
@@ -455,7 +479,7 @@ driver:
   usePrecompiled: true
 ```
 
-这里不提供固定版本号，因为 GPU Operator、Driver、GPU、内核和操作系统是一个组合，单独追最新版反而最容易踩兼容问题。
+这里固定的是 GPU Operator Chart，不是 Driver。Driver、GPU、内核和操作系统仍然是一个组合，不能因为 Chart 使用 v26.3.3 就跳过 Component Matrix。
 
 ### 8.3 观察 Driver Pod，而不是只等 Helm
 
@@ -536,6 +560,8 @@ find /run/nvidia/driver -maxdepth 2 \
 
 ### 9.4 Toolkit 与容器运行时层
 
+先从 Kubernetes 控制面检查 DaemonSet、日志和当前注入模式：
+
 ```bash
 kubectl get daemonset nvidia-container-toolkit-daemonset \
   -n gpu-operator
@@ -544,10 +570,19 @@ kubectl logs -n gpu-operator \
   daemonset/nvidia-container-toolkit-daemonset \
   -c nvidia-container-toolkit-ctr
 
+kubectl get clusterpolicy cluster-policy \
+  -o jsonpath='{.spec.cdi.enabled}{"\t"}{.spec.cdi.nriPluginEnabled}{"\n"}'
+```
+
+再到对应 GPU 节点检查 CDI 规范文件和 containerd 实际配置：
+
+```bash
+find /var/run/cdi -maxdepth 1 -type f -print
+
 containerd config dump | grep -A 12 -B 3 nvidia
 ```
 
-启用 CDI 的配置还应检查 CDI 规范文件和所选 Chart 的注入模式，不能只检查传统 NVIDIA runtime 配置。
+在本文的默认 `CDI=true、NRI=false` 模式下，应同时检查 CDI 规范文件和 NVIDIA runtime 配置。若显式启用 NRI，则“不修改 containerd 配置”反而是预期行为，不能再用 `config.toml` 中是否出现 NVIDIA 条目判断 Toolkit 成败。
 
 ### 9.5 Kubernetes 资源层
 
@@ -584,7 +619,7 @@ sudo dmesg | grep -i Xid
 
 `dmesg` 能看到模块加载、固件、PCI 和 GPU 初始化错误，是 Driver Pod 日志之外最重要的证据。
 
-针对本文所分析的 v25.3.4，官方排障文档明确指出不支持启用 EFI Secure Boot 的系统，建议关闭后再安装。不要把 `driver.certConfig` 当作内核模块签名配置；它用于 Driver Container 访问私有软件仓库时的证书配置。
+针对本文所分析的 v26.3.3，官方排障文档仍明确指出 GPU Operator 不支持启用 EFI Secure Boot 的系统，建议关闭后再安装。不要把 `driver.certConfig` 当作内核模块签名配置；它用于 Driver Container 访问私有软件仓库时的证书配置。
 
 ## 11. 为什么驱动升级不是换个镜像这么简单
 
@@ -631,7 +666,7 @@ kubectl get node -l nvidia.com/gpu.present \
 | 宿主机预装 Driver | 现有镜像体系成熟、GPU 节点 OS 不同、驱动由节点运维平台统一管理 | Operator 看得到驱动，但不管理其生命周期 |
 | 传统 Driver Container | GPU 节点 OS 统一，希望在 GPU 节点扩缩容时自动部署和维护驱动 | 依赖 headers、GCC、软件源和现场构建，启动时间更长 |
 | 预编译 Driver Container | 内核版本固定、网络受限、希望减少现场编译和节点初始化耗时的波动 | 镜像必须精确匹配，支持组合与功能有限 |
-| `NVIDIADriver` CRD | 需要按节点选择多个 Driver 版本、类型或 OS 的进阶场景 | API 仍为 `v1alpha1`，必须核对所用版本的成熟度和限制 |
+| `NVIDIADriver` CRD | 新集群需要按节点选择多个 Driver 版本、类型或 OS | API 仍为 `v1alpha1`，与 `ClusterPolicy` 驱动管理互斥，不能原地切换 |
 
 没有一种方案永远最好。
 
@@ -643,7 +678,7 @@ kubectl get node -l nvidia.com/gpu.present \
 
 GPU Operator 能从 Pod 里安装驱动，不是因为它绕过了 Linux 的隔离规则，而是因为 Driver Pod 被明确授予了节点级权限：它共享宿主机内核和 PID 视图，通过 privileged、hostPath 与挂载传播管理内核模块和驱动文件。
 
-整条链路的核心不是一条 Helm 命令，而是一个持续协调过程：NFD 先用 PCI 标签发现 GPU，Operator 再创建 Driver DaemonSet；Driver Container 为宿主机内核准备并加载模块，把用户态文件暴露到 `/run/nvidia/driver`；Toolkit 配置容器运行时；Device Plugin 最后才注册 `nvidia.com/gpu`。
+整条链路的核心不是一条 Helm 命令，而是一个持续协调过程：NFD 先用 PCI 标签发现 GPU，Operator 再创建 Driver DaemonSet；Driver Container 为宿主机内核准备并加载模块，把用户态文件暴露到 `/run/nvidia/driver`；Toolkit 配置 CDI 与容器注入链路；Device Plugin 最后才注册 `nvidia.com/gpu`。
 
 传统 Driver Container 解决灵活适配，预编译 Driver Container 提高可重复性，并减少离线环境中的现场构建依赖。两种方式都必须匹配 GPU、Driver、OS 和内核，也都不能把驱动升级理解成普通 Pod 滚动发布。
 
@@ -651,16 +686,18 @@ GPU Operator 能从 Pod 里安装驱动，不是因为它绕过了 Linux 的隔�
 
 ## 14. 官方资料与源码
 
-- GPU Operator v25.3 安装与参数：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3/getting-started.html>
-- GPU Operator v25.3 Platform Support：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3/platform-support.html>
-- GPU Operator v25.3 预编译驱动：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3/precompiled-drivers.html>
-- GPU Operator v25.3 Driver 升级：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3/gpu-driver-upgrades.html>
-- GPU Operator v25.3 `NVIDIADriver` CRD：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3/gpu-driver-configuration.html>
-- GPU Operator v25.3.4 排障：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3.4/troubleshooting.html>
-- NVIDIA Container Toolkit v1.17.8 架构：<https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/1.17.8/arch-overview.html>
-- GPU Operator v25.3.4 `ClusterPolicy` 状态机源码：<https://github.com/NVIDIA/gpu-operator/blob/v25.3.4/controllers/state_manager.go>
-- GPU Operator v25.3.4 Driver DaemonSet：<https://github.com/NVIDIA/gpu-operator/blob/v25.3.4/assets/state-driver/0500_daemonset.yaml>
-- GPU Operator v25.3.4 Validator：<https://github.com/NVIDIA/gpu-operator/blob/v25.3.4/validator/main.go>
-- GPU Operator v25.3.4 Toolkit 等待脚本：<https://github.com/NVIDIA/gpu-operator/blob/v25.3.4/assets/state-container-toolkit/0400_configmap.yaml>
-- NVIDIA Driver Container 启动脚本（固定提交）：<https://github.com/NVIDIA/gpu-driver-container/blob/94078eae807f9709cca4756b3a8a736b002a99a6/ubuntu22.04/nvidia-driver>
+- GPU Operator v26.3 安装与当前补丁版本：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/getting-started.html>
+- GPU Operator v26.3 Release Notes：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/release-notes.html>
+- GPU Operator v26.3 Platform Support 与生命周期：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/platform-support.html>
+- GPU Operator v26.3 预编译驱动：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/precompiled-drivers.html>
+- GPU Operator v26.3 Driver 升级：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/gpu-driver-upgrades.html>
+- GPU Operator v26.3 `NVIDIADriver` CRD：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/gpu-driver-configuration.html>
+- GPU Operator v26.3 CDI 与 NRI：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/cdi.html>
+- GPU Operator v26.3 排障：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/troubleshooting.html>
+- NVIDIA Container Toolkit v1.19.1 架构：<https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/1.19.1/arch-overview.html>
+- GPU Operator v26.3.3 `ClusterPolicy` 状态机源码：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/controllers/state_manager.go>
+- GPU Operator v26.3.3 Driver DaemonSet：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/assets/state-driver/0500_daemonset.yaml>
+- GPU Operator v26.3.3 Validator：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/cmd/nvidia-validator/main.go>
+- GPU Operator v26.3.3 Toolkit 等待脚本：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/assets/state-container-toolkit/0400_configmap.yaml>
+- NVIDIA Driver Container 传统 Ubuntu 构建流程参考（固定历史提交）：<https://github.com/NVIDIA/gpu-driver-container/blob/94078eae807f9709cca4756b3a8a736b002a99a6/ubuntu22.04/nvidia-driver>
 - 部署前核对最新版 GPU Operator 文档：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/>
