@@ -1,5 +1,7 @@
 # GPU Operator 进阶：一个容器如何把 NVIDIA 驱动装进宿主机？
 
+![GPU Operator Driver Pod 在宿主机内核中安装 NVIDIA 驱动](assets/kubernetes-gpu/gpu-operator-driver-container-cover.png)
+
 [上一篇](NVIDIA%20Device%20Plugin%20与%20GPU%20Operator：Kubernetes%20如何管理%20GPU.md)安装 GPU Operator 时，宿主机已经有 NVIDIA Driver 和 NVIDIA Container Toolkit，因此 Helm 参数里明确关闭了这两项：
 
 ```bash
@@ -130,6 +132,10 @@ kubectl get nodes \
 - `gpu.deploy.driver`：该节点是否应该运行 Driver Operand；
 - `nvidia.com/gpu`：Driver、Toolkit 和 Device Plugin 链路完成后，kubelet 最终上报的可调度资源。
 
+![GPU Operator 从 PCI 发现到创建 Driver Pod 的控制链路](assets/kubernetes-gpu/gpu-operator-control-loop-bootstrap.png)
+
+*图 1：Helm 提交期望状态，NFD 提供 PCI 发现结果，GPU Operator 持续协调并为匹配节点创建 Driver Pod。*
+
 ## 4. 拆开 Driver DaemonSet 看它为什么能碰宿主机
 
 GPU Operator v25.3.4 的 Driver DaemonSet 不是普通 DaemonSet。几个关键字段决定了它有能力管理宿主机驱动。
@@ -180,6 +186,10 @@ v25.3.4 的 Driver Pod 会使用这些关键宿主机路径：
 | `/run/mellanox/drivers` | 启用 GPUDirect RDMA 等场景时与网络驱动栈衔接 |
 
 一个容易写错的细节是：v25.3.4 的 Driver DaemonSet 并不是简单把宿主机 `/lib/modules` 挂进容器，然后执行一次 `apt install`。实际清单和启动脚本要复杂得多。
+
+![Driver Pod 通过 privileged、hostPID 和 hostPath 触达宿主机内核](assets/kubernetes-gpu/gpu-operator-driver-pod-host-boundary.png)
+
+*图 2：Driver Pod 没有自己的内核。`hostPID` 用来观察宿主机进程，`hostPath` 连接宿主机路径，`privileged` 使模块加载最终作用于宿主机内核。用户态驱动则通过 `/run/nvidia/driver` 暴露。*
 
 可以直接检查集群实际生成的 PodSpec，不必靠猜：
 
@@ -290,6 +300,10 @@ Driver Validator 随后会区分两种情况：先检查宿主机预装驱动；
 这个文件不只是一个空标志，还记录 `IS_HOST_DRIVER`、`NVIDIA_DRIVER_ROOT`、`DRIVER_ROOT_CTR_PATH` 等环境信息。Toolkit 启动前读取这份契约，就能同时兼容“宿主机驱动根目录为 `/`”和“容器化驱动根目录为 `/run/nvidia/driver`”两种模式。
 
 后续组件的 initContainer 会等待对应依赖通过。这样 Toolkit、Device Plugin 和 DCGM Exporter 不会在驱动不可用时被误判为就绪。
+
+![Driver Container 从识别内核到向 Toolkit 交付就绪状态的流程](assets/kubernetes-gpu/gpu-operator-driver-install-flow.png)
+
+*图 3：Driver Container 先识别宿主机环境，再现场构建或选择预编译模块；`nvidia-smi` 通过后，Validator 把 `.driver-ctr-ready` 转换为下游读取的 `driver-ready` 契约，Toolkit 最后启动。*
 
 ## 6. 传统 Driver Container 和预编译 Driver Container
 
