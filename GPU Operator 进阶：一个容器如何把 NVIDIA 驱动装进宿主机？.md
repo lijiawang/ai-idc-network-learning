@@ -481,7 +481,140 @@ driver:
 
 这里固定的是 GPU Operator Chart，不是 Driver。Driver、GPU、内核和操作系统仍然是一个组合，不能因为 Chart 使用 v26.3.3 就跳过 Component Matrix。
 
-### 8.3 观察 Driver Pod，而不是只等 Helm
+### 8.3 指定驱动版本、Driver 镜像源和 OS 软件源
+
+“驱动从哪里下载”至少涉及三层，不能用一个 `repository` 概括：
+
+| 配置 | 控制什么 | 不控制什么 |
+| --- | --- | --- |
+| Helm 仓库与 Chart `--version` | 从哪里取得 GPU Operator Chart，以及安装哪个 Operator 版本 | NVIDIA Driver 版本 |
+| `driver.repository`、`driver.image`、`driver.version` | kubelet 拉取哪个 Driver Container 镜像 | Driver Container 内部的 apt、dnf、yum 或 zypper 软件源 |
+| `driver.repoConfig.configMapName` | 向 Driver Container 的包管理器追加哪些 OS 软件源定义 | Driver Container 镜像地址和 NVIDIA Driver 版本 |
+
+标准 Data Center Driver 的安装载荷来自 Driver Container 镜像。`driver.version` 不是让 Pod 到某个 URL 下载 `.run` 驱动包，而是参与选择 Driver Container 的镜像标签。传统 Driver Container 启动后还需要下载与宿主机内核匹配的 OS 软件包，所以“镜像源可访问”与“驱动能够完成构建”是两个独立条件。
+
+#### 8.3.1 指定传统 Driver Container 的版本和镜像仓库
+
+可直接访问 NVIDIA NGC 时，v26.3.3 默认的镜像位置是 `nvcr.io/nvidia/driver`。下面把它改成企业私有镜像仓库，并以支持矩阵中的 580.173.02 为例。它只是配置格式示例，实际部署仍要核对目标 GPU、OS 和内核：
+
+```yaml
+driver:
+  enabled: true
+  usePrecompiled: false
+  kernelModuleType: auto
+
+  repository: registry.example.com/mirror/nvidia
+  image: driver
+  version: "580.173.02"
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets:
+    - registry-cred
+```
+
+这几个字段组合成 Driver 镜像：
+
+```text
+<repository>/<image>:<driver-version>-<os-tag>
+```
+
+例如 Ubuntu 22.04 节点最终使用的传统 Driver 镜像类似：
+
+```text
+registry.example.com/mirror/nvidia/driver:580.173.02-ubuntu22.04
+```
+
+`repository` 写镜像仓库和子路径，不带 `https://`，也不包含镜像名与标签；`image` 通常保持 `driver`；`version` 只写完整 Driver 版本，不要再拼 `-ubuntu22.04`。Operator 会根据节点 OS 选择后缀。
+
+使用私有镜像仓库时，应先把对应 OS 标签的镜像完整同步进去，并把拉取凭据 Secret 创建在 `gpu-operator` 命名空间。v26.3.3 的 `driver.imagePullSecrets` 是字符串数组，因此写 `- registry-cred`，不是 `- name: registry-cred`。
+
+`driver.certConfig` 不能让 containerd 信任私有镜像仓库。私有 Registry 的 CA 和代理要配置到每个节点的操作系统与 containerd；`imagePullSecrets` 只解决认证。完全离线时还必须同步 Operator、Driver Manager、Toolkit、Device Plugin、NFD、DCGM 等所有启用组件的镜像，不能只同步 `driver`。
+
+预编译 Driver Container 的写法不同：`version` 必须写 Driver 分支，而不是完整版本号。
+
+```yaml
+driver:
+  enabled: true
+  repository: registry.example.com/mirror/nvidia
+  image: driver
+  version: "580"
+  usePrecompiled: true
+  imagePullSecrets:
+    - registry-cred
+```
+
+它的最终标签还包含完整内核版本和 OS，例如：
+
+```text
+580-<uname-r>-ubuntu22.04
+```
+
+因此，同一集群存在多个内核版本时，私有仓库必须同步每个实际内核与 OS 组合的精确镜像。仓库缺少任意一个标签，对应节点就会 `ImagePullBackOff`。
+
+#### 8.3.2 指定 kernel headers 和 GCC 的软件包源
+
+传统 Driver Container 仍要通过 apt、dnf、yum 或 zypper 获取构建依赖。先准备与节点发行版匹配的软件源文件，再把它放进 `gpu-operator` 命名空间的 ConfigMap。
+
+以下是 Ubuntu 22.04 x86_64 节点的结构示例，内部镜像的真实路径应按企业仓库布局填写；ARM64 节点应把架构改为 `arm64` 或按仓库策略移除架构限制：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: driver-os-repos
+  namespace: gpu-operator
+data:
+  custom-repo.list: |
+    deb [arch=amd64] https://packages.example.com/ubuntu jammy main universe
+    deb [arch=amd64] https://packages.example.com/ubuntu jammy-updates main universe
+    deb [arch=amd64] https://packages.example.com/ubuntu jammy-security main universe
+```
+
+然后在 GPU Operator values 中引用：
+
+```yaml
+driver:
+  repoConfig:
+    configMapName: driver-os-repos
+```
+
+Operator 会根据节点 OS 把 ConfigMap 中的文件挂到相应的软件源目录。Ubuntu 使用 `.list` 或 `.sources` 文件；RHEL、CentOS、Rocky 和 RHCOS 使用 `.repo` 文件。其他发行版必须先按当前 Platform Support 或对应合作伙伴文档确认支持路径。内部仓库至少要包含与 `uname -r` 精确匹配的内核 headers、image/modules 或 kernel-devel/kernel-core，以及与内核构建相匹配的 GCC 等依赖。
+
+`repoConfig` 是向包管理器追加仓库定义，并不天然屏蔽 Driver Container 原有的软件源。严格离线或要求来源可审计时，还要通过仓库优先级、禁用默认源或网络策略，确保它只访问允许的内部地址。
+
+如果内部 HTTPS 软件仓库使用企业 CA，再创建一个包含 `.crt` 或目标发行版所需证书格式的 ConfigMap，并配置：
+
+```yaml
+driver:
+  certConfig:
+    name: driver-repo-ca
+```
+
+这个 CA 只供 Driver Container 访问 OS 软件包仓库使用，不负责私有镜像仓库证书，也不是 Secure Boot 的内核模块签名证书。需要经过 HTTP/HTTPS 代理访问软件源时，则通过 `driver.env` 同时传入大写和小写的 `HTTP_PROXY`、`HTTPS_PROXY` 与 `NO_PROXY`；节点拉取容器镜像所用的代理仍要单独配置到 containerd。
+
+预编译 Driver Container 不在节点上现场下载这些构建包，通常不需要 `repoConfig`，但仍要确保精确匹配的预编译镜像已经进入可访问的 Registry。
+
+#### 8.3.3 验证最终使用的版本和地址
+
+先看 `ClusterPolicy` 保存的期望值：
+
+```bash
+kubectl get clusterpolicy cluster-policy \
+  -o jsonpath='{.spec.driver.repository}{"/"}{.spec.driver.image}{":"}{.spec.driver.version}{"\n"}'
+```
+
+再看 Operator 生成的 Driver DaemonSet。这里看到的才是包含 OS 标签的最终镜像：
+
+```bash
+kubectl get daemonset nvidia-driver-daemonset \
+  -n gpu-operator \
+  -o jsonpath='{range .spec.template.spec.containers[?(@.name=="nvidia-driver-ctr")]}{.image}{"\n"}{end}'
+```
+
+如果使用 `NVIDIADriver` CRD，字段改为 `spec.repository`、`spec.image`、`spec.version` 和 `spec.imagePullSecrets`，OS 软件源引用则是 `spec.repoConfig.name`，不要照搬 `ClusterPolicy` values 的 `configMapName`。
+
+对已有集群修改 `driver.version` 会触发真实的驱动升级流程；修改 `repository` 或 `repoConfig` 引用也会改变 Driver Pod 模板。若只更新同名 ConfigMap 的内容，`subPath` 挂载不会在现有 Driver Pod 中自动刷新，`OnDelete` Driver DaemonSet 也不会仅因此重建 Pod，仍需在维护窗口有计划地重建对应 Driver Pod。它们都应进入完整 values/GitOps 配置，不能当成无损的普通 Helm 参数更新。升级前先阅读第 11 节。若 `driver.enabled=false`，这些配置不会接管或升级宿主机预装 Driver。
+
+### 8.4 观察 Driver Pod，而不是只等 Helm
 
 ```bash
 kubectl get clusterpolicy cluster-policy -w
@@ -693,8 +826,12 @@ GPU Operator 能从 Pod 里安装驱动，不是因为它绕过了 Linux 的隔�
 - GPU Operator v26.3 Driver 升级：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/gpu-driver-upgrades.html>
 - GPU Operator v26.3 `NVIDIADriver` CRD：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/gpu-driver-configuration.html>
 - GPU Operator v26.3 CDI 与 NRI：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/cdi.html>
+- GPU Operator v26.3 离线环境、私有镜像仓库与本地软件包仓库：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/install-gpu-operator-air-gapped.html>
+- GPU Operator v26.3 旧内核软件源配置：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/install-gpu-operator-outdated-kernels.html>
+- GPU Operator v26.3 HTTP/HTTPS 代理配置：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/install-gpu-operator-proxy.html>
 - GPU Operator v26.3 排障：<https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/26.3/troubleshooting.html>
 - NVIDIA Container Toolkit v1.19.1 架构：<https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/1.19.1/arch-overview.html>
+- GPU Operator v26.3.3 默认 values：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/deployments/gpu-operator/values.yaml>
 - GPU Operator v26.3.3 `ClusterPolicy` 状态机源码：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/controllers/state_manager.go>
 - GPU Operator v26.3.3 Driver DaemonSet：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/assets/state-driver/0500_daemonset.yaml>
 - GPU Operator v26.3.3 Validator：<https://github.com/NVIDIA/gpu-operator/blob/v26.3.3/cmd/nvidia-validator/main.go>
