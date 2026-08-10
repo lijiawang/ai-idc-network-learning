@@ -124,6 +124,10 @@ Kubernetes 原生 Job 通常围绕一个 Pod Template 表达批量或索引化�
 
 这几个状态描述的是**调度阶段**，不是应用层的就绪屏障。PodGroup `Running` 不代表镜像已经拉完、所有容器都已经 Ready，或 PyTorch/MPI 的通信已经建立。
 
+![PodGroup 从 Pending、Inqueue 到 Running 的调度状态](assets/volcano/06-podgroup-states.png)
+
+*图 6：本文的两节点负向实验中，3 个成员要求跨 3 个节点运行；集群只能提供 2 个不同主机的位置，因此整组不会部分绑定。只有最低成员和全部约束都能满足，调度器才会提交绑定。*
+
 ### 3.3 Queue：管理团队之间如何分资源
 
 Volcano 的 Queue 不是消息队列，也不天然对应一组物理节点。它是 PodGroup 的逻辑调度队列与资源治理对象。
@@ -646,6 +650,10 @@ kubectl logs -n volcano-system deployment/volcano-admission --tail=200
 | 单机或多机分布式训练、评估、离线批推理 | `VolcanoJob` | 是；`minAvailable` 应覆盖真正需要同时工作的角色 |
 | 单卡在线推理、多副本可独立接流量 | 原生 `Deployment` | 通常否；任一副本先 Ready 就可以服务 |
 | 必须由多个 GPU Rank 共同运行的一组在线推理副本 | 原生 `Deployment` 或上层模型服务 Operator 接入 Volcano | 是；一组 Rank 的 `group-min-member` 应等于其最小可服务成员数 |
+
+![Deployment 服务副本与 DDP 分布式训练接入 Volcano 的差异](assets/volcano/05-deployment-vs-ddp-training.png)
+
+*图 7：服务副本只有在成员强耦合时才值得启用 Gang；DDP 训练中的 Rank 则必须一起获得调度分配。Volcano 决定何时、在哪里放置 Pod；Rendezvous、NCCL 通信和故障恢复仍属于训练框架职责。*
 
 ### 12.1 用 Deployment 接入 Volcano
 
