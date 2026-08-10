@@ -18,7 +18,7 @@ Volcano 不是另一个 Kubernetes，也不是 GPU 驱动或训练框架。它�
 
 本文从一个最核心的问题开始：**Kubernetes 已经有调度器了，AI 集群为什么还需要 Volcano？**
 
-> 版本说明：本文依据 Volcano v1.15 系列文档编写。截至 2026 年 8 月 9 日，GitHub 最新稳定补丁版本为 v1.15.1。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。
+> 版本说明：本文依据 Volcano v1.15 系列文档编写。截至 2026 年 8 月 10 日，GitHub 最新稳定补丁版本为 v1.15.1。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。
 
 ## 1. 先用一句话认识 Volcano
 
@@ -113,6 +113,16 @@ Kubernetes 原生 Job 通常围绕一个 Pod Template 表达批量或索引化�
 如果集群无法满足 `minMember` 或 `minResources`，这组 Pod 就继续等待，而不是先占住一部分资源。
 
 使用 VolcanoJob 时，Controller 会为它管理对应的 PodGroup。原生 Deployment、StatefulSet 等工作负载也可以通过 `schedulerName: volcano` 和相应的 Group 注解接入 Volcano，不一定都要改写成 VolcanoJob。
+
+`PodGroup` 的状态很适合用来定位 Gang Job 卡在了哪里：
+
+| 现象 | 常见含义 | 本文双卡实验中的例子 |
+| --- | --- | --- |
+| PodGroup `Pending`，甚至还没有 Worker Pod | 整组最低资源需求还不能通过 `enqueue`；Controller 会先等待 | 高优 Job 需要 2 张 GPU，但低优 Job 已占 1 张 GPU |
+| PodGroup `Inqueue`，Pod 的 `NODE` 仍是空 | 已通过入队检查，`allocate` 阶段仍无法找到满足整组约束的放置方案 | 3 个 CPU Pod 要求跨 3 台节点，但集群只有 2 台节点 |
+| PodGroup `Running` | 已达到 `minMember`，成员完成调度绑定 | 2 个 GPU Worker 分别绑定到两台节点 |
+
+这几个状态描述的是**调度阶段**，不是应用层的就绪屏障。PodGroup `Running` 不代表镜像已经拉完、所有容器都已经 Ready，或 PyTorch/MPI 的通信已经建立。
 
 ### 3.3 Queue：管理团队之间如何分资源
 
@@ -397,7 +407,7 @@ Volcano 主要位于“批处理调度”这一层。它可以直接基于 `nvid
 - GPU 节点状态为 `Ready`；
 - 驱动、Container Toolkit 和 Device Plugin 已正确安装；
 - `kubectl describe node` 能看到 `nvidia.com/gpu`；
-- 宿主机 NVIDIA Driver 与示例所用 CUDA 12.8.1 容器镜像兼容；
+- 宿主机 NVIDIA Driver 与示例所用 CUDA 12.5 容器镜像兼容；
 - Helm 已安装并能访问所需镜像仓库。
 
 先检查 GPU 资源：
@@ -421,6 +431,17 @@ helm install volcano volcano-sh/volcano \
   --version 1.15.1
 ```
 
+如果节点访问 Docker Hub 超时，不要改用浮动的开发清单。先确认 Helm values 的镜像字段，再固定版本重试。本文的双卡实验集群曾使用下面的镜像代理配置；它只是网络受限环境的示例，不应不加验证地复制到生产环境：
+
+```bash
+helm upgrade --install volcano volcano-sh/volcano \
+  --namespace volcano-system \
+  --create-namespace \
+  --version 1.15.1 \
+  --set basic.image_registry=m.daocloud.io/docker.io \
+  --wait --timeout 10m --atomic
+```
+
 检查核心组件：
 
 ```bash
@@ -433,36 +454,35 @@ kubectl get crd | grep volcano
 
 > 生产环境不要直接使用 `master` 分支安装清单。先检查官方 Release Notes、Helm values 和 Kubernetes 兼容性，再固定版本部署。
 
-Volcano v1.15.1 标签下的官方兼容矩阵显示，v1.15 支持 Kubernetes 1.23 至 1.35。这个范围只代表 Kubernetes 版本兼容性，GPU 驱动、Device Plugin、DRA Driver 和其他 Operator 仍需分别核对支持范围。
+Volcano v1.15.1 标签下的官方兼容矩阵显示，v1.15 支持 Kubernetes 1.24 至 1.35。这个范围只代表 Kubernetes 版本兼容性，GPU 驱动、Device Plugin、DRA Driver 和其他 Operator 仍需分别核对支持范围。
 
-> 本仓库此前的双 RTX 3080 Ti 实验集群使用 Kubernetes v1.36.2，已经超出上述兼容矩阵。因此下面是经过字段和语法核对的配置示例，不宣称已在该 v1.36.2 集群实测。复现时请使用受支持的 Kubernetes 版本，或等待 Volcano 官方支持 1.36 后再验证。
+> 本仓库的双 RTX 3080 Ti 实验集群使用 Kubernetes v1.36.2，已经超出上述兼容矩阵。本文已在该实验环境完成 CPU/GPU Gang、Queue 和 Priority 冒烟验证；这只能说明当前组合在这些路径上可用，**不等于获得 Volcano 对 Kubernetes 1.36 的官方支持**。生产环境请使用受支持的版本组合，或等待官方稳定支持后再部署。
 
 ### 10.3 创建训练 Queue
 
-保存为 `ai-training-queue.yaml`：
+本文双卡实验使用 `gpu-lab` Queue。它只把实验 Job 放入独立的逻辑治理边界，并不把两张 GPU 切成一个物理分区：
+
+保存为 `gpu-lab-queue.yaml`：
 
 ```yaml
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
-  name: ai-training
+  name: gpu-lab
 spec:
-  weight: 3
+  parent: root
+  weight: 1
   reclaimable: true
-  capability:
-    cpu: "24"
-    memory: 60Gi
-    nvidia.com/gpu: "2"
 ```
 
 应用并检查：
 
 ```bash
-kubectl apply -f ai-training-queue.yaml
-kubectl get queue ai-training -o yaml
+kubectl apply -f gpu-lab-queue.yaml
+kubectl get queue gpu-lab -o yaml
 ```
 
-这里的 `capability` 是该 Queue 的容量上限，不是为它预留了 2 块 GPU。是否保证资源、是否允许借用，以及其他 Queue 能否回收资源，要结合所启用的 Queue 插件和完整策略判断。
+这里的 Queue 只做逻辑归属。若要用 `capability`、`guarantee`、`deserved` 等字段实现容量上限或保底资源，必须同时检查 Scheduler 是否启用对应的 Capacity/Proportion 插件与 Action；`reclaimable: true` 本身不代表已经启用跨 Queue 回收。
 
 ### 10.4 提交 2 卡 VolcanoJob
 
@@ -475,7 +495,7 @@ metadata:
   name: gang-gpu-demo
 spec:
   schedulerName: volcano
-  queue: ai-training
+  queue: gpu-lab
   minAvailable: 2
   maxRetry: 3
   policies:
@@ -492,10 +512,16 @@ spec:
           restartPolicy: Never
           containers:
             - name: worker
-              image: nvidia/cuda:12.8.1-base-ubuntu22.04
-              command: ["bash", "-lc"]
+              # 本文双卡实验已验证的 CUDA 样例镜像；请固定自己的训练镜像版本。
+              image: nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda12.5.0
+              command: ["/bin/sh", "-c"]
               args:
-                - nvidia-smi && sleep infinity
+                - |
+                  /cuda-samples/bin/x86_64/linux/release/vectorAdd
+                  result=$?
+                  echo "GPU assigned; hold for observation"
+                  sleep 300
+                  exit ${result}
               resources:
                 requests:
                   cpu: "4"
@@ -521,14 +547,35 @@ kubectl get pods -l app=gang-gpu-demo -o wide
 
 实际训练时，把示例镜像和命令换成自己的 PyTorch、Ray 或 MPI 启动逻辑，并配置必要的 Service、Rendezvous、存储和容错策略。
 
-### 10.5 清理示例
+### 10.5 双卡实验：实际观察到了什么
+
+下面的结果来自本仓库的两节点实验集群：两台 Ubuntu 22.04 节点各有 1 张 RTX 3080 Ti，GPU Operator 已就绪，节点均可调度。测试前后均检查了 GPU Operator、Volcano 控制面和节点 GPU 资源。
+
+| 实验 | 配置 | 观察结果 | 说明 |
+| --- | --- | --- | --- |
+| CPU 正向 Gang | `replicas: 2`、`minAvailable: 2`、跨节点硬反亲和 | 两个 Pod 分别落在两个节点并完成 | 满足最低成员后，Volcano 成组绑定 |
+| CPU 反向 Gang | `replicas: 3`、`minAvailable: 3`、同样的硬反亲和 | PodGroup `Inqueue`；3 个 Pod 均 Pending、没有 Node | 两个节点无法容纳 3 个不同主机的成员，Volcano 不提交部分绑定 |
+| GPU 正向 Gang | 2 个 Pod 各请求 `nvidia.com/gpu: 1`，`minAvailable: 2` | 两个 Pod 分别绑定两台节点；两份 CUDA `vectorAdd` 日志均为 `Test PASSED` | GPU Operator 负责设备注入，Volcano 负责整组放置 |
+| Priority 无抢占 | 低优 Job 占 1 GPU；高优 Job 需要 2 GPU | 高优 Job/PodGroup 保持 `Pending`，没有提前创建 Worker Pod | 当前 Action 只有 `enqueue, allocate, backfill`，没有 `preempt` 或 `reclaim` |
+
+CPU 反向实验的事件会出现类似“成员在满足 `minAvailable` 后才可能分配到节点”。重点不是把这句话理解为已预留节点，而是调度器在本轮计算中发现部分成员有候选节点，但整组仍不能提交绑定；这些节点仍可被其他工作负载使用。
+
+GPU 正向实验使用了短暂执行 `vectorAdd`、随后 `sleep` 的容器来观察资源账本。此时容器内的 `nvidia-smi` 可能没有 CUDA 计算进程，但节点的 `Allocated resources` 仍会显示：
+
+```text
+nvidia.com/gpu     1           1
+```
+
+`Allocatable: nvidia.com/gpu: 1` 是该节点可提供的设备总量，不会因分配而变成 0；调度器计算的剩余量是总可分配量减去活跃 Pod 的 GPU requests。`nvidia-smi` 显示的是瞬时计算进程，两者不能混为一谈。
+
+### 10.6 清理示例
 
 ```bash
 kubectl delete vcjob gang-gpu-demo
-kubectl delete queue ai-training
+kubectl delete queue gpu-lab
 ```
 
-如果集群中的其他任务正在使用 `ai-training` Queue，不要删除 Queue。
+如果集群中的其他任务正在使用 `gpu-lab` Queue，不要删除 Queue。
 
 ## 11. Job 一直 Pending，应该查什么
 
@@ -537,16 +584,25 @@ Gang Scheduling 的特点决定了：一个约束不满足，整组任务都可�
 ### 11.1 先看 Job、PodGroup 和事件
 
 ```bash
-kubectl get vcjob -A
-kubectl describe vcjob gang-gpu-demo
+kubectl get jobs.batch.volcano.sh -A
+kubectl describe jobs.batch.volcano.sh gang-gpu-demo
 
-kubectl get podgroup -A
-kubectl describe podgroup gang-gpu-demo
+kubectl get podgroups.scheduling.volcano.sh -A -o wide
+# PodGroup 名称可能带 UUID；从上一条输出复制实际名称再 describe。
+kubectl describe podgroup PODGROUP_NAME -n NAMESPACE
 
 kubectl get events -A --sort-by=.lastTimestamp
 ```
 
 重点检查 `minAvailable`、`minResources`、Queue 状态和 PodGroup Condition。
+
+先根据对象是否已创建，把问题分到正确阶段：
+
+| 看到的状态 | 优先检查 |
+| --- | --- |
+| Job/PodGroup 都是 `Pending`，还没有 Task Pod | Queue 是否 `Open`、整组 `minResources`、`enqueue` 是否通过 |
+| PodGroup `Inqueue`，Task Pod 是 `Pending` 且没有 Node | GPU/CPU/内存、污点、亲和性、PVC 与 Gang 最低成员数 |
+| Pod 已有 Node，但容器未 Ready 或失败 | 镜像拉取、GPU Operator、NVIDIA Runtime、模型进程和 Rendezvous；这已不是 Gang 绑定失败 |
 
 ### 11.2 再看节点真实可分配资源
 
@@ -557,7 +613,7 @@ kubectl get nodes \
 kubectl describe node YOUR_NODE_NAME
 ```
 
-`Capacity` 是节点总量，`Allocatable` 才是可供 Pod 分配的上限；还要减去已经被其他 Pod 请求的资源。
+`Capacity` 是节点总量，`Allocatable` 是 kubelet 上报给调度器的可分配上限；它不会显示“实时还剩几张 GPU”。还要查看节点的 `Allocated resources`，并从 `Allocatable` 中扣除活跃 Pod 的 GPU requests。`nvidia-smi` 的进程表则只反映此刻是否有 CUDA 计算，并不等于 Kubernetes 已释放 GPU 配额。
 
 ### 11.3 检查过滤条件
 
@@ -581,7 +637,67 @@ kubectl logs -n volcano-system deployment/volcano-admission --tail=200
 
 生产环境应把 Volcano 指标接入监控系统，关注调度吞吐、调度延迟、Pending 原因、Queue 使用量和抢占/回收事件，而不是等用户报告“任务怎么还没跑”才查日志。
 
-## 12. 哪些场景值得使用 Volcano
+## 12. 模型训练和模型部署，应该怎样使用 Volcano
+
+先区分工作负载的生命周期：训练是“凑齐资源后协作执行、完成后退出”，在线模型服务则是“长期运行、持续接收流量”。两者不应因为都使用 GPU 就套用同一种对象。
+
+| 场景 | 推荐对象 | Gang 是否常用 |
+| --- | --- | --- |
+| 单机或多机分布式训练、评估、离线批推理 | `VolcanoJob` | 是；`minAvailable` 应覆盖真正需要同时工作的角色 |
+| 单卡在线推理、多副本可独立接流量 | 原生 `Deployment` | 通常否；任一副本先 Ready 就可以服务 |
+| 必须由多个 GPU Rank 共同运行的一组在线推理副本 | 原生 `Deployment` 或上层模型服务 Operator 接入 Volcano | 是；一组 Rank 的 `group-min-member` 应等于其最小可服务成员数 |
+
+### 12.1 用 Deployment 接入 Volcano
+
+原生 Deployment 不必改写成 VolcanoJob 才能使用 Gang。关键字段的位置如下：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-model-demo
+  annotations:
+    # 由 Volcano 为 Deployment 对应的副本组创建 PodGroup。
+    scheduling.volcano.sh/group-min-member: "2"
+spec:
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        # 可选：让自动创建的 PodGroup 进入指定 Queue。
+        scheduling.volcano.sh/queue-name: "gpu-serving"
+    spec:
+      schedulerName: volcano
+      priorityClassName: model-serving-high
+      containers:
+        - name: model-server
+          resources:
+            requests:
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+```
+
+`group-min-member` 放在 Deployment 自己的 `metadata.annotations`；`queue-name` 放在 Pod Template 的 annotations；`schedulerName` 和 `priorityClassName` 则是 PodSpec 字段。GPU 必须同时写入 requests 与 limits，且数量必须相等。Volcano 会依据最低成员数和 Pod 的 requests 自动生成 PodGroup 的 `minResources`。
+
+如果设置了 `queue-name`，对应 Queue 必须已存在且为 `Open`；如果设置了 `priorityClassName`，也要先创建同名 Kubernetes `PriorityClass`。不需要优先级或独立 Queue 时，删掉这两个可选字段即可。
+
+如果这两个模型副本能独立提供服务，不要为了“看起来更高级”把 `group-min-member` 设为 2。那会让一张 GPU 不可用时，两个副本都无法启动；此时设为 1 或不使用 Gang 更符合在线服务的可用性目标。两 GPU 的强耦合 Deployment 还应评估更新策略：默认滚动更新可能临时需要额外 Surge 副本，在只有两张 GPU 的集群中容易卡住，通常应设计为 `Recreate` 或在更充足的容量中完成滚动更新。
+
+### 12.2 用 VolcanoJob 跑 PyTorch DDP 训练
+
+两台机器各 1 张 GPU 时，一个最小 DDP 训练组可建模为：
+
+```text
+master Pod（rank 0，1 GPU） ←── NCCL / TCP ──→ worker Pod（rank 1，1 GPU）
+                         minAvailable: 2
+```
+
+VolcanoJob 通常定义一个 `master` Task 和一个 `worker` Task，各 1 个副本；`minAvailable: 2` 保证两张 GPU 都能分配时才绑定。Master 通过 Headless Service 提供稳定地址，两个 Pod 分别使用 `torchrun --node_rank=0` 与 `torchrun --node_rank=1` 启动。训练代码仍需由 PyTorch 完成 `torch.distributed.init_process_group(backend="nccl")`、Rank 管理、Checkpoint 和退出逻辑。
+
+Volcano 解决的是“两个 Rank 是否一起拿到资源”；它不会替 PyTorch 配置 Rendezvous、数据集、模型权重、PVC/对象存储或 NCCL 网络。本文两张 3080 Ti 分处两台机器，Gang 可以保证调度成功，但跨节点训练仍依赖 Flannel 网络，性能不能等同于单机 NVLink 或 RDMA 集群。
+
+## 13. 哪些场景值得使用 Volcano
 
 Volcano 特别适合下面这些场景：
 
@@ -596,7 +712,7 @@ Volcano 特别适合下面这些场景：
 
 是否采用 Volcano，不应该只看 GPU 数量，而要看是否出现了 **Job 级调度问题**。
 
-## 13. Volcano 不能替你做什么
+## 14. Volcano 不能替你做什么
 
 为了避免“装完一个组件，期待整套 AI 平台自动出现”，最后再把边界说清楚。
 
@@ -612,14 +728,15 @@ Volcano 不会：
 
 它最擅长的事情，是在已有 Kubernetes、设备和训练软件栈之上，做出更符合批处理语义的资源决策。
 
-## 14. 总结
+## 15. 总结
 
-理解 Volcano，可以记住四句话：
+理解 Volcano，可以记住五句话：
 
 1. Kubernetes 默认调度器主要看 Pod，Volcano 进一步看懂 Job。
 2. Gang Scheduling 只在一组协作 Pod 的最低资源能一起满足时提交成组分配，避免 GPU 被半成品任务占住。
 3. Queue、DRF、Proportion/Capacity 解决多团队、多资源维度下的分配、公平、借用和回收。
 4. Binpack 与网络拓扑感知决定任务不仅“能放下”，还要尽量“放得好”。
+5. 训练优先使用 VolcanoJob；独立在线副本优先使用 Deployment，只有强耦合的服务成员才应启用 Gang。
 
 所以，Volcano 并不是把 `default-scheduler` 换个名字。它补上的，是 Kubernetes 在 AI、HPC 和大数据批处理场景中最关键的一层：
 
@@ -642,6 +759,7 @@ Volcano 不会：
 - [统一调度与 DRA 配置](https://volcano.sh/docs/keyfeatures/unifiedscheduling/)
 - [网络拓扑感知调度](https://volcano.sh/docs/v1.15.0/keyfeatures/networktopologyaware/)
 - [Volcano vGPU 用户指南](https://volcano.sh/docs/userguide/user_guide_how_to_use_volcano_vgpu/)
+- [PyTorch Distributed 文档](https://docs.pytorch.org/docs/stable/distributed.html)
 - [Volcano v1.15.0 Release Notes](https://volcano.sh/blog/volcano-1.15.0-release/)
 - [Volcano v1.15.1 GitHub Release](https://github.com/volcano-sh/volcano/releases/tag/v1.15.1)
 - [Volcano v1.15.1 与 Kubernetes 兼容矩阵](https://github.com/volcano-sh/volcano/tree/v1.15.1#kubernetes-compatibility)
