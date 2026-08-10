@@ -376,7 +376,7 @@ HyperNode 可以手工创建，也可以通过节点标签或 InfiniBand UFM 自
 
 ![HyperNode hard 与 soft 拓扑放置差异](assets/volcano/04-hypernode-hard-soft.png)
 
-*图 5：Hard 要求整个 Job 或子组装进同一个合格性能域；Soft 优先同域，但必要时允许跨域，以排队时间换取通信局部性。*
+*图 5：灰色线表示简化的物理拓扑，绿色线表示实际的调度放置。Hard 要求整个 Job 或子组装进同一个合格性能域，因此任一单域只有 3 个槽位时不会部分绑定；Soft 优先同域，但必要时允许按 `Leaf-A 3 + Leaf-B 1` 跨域放置，以排队时间换取通信局部性。*
 
 ## 9. Volcano 与 GPU Operator、Device Plugin 是什么关系
 
