@@ -188,7 +188,7 @@ Scheduler 执行 allocate，Plugin 提供过滤、排序与 Gang 判断
 
 ![VolcanoJob、PodGroup、Queue 与 Volcano 调度流程](assets/volcano/02-volcano-objects-and-flow.png)
 
-*图 2：VolcanoJob 描述任务，PodGroup 提供成组门槛，Queue 管理资源份额；Controller 与 Scheduler 再把这些 Job 级语义落实到 Pod 绑定。*
+*图 2：VolcanoJob 描述任务并由 Controller 创建/维护 PodGroup；PodGroup 的成组门槛与 Queue 的队列策略并列输入 Scheduler，再由它把这些 Job 级语义落实到 Pod 绑定。*
 
 这里最有特点的是 **Action + Plugin** 模型。
 
