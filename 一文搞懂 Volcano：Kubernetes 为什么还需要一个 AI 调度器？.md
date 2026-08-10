@@ -126,7 +126,7 @@ Kubernetes 原生 Job 通常围绕一个 Pod Template 表达批量或索引化�
 
 ![PodGroup 从 Pending、Inqueue 到 Running 的调度状态](assets/volcano/06-podgroup-states.png)
 
-*图 6：三栏概括的是典型调度状态，并非每个 Job 必然按固定顺序线性流转。本文的两节点反向实验属于中间的 `Inqueue` 情形：3 个成员要求跨 3 个节点运行，但集群只能提供 2 个不同主机的位置，因此整组不会部分绑定。只有最低成员和全部约束都能满足，调度器才会提交绑定。*
+*图 2：三栏概括的是典型调度状态，并非每个 Job 必然按固定顺序线性流转。本文的两节点反向实验属于中间的 `Inqueue` 情形：3 个成员要求跨 3 个节点运行，但集群只能提供 2 个不同主机的位置，因此整组不会部分绑定。只有最低成员和全部约束都能满足，调度器才会提交绑定。*
 
 ### 3.3 Queue：管理团队之间如何分资源
 
@@ -188,7 +188,7 @@ Scheduler 执行 allocate，Plugin 提供过滤、排序与 Gang 判断
 
 ![VolcanoJob、PodGroup、Queue 与 Volcano 调度流程](assets/volcano/02-volcano-objects-and-flow.png)
 
-*图 2：VolcanoJob 描述任务并由 Controller 创建/维护 PodGroup；PodGroup 的成组门槛与 Queue 的队列策略并列输入 Scheduler，再由它把这些 Job 级语义落实到 Pod 绑定。*
+*图 3：VolcanoJob 描述任务并由 Controller 创建/维护 PodGroup；PodGroup 的成组门槛与 Queue 的队列策略并列输入 Scheduler，再由它把这些 Job 级语义落实到 Pod 绑定。*
 
 这里最有特点的是 **Action + Plugin** 模型。
 
@@ -316,7 +316,7 @@ DRF 全称 Dominant Resource Fairness，中文常叫“主导资源公平”。
 
 ![Queue 借用与回收以及 DRF 主导资源份额](assets/volcano/03-queue-drf-reclaim.png)
 
-*图 3：Queue 划定资源治理边界，DRF 决定下一份资源优先考虑谁，Reclaim 则在跨 Queue 场景中通过驱逐与释放完成资源让渡。*
+*图 4：Queue 划定资源治理边界，DRF 决定下一份资源优先考虑谁，Reclaim 则在跨 Queue 场景中通过驱逐与释放完成资源让渡。*
 
 ## 7. 核心能力三：减少 GPU 和节点碎片
 
@@ -376,7 +376,7 @@ HyperNode 可以手工创建，也可以通过节点标签或 InfiniBand UFM 自
 
 ![HyperNode hard 与 soft 拓扑放置差异](assets/volcano/04-hypernode-hard-soft.png)
 
-*图 4：Hard 要求整个 Job 或子组装进同一个合格性能域；Soft 优先同域，但必要时允许跨域，以排队时间换取通信局部性。*
+*图 5：Hard 要求整个 Job 或子组装进同一个合格性能域；Soft 优先同域，但必要时允许跨域，以排队时间换取通信局部性。*
 
 ## 9. Volcano 与 GPU Operator、Device Plugin 是什么关系
 
@@ -653,7 +653,7 @@ kubectl logs -n volcano-system deployment/volcano-admission --tail=200
 
 ![Deployment 服务副本与 DDP 分布式训练接入 Volcano 的差异](assets/volcano/05-deployment-vs-ddp-training.png)
 
-*图 7：服务副本只有在成员强耦合时才值得启用 Gang；DDP 训练中的 Rank 则必须一起获得调度分配。Volcano 决定何时、在哪里放置 Pod；Rendezvous、NCCL 通信和故障恢复仍属于训练框架职责。*
+*图 6：服务副本只有在成员强耦合时才值得启用 Gang；DDP 训练中的 Rank 则必须一起获得调度分配。Volcano 决定何时、在哪里放置 Pod；Rendezvous、NCCL 通信和故障恢复仍属于训练框架职责。*
 
 ### 12.1 用 Deployment 接入 Volcano
 
