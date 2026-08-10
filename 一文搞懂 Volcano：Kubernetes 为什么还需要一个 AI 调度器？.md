@@ -10,6 +10,10 @@
 
 这正是 Volcano 要解决的问题。
 
+![逐 Pod 调度与 Volcano Gang Scheduling 的资源占用差异](assets/volcano/01-gang-scheduling.png)
+
+*图 1：Gang 的价值，是避免 GPU 被“已分配但无法产生有效吞吐”的半成品任务占住。它保证最低成员的调度分配原子性，不是容器启动或 Readiness 屏障。*
+
 Volcano 不是另一个 Kubernetes，也不是 GPU 驱动或训练框架。它是运行在 Kubernetes 之上的云原生批处理系统，把调度视角从“一个 Pod 放到哪台机器”提升到了“一个 Job 何时能启动、整个 Job 应该放在哪里、不同团队如何公平共享资源”。
 
 本文从一个最核心的问题开始：**Kubernetes 已经有调度器了，AI 集群为什么还需要 Volcano？**
@@ -168,6 +172,10 @@ Scheduler 执行 allocate，Plugin 提供过滤、排序与 Gang 判断
 
 上面描述的是 VolcanoJob 的典型路径。原生 Deployment、StatefulSet 等工作负载接入 Volcano 时，Pod 与 PodGroup 的创建路径会有所不同，但最终仍由 Volcano Scheduler 依据 PodGroup 和 Queue 语义完成调度。
 
+![VolcanoJob、PodGroup、Queue 与 Volcano 调度流程](assets/volcano/02-volcano-objects-and-flow.png)
+
+*图 2：VolcanoJob 描述任务，PodGroup 提供成组门槛，Queue 管理资源份额；Controller 与 Scheduler 再把这些 Job 级语义落实到 Pod 绑定。*
+
 这里最有特点的是 **Action + Plugin** 模型。
 
 Action 决定一个调度周期依次做什么，常见 Action 包括：
@@ -292,6 +300,10 @@ DRF 全称 Dominant Resource Fairness，中文常叫“主导资源公平”。
 
 这两个新 Action 需要显式加入调度器配置，并非安装 v1.15 后默认开启。官方也不建议把它们与旧的 `preempt`、`reclaim` 同时放进同一条 Action 列表。生产启用前应阅读对应版本说明并完成压测。
 
+![Queue 借用与回收以及 DRF 主导资源份额](assets/volcano/03-queue-drf-reclaim.png)
+
+*图 3：Queue 划定资源治理边界，DRF 决定下一份资源优先考虑谁，Reclaim 则在跨 Queue 场景中通过驱逐与释放完成资源让渡。*
+
 ## 7. 核心能力三：减少 GPU 和节点碎片
 
 有 8 块空闲 GPU，不代表能运行一个 8 卡 Job。
@@ -347,6 +359,10 @@ HyperNode 可以手工创建，也可以通过节点标签或 InfiniBand UFM 自
 这项能力的上限取决于拓扑数据质量。如果节点标签、UFM 发现结果或 HyperNode 层级过期，调度器再精细的评分也会建立在错误地图上。
 
 需要强调：**拓扑感知调度只能决定 Pod 放在哪里，不能让一张有损、拥塞或错误配置的网络自动变快。** PFC、ECN、DCQCN、路由、Rail 设计和带宽规划仍属于网络系统本身。
+
+![HyperNode hard 与 soft 拓扑放置差异](assets/volcano/04-hypernode-hard-soft.png)
+
+*图 4：Hard 要求整个 Job 或子组装进同一个合格性能域；Soft 优先同域，但必要时允许跨域，以排队时间换取通信局部性。*
 
 ## 9. Volcano 与 GPU Operator、Device Plugin 是什么关系
 
