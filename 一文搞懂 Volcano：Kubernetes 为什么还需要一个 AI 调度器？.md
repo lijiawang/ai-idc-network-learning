@@ -18,7 +18,7 @@ Volcano 不是另一个 Kubernetes，也不是 GPU 驱动或训练框架。它�
 
 本文从一个最核心的问题开始：**Kubernetes 已经有调度器了，AI 集群为什么还需要 Volcano？**
 
-> 版本说明：本文依据 Volcano v1.15 系列文档编写。截至 2026 年 8 月 10 日，GitHub 最新稳定补丁版本为 v1.15.1。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。
+> 版本说明：本文依据 Volcano v1.15 系列文档编写。截至 2026 年 8 月 10 日，GitHub 最新稳定补丁版本为 v1.15.1。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。本仓库的实验集群为 Kubernetes v1.36.2，已超出 Volcano v1.15 的官方兼容矩阵；文中的实测结果仅代表该实验环境的冒烟验证，不代表官方支持。
 
 ## 1. 先用一句话认识 Volcano
 
@@ -185,6 +185,8 @@ Scheduler 执行 allocate，Plugin 提供过滤、排序与 Gang 判断
 ```
 
 上面描述的是 VolcanoJob 的典型路径。原生 Deployment、StatefulSet 等工作负载接入 Volcano 时，Pod 与 PodGroup 的创建路径会有所不同，但最终仍由 Volcano Scheduler 依据 PodGroup 和 Queue 语义完成调度。
+
+这是一条用于理解职责划分的典型逻辑路径，不应当把它当作所有版本、所有工作负载的严格 API 事件时序。Controller 创建或协调 Pod 与 Scheduler 入队、分配的具体先后，会随对象类型和实现细节而变化；应以实际对象状态和事件为准。
 
 ![VolcanoJob、PodGroup、Queue 与 Volcano 调度流程](assets/volcano/02-volcano-objects-and-flow.png)
 
@@ -456,7 +458,25 @@ kubectl get hypernodes.topology.volcano.sh lab-fabric -o yaml
 
 > 这份 YAML 是**与图 5 对齐的五节点调度语义模型**。`node-a1` 到 `node-b2` 是示例名称，必须替换为真实 Kubernetes Node 名称；不能直接应用到当前只有两台节点的实验集群。生产环境应根据交换机、UFM 或可信节点标签建立 HyperNode；不要仅因节点数量方便就虚构网络性能域。
 
-创建 CR 只是把拓扑数据写进 Kubernetes。要让 Job 真正使用它，`volcano-scheduler-configmap` 还必须在现有插件列表中加入 `network-topology-aware`，并重启/升级 Scheduler；仅创建 HyperNode 而没有这个插件，调度器不会按拓扑约束放置 Pod。
+创建 CR 只是把拓扑数据写进 Kubernetes。要让 Job 真正使用它，`volcano-scheduler-configmap` 还必须在**保留现有 Action 和 Plugin** 的前提下，在合适的 `tiers[*].plugins` 列表中加入 `network-topology-aware`：
+
+```yaml
+- name: network-topology-aware
+  arguments:
+    weight: 10 # 可选；不写时使用默认权重
+```
+
+学习环境可先用下面的方式编辑现有 ConfigMap；不要把一份简化 ConfigMap 整体覆盖到生产环境。该 ConfigMap 由 Helm 管理时，还应把同样的配置保存到当前 Chart 的 values 中，否则下次 Helm 升级可能覆盖手工修改：
+
+```bash
+kubectl edit configmap volcano-scheduler-configmap -n volcano-system
+
+kubectl rollout restart deployment/volcano-scheduler -n volcano-system
+kubectl rollout status deployment/volcano-scheduler -n volcano-system --timeout=5m
+kubectl logs -n volcano-system deployment/volcano-scheduler --tail=200
+```
+
+仅创建 HyperNode 而没有这个插件，调度器不会按拓扑约束放置 Pod。
 
 基于上面的五节点模型，下面的 Job 约束会要求 4 个成员整组只放在一个 Tier 1 Leaf。Leaf-A 最多容纳 3 个、Leaf-B 最多容纳 2 个，因此 Hard 保持 Pending；改为 Soft 后，调度器才可以按 `Leaf-A 3 + Leaf-B 1` 跨 Leaf 放置：
 
@@ -522,16 +542,17 @@ kubectl get nodes \
 
 ### 10.2 安装 Volcano v1.15.1
 
-通过官方 Helm 仓库安装，并固定本文写作时的最新补丁版本：
+通过官方 Helm 仓库安装，并固定本文写作时的最新补丁版本。统一使用 `upgrade --install`，并等待控制面就绪；失败时 `--atomic` 会回滚本次 Helm 操作：
 
 ```bash
 helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
 helm repo update
 
-helm install volcano volcano-sh/volcano \
+helm upgrade --install volcano volcano-sh/volcano \
   --namespace volcano-system \
   --create-namespace \
-  --version 1.15.1
+  --version 1.15.1 \
+  --wait --timeout 10m --atomic
 ```
 
 如果节点访问 Docker Hub 超时，不要改用浮动的开发清单。先确认 Helm values 的镜像字段，再固定版本重试。本文的双卡实验集群曾使用下面的镜像代理配置；它只是网络受限环境的示例，不应不加验证地复制到生产环境：
@@ -768,8 +789,13 @@ metadata:
     scheduling.volcano.sh/group-min-member: "2"
 spec:
   replicas: 2
+  selector:
+    matchLabels:
+      app: gpu-model-demo
   template:
     metadata:
+      labels:
+        app: gpu-model-demo
       annotations:
         # 可选：让自动创建的 PodGroup 进入指定 Queue。
         scheduling.volcano.sh/queue-name: "gpu-serving"
@@ -785,7 +811,7 @@ spec:
               nvidia.com/gpu: "1"
 ```
 
-`group-min-member` 放在 Deployment 自己的 `metadata.annotations`；`queue-name` 放在 Pod Template 的 annotations；`schedulerName` 和 `priorityClassName` 则是 PodSpec 字段。GPU 必须同时写入 requests 与 limits，且数量必须相等。Volcano 会依据最低成员数和 Pod 的 requests 自动生成 PodGroup 的 `minResources`。
+`group-min-member` 放在 Deployment 自己的 `metadata.annotations`；`queue-name` 放在 Pod Template 的 annotations；`schedulerName` 和 `priorityClassName` 则是 PodSpec 字段。`spec.selector.matchLabels` 必须与 Pod Template 的 labels 完全匹配，否则 Deployment 会被 Kubernetes 拒绝。GPU 必须同时写入 requests 与 limits，且数量必须相等。Volcano 会依据最低成员数和 Pod 的 requests 自动生成 PodGroup 的 `minResources`。
 
 如果设置了 `queue-name`，对应 Queue 必须已存在且为 `Open`；如果设置了 `priorityClassName`，也要先创建同名 Kubernetes `PriorityClass`。不需要优先级或独立 Queue 时，删掉这两个可选字段即可。
 
