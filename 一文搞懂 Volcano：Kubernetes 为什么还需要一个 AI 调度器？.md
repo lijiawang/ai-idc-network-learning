@@ -360,6 +360,8 @@ Fabric
 - `hard`：整个 Job 或子组必须放进同一个符合最高 Tier 限制的 HyperNode 性能域，找不到能容纳它的域就继续 Pending；
 - `soft`：尽量把整个 Job 放进同一个更近的拓扑域，实在放不下时允许跨域。
 
+不要把 `hard` 简化理解成“永远不能跨 Leaf”。边界由 `highestTierAllowed` 决定：图 5 的示例把 Leaf HyperNode 定为 Tier 2，并设置 `highestTierAllowed: 2`，所以整个 Job 只能装进 Leaf-A 或 Leaf-B 其中之一；两个 Leaf 分别只有 3 和 2 个槽位，因而 Pending。若允许到更高层的 Fabric HyperNode，Hard 仍要求整个 Job 位于同一个合格 HyperNode，但可能允许它分布在该父域下的多个 Leaf。
+
 一般来说：
 
 - 强同步、通信占比高的训练任务更看重局部性；
@@ -376,7 +378,7 @@ HyperNode 可以手工创建，也可以通过节点标签或 InfiniBand UFM 自
 
 ![HyperNode hard 与 soft 拓扑放置差异](assets/volcano/04-hypernode-hard-soft.png)
 
-*图 5：灰色线表示简化的物理拓扑；Node 卡片内的 Worker 标签表示实际调度放置。Hard 要求整个 Job 或子组装进同一个合格性能域，因此任一单域只有 3 个槽位时不会部分绑定；Soft 优先同域，但必要时允许按 `Leaf-A 3 + Leaf-B 1` 跨域放置，以排队时间换取通信局部性。*
+*图 5：灰色线表示简化的物理拓扑；Node 卡片内的 Worker 标签表示实际调度放置。左侧 Hard 示例将 `highestTierAllowed` 设为 2，因此每个 Tier 2 Leaf 都必须单独容纳 4 个成员，资源不足时整组 Pending。右侧 Soft 先偏好 Leaf-A，放不下时按 `Leaf-A 3 + Leaf-B 1` 跨域；它放松的是拓扑偏好，`minAvailable: 4` 的 Gang 条件仍要求 4 个成员一起完成绑定。*
 
 ## 9. Volcano 与 GPU Operator、Device Plugin 是什么关系
 
