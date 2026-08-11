@@ -1,0 +1,43 @@
+# 学习用拓扑模型：每台实验节点各自构成一个 Tier 1 Leaf，
+# 两个 Leaf 共同属于一个 Tier 2 父 HyperNode。
+# 应用前先用 `kubectl get nodes` 确认 Node 名称仍然一致。
+# 这不是对真实交换机、Rail 或带宽关系的自动发现结果。
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-leaf-a
+spec:
+  tier: 1
+  members:
+    - type: Node
+      selector:
+        exactMatch:
+          name: "10-60-50-9"
+---
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-leaf-b
+spec:
+  tier: 1
+  members:
+    - type: Node
+      selector:
+        exactMatch:
+          name: "10-60-8-241"
+---
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-fabric
+spec:
+  tier: 2
+  members:
+    - type: HyperNode
+      selector:
+        exactMatch:
+          name: "lab-leaf-a"
+    - type: HyperNode
+      selector:
+        exactMatch:
+          name: "lab-leaf-b"
