@@ -18,7 +18,7 @@ Volcano 不是另一个 Kubernetes，也不是 GPU 驱动或训练框架。它�
 
 本文从一个最核心的问题开始：**Kubernetes 已经有调度器了，AI 集群为什么还需要 Volcano？**
 
-> 版本说明：本文依据 Volcano v1.15 系列文档编写。截至 2026 年 8 月 10 日，GitHub 最新稳定补丁版本为 v1.15.1。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。本仓库的实验集群为 Kubernetes v1.36.2，已超出 Volcano v1.15 的官方兼容矩阵；文中的实测结果仅代表该实验环境的冒烟验证，不代表官方支持。
+> 版本说明：本文依据 Volcano v1.15.1 文档编写。生产环境应固定具体版本，并根据 Kubernetes、设备插件和硬件环境完成兼容性验证。本仓库的实验集群为 Kubernetes v1.36.2，属于矩阵外的冒烟验证，不代表官方支持；具体版本范围与安装建议见 [10.2](#102-安装-volcano-v1151)。
 
 ## 1. 先用一句话认识 Volcano
 
@@ -253,15 +253,13 @@ spec:
       replicas: 8
 ```
 
-当集群只有 6 块可用 GPU 时，Volcano 不会让 6 个 Worker 长时间占着 GPU 等另外 2 个。等到至少 8 个 Worker 都能获得资源后，再提交这一组分配。
+延续开头的场景：当集群只有 6 块可用 GPU 时，Volcano 不会先绑定 6 个 Worker。等到至少 8 个 Worker 都能获得资源后，再提交这一组分配。
 
 这里要注意两个细节。
 
 第一，`minAvailable` 表示最低成组调度门槛，不一定等于总副本数。如果任务有 8 个 Worker，却把 `minAvailable` 设为 4，那么 4 个成员所需资源一起满足时就可以提交这组分配。只有训练框架真的支持弹性成员时，这样配置才有意义。
 
-第二，Gang Scheduling 解决的是资源原子性，不保证应用一定能成功启动。镜像拉取失败、PVC 挂载失败、Rendezvous 配置错误和容器崩溃，仍然要由对应组件和 Job 策略处理。
-
-它保证的也不是 8 个容器在同一时刻进入 `Running`，而是调度器只有在最低成员所需资源能够一起满足时，才提交这组分配。镜像大小、节点缓存和容器运行时状态仍可能让各 Pod 的实际启动时间有先后。
+第二，Gang Scheduling 解决的是资源原子性，不保证应用一定能成功启动，也不保证 8 个容器在同一时刻进入 `Running`。镜像拉取失败、PVC 挂载失败、Rendezvous 配置错误和容器崩溃仍要由对应组件和 Job 策略处理；镜像大小、节点缓存和容器运行时状态也会让各 Pod 的实际启动时间有先后。
 
 ### 为什么 Gang 能提高利用率
 
@@ -478,7 +476,7 @@ kubectl logs -n volcano-system deployment/volcano-scheduler --tail=200
 
 仅创建 HyperNode 而没有这个插件，调度器不会按拓扑约束放置 Pod。
 
-基于上面的五节点模型，下面的 Job 约束会要求 4 个成员整组只放在一个 Tier 1 Leaf。Leaf-A 最多容纳 3 个、Leaf-B 最多容纳 2 个，因此 Hard 保持 Pending；改为 Soft 后，调度器才可以按 `Leaf-A 3 + Leaf-B 1` 跨 Leaf 放置：
+下面的片段把图 5 的 Hard 约束落到 VolcanoJob：4 个成员必须整组装进一个 Tier 1 Leaf；改为 Soft 后，才允许按图中的 `Leaf-A 3 + Leaf-B 1` 跨 Leaf 放置：
 
 ```yaml
 # 放进 VolcanoJob 的 spec；不是独立 Kubernetes 对象
@@ -606,7 +604,7 @@ kubectl apply -f gpu-lab-queue.yaml
 kubectl get queue gpu-lab -o yaml
 ```
 
-这里的 Queue 只做逻辑归属。若要用 `capability`、`guarantee`、`deserved` 等字段实现容量上限或保底资源，必须同时检查 Scheduler 是否启用对应的 Capacity/Proportion 插件与 Action；`reclaimable: true` 本身不代表已经启用跨 Queue 回收。
+这里的 Queue 只做逻辑归属。本实验没有启用跨 Queue 回收；`reclaimable: true` 的含义、以及 `capability`、`guarantee`、`deserved` 等容量字段需要配合的插件与 Action，见 [6.1](#61-queue先划定资源治理边界)。
 
 ### 10.4 提交 2 卡 VolcanoJob
 
