@@ -1,0 +1,54 @@
+# 与文章图 5 一一对应的五节点拓扑模型。
+# 应用前将 node-a1 到 node-b2 替换为真实 Kubernetes Node 名称。
+# Leaf HyperNode 位于 Tier 1；父 Fabric HyperNode 位于 Tier 2。
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-leaf-a
+spec:
+  tier: 1
+  members:
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-a1"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-a2"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-a3"
+---
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-leaf-b
+spec:
+  tier: 1
+  members:
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-b1"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-b2"
+---
+apiVersion: topology.volcano.sh/v1alpha1
+kind: HyperNode
+metadata:
+  name: lab-fabric
+spec:
+  tier: 2
+  members:
+    - type: HyperNode
+      selector:
+        exactMatch:
+          name: "lab-leaf-a"
+    - type: HyperNode
+      selector:
+        exactMatch:
+          name: "lab-leaf-b"

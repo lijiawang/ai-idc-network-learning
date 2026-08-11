@@ -380,7 +380,7 @@ HyperNode 可以手工创建，也可以通过节点标签或 InfiniBand UFM 自
 
 *图 5：灰色线表示简化的物理拓扑；Node 卡片内的 Worker 标签表示实际调度放置。左侧 Hard 示例将 `highestTierAllowed` 设为 1，因此每个 Tier 1 Leaf 都必须单独容纳 4 个成员，资源不足时整组 Pending。右侧 Soft 先偏好 Leaf-A，放不下时按 `Leaf-A 3 + Leaf-B 1` 跨域；它放松的是拓扑偏好，`minAvailable: 4` 的 Gang 条件仍要求 4 个成员一起完成绑定。*
 
-### 8.1 手工创建 HyperNode：两节点最小示例
+### 8.1 手工创建 HyperNode：与图 5 一致的五节点示例
 
 HyperNode 是**集群级 CRD**，不属于某个 namespace。手工创建时先确认 CRD 已安装，并把成员名称与 Kubernetes Node 名称逐字对应：
 
@@ -389,7 +389,7 @@ kubectl get crd hypernodes.topology.volcano.sh
 kubectl get nodes -o wide
 ```
 
-下面的 [`hypernode-two-node-lab.yaml`](examples/volcano/hypernode-two-node-lab.yaml) 对应本文的两台实验节点。它把每台节点建模为一个 Tier 1 Leaf，并以一个 Tier 2 父 HyperNode 把它们连起来：
+下面的 [`hypernode-figure-five-node.yaml`](examples/volcano/hypernode-figure-five-node.yaml) 与图 5 一一对应：`lab-leaf-a` 包含 `node-a1`、`node-a2`、`node-a3`，`lab-leaf-b` 包含 `node-b1`、`node-b2`；两者都属于 `lab-fabric`：
 
 ```yaml
 apiVersion: topology.volcano.sh/v1alpha1
@@ -402,7 +402,15 @@ spec:
     - type: Node
       selector:
         exactMatch:
-          name: "10-60-50-9"
+          name: "node-a1"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-a2"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-a3"
 ---
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
@@ -414,7 +422,11 @@ spec:
     - type: Node
       selector:
         exactMatch:
-          name: "10-60-8-241"
+          name: "node-b1"
+    - type: Node
+      selector:
+        exactMatch:
+          name: "node-b2"
 ---
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
@@ -436,17 +448,17 @@ spec:
 先做 server-side dry-run，再正式创建并检查层级：
 
 ```bash
-kubectl apply --server-side --dry-run=server -f hypernode-two-node-lab.yaml
-kubectl apply -f hypernode-two-node-lab.yaml
+kubectl apply --server-side --dry-run=server -f hypernode-figure-five-node.yaml
+kubectl apply -f hypernode-figure-five-node.yaml
 kubectl get hypernodes.topology.volcano.sh
 kubectl get hypernodes.topology.volcano.sh lab-fabric -o yaml
 ```
 
-> 这份 YAML 是**调度语义实验模型**，不等于已经发现了两台云主机真实的交换机、Rail 或带宽关系。生产环境应根据交换机、UFM 或可信节点标签建立 HyperNode；不要仅因节点数量方便就虚构网络性能域。
+> 这份 YAML 是**与图 5 对齐的五节点调度语义模型**。`node-a1` 到 `node-b2` 是示例名称，必须替换为真实 Kubernetes Node 名称；不能直接应用到当前只有两台节点的实验集群。生产环境应根据交换机、UFM 或可信节点标签建立 HyperNode；不要仅因节点数量方便就虚构网络性能域。
 
 创建 CR 只是把拓扑数据写进 Kubernetes。要让 Job 真正使用它，`volcano-scheduler-configmap` 还必须在现有插件列表中加入 `network-topology-aware`，并重启/升级 Scheduler；仅创建 HyperNode 而没有这个插件，调度器不会按拓扑约束放置 Pod。
 
-基于上面的两节点模型，下面的 Job 约束会要求整组只放在一个 Tier 1 Leaf。若 `minAvailable: 2` 且每个 Leaf 只有一台节点，Hard 将保持 Pending；改为 Soft 后，调度器才可以按两台节点 `1 + 1` 跨 Leaf 放置：
+基于上面的五节点模型，下面的 Job 约束会要求 4 个成员整组只放在一个 Tier 1 Leaf。Leaf-A 最多容纳 3 个、Leaf-B 最多容纳 2 个，因此 Hard 保持 Pending；改为 Soft 后，调度器才可以按 `Leaf-A 3 + Leaf-B 1` 跨 Leaf 放置：
 
 ```yaml
 # 放进 VolcanoJob 的 spec；不是独立 Kubernetes 对象
@@ -458,8 +470,12 @@ networkTopology:
 实验结束只删除本次创建的三个对象，不能删除 HyperNode CRD：
 
 ```bash
-kubectl delete -f hypernode-two-node-lab.yaml
+kubectl delete -f hypernode-figure-five-node.yaml
 ```
+
+### 8.2 两节点实验集群该用哪份 YAML
+
+当前实验集群只有 `10-60-50-9` 和 `10-60-8-241` 两个 Node，不能套用图 5 的五节点 YAML。请使用单独的 [`hypernode-two-node-lab.yaml`](examples/volcano/hypernode-two-node-lab.yaml)：它把两台节点分别建成两个 Tier 1 Leaf，并以 `two-node-fabric` 为 Tier 2 父域。这个模型适合验证 CRD、插件和 `1 + 1` 跨 Leaf 行为，但不能复现图 5 的 `3 + 1` 容量场景。
 
 ## 9. Volcano 与 GPU Operator、Device Plugin 是什么关系
 

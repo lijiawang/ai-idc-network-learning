@@ -5,7 +5,7 @@
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: lab-leaf-a
+  name: two-node-leaf-a
 spec:
   tier: 1
   members:
@@ -17,7 +17,7 @@ spec:
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: lab-leaf-b
+  name: two-node-leaf-b
 spec:
   tier: 1
   members:
@@ -29,15 +29,15 @@ spec:
 apiVersion: topology.volcano.sh/v1alpha1
 kind: HyperNode
 metadata:
-  name: lab-fabric
+  name: two-node-fabric
 spec:
   tier: 2
   members:
     - type: HyperNode
       selector:
         exactMatch:
-          name: "lab-leaf-a"
+          name: "two-node-leaf-a"
     - type: HyperNode
       selector:
         exactMatch:
-          name: "lab-leaf-b"
+          name: "two-node-leaf-b"
