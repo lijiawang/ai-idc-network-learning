@@ -4,6 +4,8 @@
 >
 > **最重要的结论：Xid 是驱动写入内核日志的故障线索，不是单凭一个编号就能得到的根因或 RMA 判决。** 同一个 Xid 可能来自应用、驱动、GPU、显存、PCIe、NVLink 或远端设备；恢复动作与根因调查必须分开。
 
+![NVIDIA GPU Xid 故障定位与标准化处置封面](assets/nvidia-gpu-xid/cover.png)
+
 ## 1. 先看结论：值班时应该怎么做
 
 收到 Xid 告警后，按以下顺序处理：
@@ -92,6 +94,8 @@ to 0x2 (Node Reboot Required)
 | `Drain and Reset` | GPU 可能已降容；现有未受影响任务可完成或 checkpoint，排空后 reset | 不得派新任务 |
 | `Recover IMEX Domain` | 新版 NVML 定义的 IMEX 域恢复动作；不得简化为单节点 reset/reboot，应按多节点 NVLink/IMEX 平台 runbook 恢复并重新查询状态 | 隔离关联作业和 IMEX 域，禁止域内新任务 |
 
+![GPU Recovery Action 六类恢复动作](assets/nvidia-gpu-xid/recovery-action.png)
+
 `Recover IMEX Domain` 是新版 NVML/驱动新增状态，只会出现在使用 IMEX 的相关平台；旧版 `nvidia-smi` 文档和驱动可能仍只显示前五项。如果驱动不支持 Recovery Action 字段，就使用对应版本 Xid Catalog 的 Immediate Action，再结合本文错误码分支处理。
 
 旧的 `GPU Reset Status` / `Drain and Reset Status` 已被 NVIDIA 废弃，新自动化不应继续以它们作为决策源。
@@ -99,6 +103,8 @@ to 0x2 (Node Reboot Required)
 ## 4. 常见 Xid 错误码速查表
 
 下表中的“立即动作”以当前 NVIDIA Xid Catalog 为基线。`Reset` 是否能单卡执行，还取决于 NVLink、NVSwitch、Fabric Manager、MIG 和虚拟化环境，详见第 8 节。
+
+![常见 Xid 错误码分类](assets/nvidia-gpu-xid/xid-category-map.png)
 
 | Xid | 官方含义 | 常见方向 | 立即动作 | 深入调查重点 | 仅凭该码 RMA？ |
 | --- | --- | --- | --- | --- | --- |
@@ -286,6 +292,8 @@ Xid 119 是等待 GSP RPC 超时，Xid 120 是 GSP 错误。两者当前 Immedia
 若 reset 无效，可执行节点 power cycle；power cycle 后仍复发，再按 GPU Debug Guidelines 提交支持。119/120 本身不是直接 RMA 码。
 
 ## 6. 标准化故障处理 SOP
+
+![Xid 标准化处置 SOP](assets/nvidia-gpu-xid/standard-sop.png)
 
 ### 6.1 阶段 A：告警、隔离与事件分级
 
