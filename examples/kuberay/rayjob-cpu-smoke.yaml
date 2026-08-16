@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ray-cpu-smoke-code
+  namespace: kuberay-lab
+data:
+  smoke.py: |
+    import socket
+
+    import ray
+
+    ray.init()
+
+    @ray.remote(num_cpus=1)
+    def probe():
+        return {"hostname": socket.gethostname(), "value": 42}
+
+    result = ray.get(probe.remote())
+    assert result["value"] == 42, result
+    print(f"KUBERAY_CPU_SMOKE_OK {result}", flush=True)
+---
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: ray-cpu-smoke
+  namespace: kuberay-lab
+spec:
+  submissionMode: K8sJobMode
+  entrypoint: python /home/ray/app/smoke.py
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  submitterConfig:
+    backoffLimit: 0
+
+  rayClusterSpec:
+    rayVersion: "2.57.0"
+
+    headGroupSpec:
+      rayStartParams:
+        num-cpus: "0"
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ray-head
+              # CompShare 节点直连 Docker Hub 超时，使用现有 DaoCloud 代理。
+              image: m.daocloud.io/docker.io/rayproject/ray:2.57.0
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: gcs-server
+                  containerPort: 6379
+                - name: dashboard
+                  containerPort: 8265
+                - name: client
+                  containerPort: 10001
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
+                limits:
+                  cpu: "1"
+                  memory: 2Gi
+              volumeMounts:
+                - name: app-code
+                  mountPath: /home/ray/app
+                - name: ray-shm
+                  mountPath: /dev/shm
+          volumes:
+            - name: app-code
+              configMap:
+                name: ray-cpu-smoke-code
+            - name: ray-shm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 1Gi
+
+    workerGroupSpecs:
+      - groupName: cpu-worker
+        replicas: 1
+        minReplicas: 1
+        maxReplicas: 1
+        rayStartParams: {}
+        template:
+          spec:
+            restartPolicy: Never
+            containers:
+              - name: ray-worker
+                image: m.daocloud.io/docker.io/rayproject/ray:2.57.0
+                imagePullPolicy: IfNotPresent
+                resources:
+                  requests:
+                    cpu: "1"
+                    memory: 2Gi
+                  limits:
+                    cpu: "1"
+                    memory: 2Gi
+                volumeMounts:
+                  - name: ray-shm
+                    mountPath: /dev/shm
+            volumes:
+              - name: ray-shm
+                emptyDir:
+                  medium: Memory
+                  sizeLimit: 1Gi

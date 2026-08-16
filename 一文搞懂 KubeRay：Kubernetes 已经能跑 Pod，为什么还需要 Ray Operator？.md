@@ -249,7 +249,7 @@ spec:
   ttlSecondsAfterFinished: 300
 ```
 
-Ray Job 到达成功或失败终态后，Operator 等待 300 秒，再删除专属 RayCluster 和 submitter Kubernetes Job。RayJob CR 本身默认仍保留，便于查看终态；只有显式开启 Operator 的 `DELETE_RAYJOB_CR_AFTER_JOB_FINISHES`，它才会随之自动删除。挂在外部的 ConfigMap、PVC、对象存储数据也不会因为集群删除而自动消失。
+Ray Job 到达成功或失败终态后，Operator 等待 300 秒，再删除专属 RayCluster。RayJob CR、submitter Kubernetes Job 与 RayJob 持有的 Head Service 默认仍保留，便于查看终态和日志；删除 RayJob 时，这些受控对象才会级联清理。只有显式开启 Operator 的 `DELETE_RAYJOB_CR_AFTER_JOB_FINISHES`，RayJob 及其受控资源才会在结束后自动删除。挂在外部的 ConfigMap、PVC、对象存储数据也不会因为集群删除而自动消失。
 
 v1.6.2 还提供 `deletionStrategy.deletionRules`，可按 `SUCCEEDED`、`FAILED` 或部署失败分别选择 `DeleteCluster`、`DeleteWorkers`、`DeleteSelf`、`DeleteNone`，并设置每条规则自己的 TTL。该能力受默认已开启的 `RayJobDeletionPolicy` feature gate 控制。
 
@@ -534,6 +534,8 @@ Python Driver：同时提交两个 num_gpus=1 的 Ray Task
 ```
 
 > **实验声明：**下面是按 KubeRay v1.6.2 / Ray 2.57.0 API 编写的待验证实验方案，不冒充已经在当前两台虚拟机上执行过的结果。实际能否成功还取决于节点名称与状态、GPU Operator、NVIDIA Driver、镜像仓库、CUDA 兼容性、CPU/内存余量和网络。`rayproject/ray:2.57.0-gpu` 体积较大，首次拉取可能耗时较长。
+>
+> **当前实测进度（2026-08-16）：**同一两节点集群已经安装 KubeRay Operator v1.6.2，并用 Ray 2.57.0 完成 CPU RayJob 端到端烟测，状态为 `SUCCEEDED / Complete`。节点直连 Docker Hub 超时，因此烟测使用 DaoCloud 镜像代理。两张 GPU 当时都被既有 `volcano-model-demo` Pod 占用，未擅自停止，所以本节双 GPU 结果仍属于待验证项。可重复的 CPU 清单和交接记录见 [`examples/kuberay`](./examples/kuberay/README.md)。
 
 ### 12.1 创建 namespace
 
@@ -601,6 +603,8 @@ spec:
   shutdownAfterJobFinishes: true
   ttlSecondsAfterFinished: 300
   backoffLimit: 0
+  submitterConfig:
+    backoffLimit: 0
 
   rayClusterSpec:
     rayVersion: "2.57.0"
@@ -771,7 +775,7 @@ SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes
 
 ### 12.5 清理实验
 
-配置了 300 秒 TTL 后，专属 RayCluster 和 submitter Kubernetes Job 应在终态后自动删除；RayJob CR 和 ConfigMap 默认仍会保留。TTL 到期前先保存需要的 Head 日志和状态。
+配置了 300 秒 TTL 后，专属 RayCluster 应在终态后自动删除；RayJob CR、submitter Kubernetes Job、RayJob 持有的 Head Service 和 ConfigMap 默认仍会保留。TTL 到期前先保存需要的 Head 日志和状态；删除 RayJob CR 后，submitter Job 与 Head Service 才会随 owner reference 级联清理。
 
 手工清理本次对象：
 
