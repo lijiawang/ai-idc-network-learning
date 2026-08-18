@@ -233,7 +233,7 @@ spec:
   backoffLimit: 1
 ```
 
-表示 RayJob 失败后最多重试多少次；**每次重试会创建一套新的 RayCluster**。它不是在原集群里只重跑一个 Python Task。
+表示 RayJob 被控制器判定为失败（`jobDeploymentStatus: Failed`）后最多进行多少次整作业重试；**每次重试会删除旧的专属 RayCluster 和 submitter Job，再创建一套新的 RayCluster**，RayJob 持有的 Head Service 通常保留并更新 selector。集群暂未 Ready、Service 更新失败或 Dashboard 暂时不可达等控制器错误，通常只会触发重新入队对账，不一定消耗这个计数。它不是在原集群里只重跑一个 Python Task。
 
 而 `submitterConfig.backoffLimit` 控制的是 submitter Kubernetes Job 的重试。Ray Task 和 Actor 的失败重试则由 Ray 的 `max_retries`、`max_restarts` 等应用级选项控制。
 
@@ -277,7 +277,7 @@ Pending RayCluster（启动并部署 Serve）
 
 ### 6.1 不是任何字段变化都会创建新集群
 
-RayService v1.6 的默认 NewCluster 升级依赖“有效 spec 哈希”。`replicas`、`minReplicas`、`maxReplicas`、`workersToDelete`，以及部分 `tolerations`、`schedulingGates` 等字段会被升级哈希忽略，因此仅修改这些字段不会自动走完整的新集群切换流程。
+RayService v1.6 的默认 NewCluster 升级依赖“有效 spec 哈希”。该哈希会忽略 Worker Group 的 `replicas`、`minReplicas`、`maxReplicas`、`scaleStrategy.workersToDelete`，Head/Worker Pod Template 的 `tolerations`、`schedulingGates`，以及 RayCluster 的 `upgradeStrategy`。这些字段可能由 Autoscaler、Kueue 等组件调整，或属于不应触发换集群的控制字段，因此仅修改它们不会自动走完整的新集群切换流程。
 
 `serveConfigV2` 的变化通常在当前集群上原地提交给 Ray Serve，也不会因为应用配置变化就必然创建一套新 RayCluster。
 
@@ -311,7 +311,7 @@ resources:
 - kubelet 和 NVIDIA Device Plugin 把指定设备注入容器；
 - Kubernetes 资源账本记录这张 GPU 已被该 Pod 占用。
 
-KubeRay 根据 Ray 容器的 GPU **limit** 向 Ray 宣告逻辑 GPU 容量。GPU request 不参与这项自动推导，因此实践中应把 request 与 limit 设成相同值。不要让 `rayStartParams.num-gpus` 与容器 limit 相互矛盾，除非你非常清楚自己正在建立怎样的逻辑资源模型。
+KubeRay 根据主 Ray 容器（`ray-head` 或 `ray-worker`）的 GPU **limit** 向 Ray 宣告逻辑 GPU 容量；同一 Pod 中其他 sidecar 容器的 GPU limit 不会累加到这份自动推导结果中。GPU request 不参与这项自动推导，因此实践中应把 request 与 limit 设成相同值。不要让 `rayStartParams.num-gpus` 与容器 limit 相互矛盾，除非你非常清楚自己正在建立怎样的逻辑资源模型。
 
 ### 7.2 第二层：Ray 的 `num_gpus`
 
@@ -389,7 +389,7 @@ Operator 模式很容易给人一种错觉：只要 Pod 能重建，分布式程
 | Worker Pod 失败 | 按期望副本补一个 Worker Pod | Ray Task 重试、Actor 重启、对象重建和业务幂等 |
 | Kubernetes Node 失败 | 在其他可用 Node 上重建受控 Pod | 数据卷可用性、Checkpoint、网络和剩余容量 |
 | 普通 RayCluster Head 失败 | kubelet 可按 restartPolicy 重启容器；满足重建条件时 KubeRay 可补建 Head Pod | 没有 GCS fault tolerance 时，重启或重建进程不等于恢复原集群控制状态 |
-| RayJob 专属 Head 在成功建群后失败 | v1.6 不再尝试原地重建该 Head；可由顶层 `backoffLimit` 新建整套集群重试 | 入口程序幂等、外部输出去重和 Checkpoint |
+| RayJob 专属 Head 失败 | 恢复行为取决于提交模式、Pod `restartPolicy` 和 RayJob 状态；`SidecarMode` 的集群首次 Provision 后，Head 消失时默认不再原地补建，其他提交模式没有这一统一限制 | 顶层 `backoffLimit` 仅在 RayJob 被判定为 Failed 后才会整集群重试；入口程序幂等、外部输出去重和 Checkpoint |
 | Task 或 Actor 异常 | Ray 按配置尝试 Task retry 或 Actor restart | 外部副作用、不可重建内存状态和业务补偿 |
 | RayService 集群不健康 | 根据 RayService 状态与配置重建/切换服务集群 | 在途请求、持久会话、模型状态和外部依赖 |
 
@@ -398,6 +398,8 @@ Operator 模式很容易给人一种错觉：只要 Pod 能重建，分布式程
 Head 不只是一个普通 Worker。GCS 保存集群元数据和控制状态。若需要 Head 恢复后保留 GCS 状态，应按官方 GCS fault tolerance 方案配置外部 Redis 等持久后端，并验证存储本身的高可用。
 
 即使 GCS 可恢复，Driver 的本地内存、用户进程的临时状态和未落盘模型也不会自动变成持久数据。
+
+GCS fault tolerance、kubelet 容器重启、KubeRay 重建 Head Pod 和 RayJob 整集群重试是四种不同机制，覆盖的故障窗口与恢复语义各不相同，不能相互替代。
 
 ### 9.2 重试意味着可能重复执行
 
@@ -775,7 +777,7 @@ SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes
 
 ### 12.5 清理实验
 
-配置了 300 秒 TTL 后，专属 RayCluster 应在终态后自动删除；RayJob CR、submitter Kubernetes Job、RayJob 持有的 Head Service 和 ConfigMap 默认仍会保留。TTL 到期前先保存需要的 Head 日志和状态；删除 RayJob CR 后，submitter Job 与 Head Service 才会随 owner reference 级联清理。
+配置了 300 秒 TTL 后，专属 RayCluster 应在终态后自动删除；RayJob CR、submitter Kubernetes Job 和 RayJob 持有的 Head Service 默认仍会保留。本例的代码 ConfigMap 是被 Pod 引用的外部对象，不归 RayJob 所有，也不会随 RayCluster 删除。TTL 到期前先保存需要的 Head 日志和状态；删除 RayJob CR 后，submitter Job 与 Head Service 才会随 owner reference 级联清理，ConfigMap 需单独删除。
 
 手工清理本次对象：
 
