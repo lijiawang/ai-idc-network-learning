@@ -1,26 +1,10 @@
 # 一文搞懂 KubeRay：Kubernetes 已经能跑 Pod，为什么还需要 Ray Operator？
 
-假设你要在 Kubernetes 上运行一个 Ray 程序：一个 Head、两个 GPU Worker，程序把两份推理任务并行分给两张 GPU。
+假设你要在 Kubernetes 上运行一个 Ray 程序：一个 Head、两个 GPU Worker，并行处理两份推理任务。写出三个 Pod 不难，难的是管理整套工作负载：Worker 如何找到 Head，集群何时算就绪，程序由谁提交，资源怎样扩缩，服务如何升级，失败后由哪一层恢复。
 
-把三个 Pod 写出来并不难。Kubernetes 也确实可以把它们拉起、重启和放到合适的节点。
+Kubernetes 能维护 Pod，却不理解 Ray 集群、作业和 Serve 服务的生命周期。只用 Pod、Service 和 Job，这些控制逻辑就要散落在脚本、流水线和人工操作中。
 
-真正麻烦的是后面的事情：
-
-- Worker 应该连接哪个 Head？
-- Head 还没准备好时，Worker 是否应该启动 Ray 进程？
-- 集群就绪之后，谁来提交 Python 入口程序？
-- 程序结束后，临时 Ray 集群何时删除？
-- Ray 的逻辑资源不够时，谁把 Worker 从 2 个扩到 10 个？
-- 在线服务更新 Ray 版本或容器镜像时，怎样先拉起新集群、验证 Serve 就绪，再切换流量？
-- Head、Worker、Ray Task 和物理节点分别失败时，究竟由哪一层恢复？
-
-如果只使用普通 Pod、Service 和 Job，这些控制逻辑都要自己编写。Kubernetes 能保证“容器应该存在”，但它并不知道“一个可用的 Ray 集群”是什么状态，也不知道一次 Ray 作业和一套 Ray Serve 服务应该怎样开始、升级与结束。
-
-这正是 KubeRay 要补上的部分。
-
-KubeRay 不是新的 Kubernetes，也不是另一个任务调度器。它是 Ray 在 Kubernetes 上的 Operator：把 RayCluster、RayJob 和 RayService 的领域知识写进控制器，让 Kubernetes 不只看见几个 Pod，还能持续维护一整套 Ray 工作负载的期望状态。
-
-本文从一个核心问题开始：**Kubernetes 已经能运行 Pod，为什么部署 Ray 还需要 KubeRay Operator？**
+KubeRay 把 RayCluster、RayJob 和 RayService 的领域逻辑写进 Operator，让 Kubernetes 持续维护完整的 Ray 工作负载，而不只是几个容器。
 
 > 版本说明：本文以 **KubeRay v1.6.2、Ray 2.57.0 和 `ray.io/v1` API** 为技术基线。KubeRay v1.6.2 Helm Chart 的 CRD bundle 包含 `RayCluster`、`RayJob`、`RayService` 和 `RayCronJob`；其中 `RayCronJob` 在 v1.6 仍是 Alpha 能力，`RayCronJob` feature gate 默认关闭，不能因为 CRD 已安装就把它当作默认稳定能力。
 >
@@ -28,11 +12,9 @@ KubeRay 不是新的 Kubernetes，也不是另一个任务调度器。它是 Ray
 
 ## 1. 先用一句话认识 KubeRay
 
-[KubeRay](https://github.com/ray-project/kuberay) 是在 Kubernetes 上部署和管理 Ray 的官方推荐 Operator。
+[KubeRay](https://github.com/ray-project/kuberay) 是在 Kubernetes 上部署和管理 Ray 的官方推荐 Operator。它通过 CRD 描述期望状态，再由控制器维护 Head、Worker、Service、提交器 Job 和 Ray Serve 流量入口。
 
-它通过 CRD 描述期望状态，再由控制器创建和维护 Head Pod、Worker Pod、Service、提交器 Job，以及 Ray Serve 对应的集群和流量入口。
-
-先把四个最容易混淆的角色分开：
+先区分四个角色：
 
 | 层次 | 典型组件 | 它真正决定什么 |
 | --- | --- | --- |
@@ -41,11 +23,7 @@ KubeRay 不是新的 Kubernetes，也不是另一个任务调度器。它是 Ray
 | 分布式执行 | Ray runtime | Task、Actor 和 Placement Group 在哪些 Ray Node 上运行 |
 | 批量资源治理（可选） | Volcano 或 Kueue | Pod Gang/放置，或工作负载准入与配额 |
 
-一句话概括：
-
-> **Kubernetes 管 Pod，KubeRay 管 Ray 工作负载生命周期，Ray runtime 调度 Task 和 Actor；Volcano 可补充 Pod 批调度，Kueue 可补充工作负载准入与配额。**
-
-因此，KubeRay 本身不是调度器。它创建 Pod，但最终把 Pod 放到哪台机器，仍由 `schedulerName` 指向的 Kubernetes 调度器决定；Python Task 和 Actor 放到哪个 Ray Worker，则由 Ray 调度器决定。
+> **Kubernetes 管 Pod，KubeRay 管 Ray 工作负载生命周期，Ray runtime 调度 Task 和 Actor；Volcano 补充 Pod 批调度，Kueue 补充工作负载准入与配额。**
 
 ## 2. 为什么几个普通 Pod 还不等于一个 Ray 集群
 
@@ -87,14 +65,7 @@ Pod `Running` 只表示容器进程已经启动，不等于 Ray 集群 Ready，�
 
 ### 2.3 生命周期不只是“创建后一直运行”
 
-不同 Ray 工作负载的结束条件完全不同：
-
-- 开发集群可能长期存在，由工程师反复提交任务；
-- 离线作业应先建临时集群，提交一次入口程序，完成后释放资源；
-- 在线服务需要稳定入口、健康检查和升级切换；
-- 周期作业需要根据时间表反复生成新的 RayJob。
-
-如果全部写成裸 Pod，Operator 应该做的事情就会散落到 Shell 脚本、CI 流水线和人工操作中。
+生命周期也不同：开发集群长期存在；离线作业完成后应释放临时集群；在线服务需要稳定入口和升级切换；周期作业则按时间表生成新的 RayJob。
 
 ## 3. KubeRay v1.6.2 的四个 CRD
 
@@ -115,18 +86,7 @@ KubeRay 根据它维护一个 Head、对应的 Service 和各 Worker Group。删
 
 ### 3.2 RayJob：把“一次程序”与“一套集群”绑在一起
 
-`RayJob` 面向有明确开始和结束的批处理任务。最常见的模式是：
-
-```text
-创建 RayJob
-  → KubeRay 创建专属 RayCluster
-  → 等待集群就绪
-  → 提交 entrypoint
-  → 观察 Ray Job 终态
-  → 按策略保留或清理 RayCluster
-```
-
-RayJob 不等同于 Kubernetes Job。默认 `K8sJobMode` 确实会创建一个 Kubernetes Job 作为提交器，但真正的用户程序由 Ray Jobs API 接收，并在 Ray 集群内执行。
+`RayJob` 面向有明确开始和结束的批处理任务。它可以创建专属 RayCluster、提交入口程序、追踪终态并按策略清理资源。RayJob 不等同于 Kubernetes Job：默认 `K8sJobMode` 创建的 Kubernetes Job 只是提交器，用户程序由 Ray Jobs API 接收并在 Ray 集群内执行。
 
 RayJob 也支持用 `clusterSelector` 选择一套已有 RayCluster。这样可以复用共享集群，却会失去“一次作业拥有一套集群”的隔离和清理语义；KubeRay 的 Volcano/Kueue Gang 集成也不支持这种复用模式，因此不能一边使用 `clusterSelector`，一边期待 Operator 为这次作业新建整组 Pod 并完成 Gang 准入。
 
@@ -145,12 +105,7 @@ RayJob 也支持用 `clusterSelector` 选择一套已有 RayCluster。这样可�
 
 KubeRay v1.6.2 的 Helm CRD 目录已经包含 `RayCronJob`，API 也是 `ray.io/v1`。但它在 v1.6 仍是 Alpha，Operator Chart 中对应 feature gate 默认是 `false`。
 
-这意味着：
-
-- `kubectl get crd` 能看到 RayCronJob CRD，不代表控制器默认会处理它；
-- 生产使用前要显式评估并启用 feature gate；
-- 不能把它与成熟的 Kubernetes CronJob 或外部工作流系统等同看待；
-- 升级时尤其要检查 Alpha API 的字段和行为变化。
+能看到 CRD 不代表控制器默认会处理它。生产使用前必须评估并启用 feature gate，同时接受 Alpha API 的兼容性风险。
 
 四种对象可以这样选：
 
@@ -233,7 +188,7 @@ spec:
   backoffLimit: 1
 ```
 
-表示 RayJob 被控制器判定为失败（`jobDeploymentStatus: Failed`）后最多进行多少次整作业重试；**每次重试会删除旧的专属 RayCluster 和 submitter Job，再创建一套新的 RayCluster**，RayJob 持有的 Head Service 通常保留并更新 selector。集群暂未 Ready、Service 更新失败或 Dashboard 暂时不可达等控制器错误，通常只会触发重新入队对账，不一定消耗这个计数。它不是在原集群里只重跑一个 Python Task。
+它控制 RayJob 进入 `jobDeploymentStatus: Failed` 后的整作业重试次数。每次重试会删除旧的专属 RayCluster 和 submitter Job，再创建新集群；Head Service 通常保留并更新 selector。集群未 Ready、Service 更新失败或 Dashboard 暂时不可达，一般只会重新入队，不一定消耗重试次数。
 
 而 `submitterConfig.backoffLimit` 控制的是 submitter Kubernetes Job 的重试。Ray Task 和 Actor 的失败重试则由 Ray 的 `max_retries`、`max_restarts` 等应用级选项控制。
 
@@ -259,9 +214,7 @@ v1.6.2 还提供 `deletionStrategy.deletionRules`，可按 `SUCCEEDED`、`FAILED
 
 Ray Serve 在线服务通常同时依赖集群状态和应用状态。仅更新 Pod 镜像，可能导致 Head 与 Worker 版本混杂、Serve 副本尚未恢复就开始接流量，或新旧应用配置发生短暂不一致。
 
-RayService 默认采用新集群升级思路：当有效的 RayCluster 配置哈希发生变化时，Operator 创建一套 pending RayCluster，在新集群和 Serve applications Ready 后，把稳定的 Serve Service selector 切到新集群，再清理旧集群。
-
-可以把它理解成：
+RayService 默认采用新集群升级：有效的 RayCluster 配置哈希变化后，Operator 创建 pending RayCluster；新集群和 Serve applications Ready 后，稳定 Service 切换到新集群，再清理旧集群。
 
 ```text
 Active RayCluster（继续接流量）
@@ -419,13 +372,7 @@ RayJob `backoffLimit` 会创建新集群重跑入口程序。Task 的 `max_retri
 | Kueue | 工作负载准入、配额、Queue、抢占和多集群排队 | 不替 Ray 创建 Worker，也不选择 Task 落在哪个 Worker |
 | Ray runtime | Task、Actor、Placement Group 和对象执行 | 不把 Kubernetes Pod 绑定到 Node |
 
-### 10.1 与 GPU Operator：先有设备，再谈调度
-
-GPU Operator 或独立 NVIDIA Device Plugin 先把 `nvidia.com/gpu` 上报给 kubelet。KubeRay 只是把这个资源写进 Ray Pod 模板，并将容器 limit 转成 Ray 的逻辑容量。
-
-如果 `kubectl describe node` 看不到 `nvidia.com/gpu`，应该先排查驱动和设备插件，而不是修改 Ray 的 `num_gpus`。
-
-### 10.2 与 Volcano：给一组 Ray Pod 增加 Gang 和 Queue
+### 10.1 与 Volcano：给一组 Ray Pod 增加 Gang 和 Queue
 
 KubeRay v1.6 可在 Operator 安装时配置：
 
@@ -434,19 +381,15 @@ batchScheduler:
   name: volcano
 ```
 
-对于独立 RayCluster，以及 RayService 所维护的底层 RayCluster，KubeRay 会配合创建 Volcano PodGroup，并让 Ray Pod 使用 Volcano。未启用 Ray Autoscaler 时，Gang 最低资源根据目标副本计算；启用 Autoscaler 时，会使用 `minReplicas` 表达最低组规模。
+独立 RayCluster 和 RayService 的底层集群会创建 Volcano PodGroup。未启用 Ray Autoscaler 时，Gang 最低资源按目标副本计算；启用后按 `minReplicas` 计算。
 
-KubeRay v1.6 的 RayJob 还有原生 Volcano 路径：PodGroup 的 owner 是 RayJob，资源计算会覆盖专属 RayCluster 与 submitter。为避免启动死锁，submitter 不计入 `minMember`，但它的 requests 会计入 `minResources`。Volcano 管的是准入、Gang 与 Pod 放置，不直接管理 `serveConfigV2`、Ray Serve 副本或 Ray Task。
+RayJob 从 v1.6 起也有原生路径：PodGroup owner 是 RayJob；submitter 不计入 `minMember`，但其 requests 计入 `minResources`。Queue、Gang 和 Pod 绑定仍由 Volcano 负责，KubeRay 不因此变成调度器。
 
-这使“Head 和最低数量 Worker 能一起获得资源”成为可能，但 KubeRay 本身并没有因此变成 Gang Scheduler。Queue、PodGroup 和最终 Pod 绑定仍由 Volcano 处理。
+### 10.2 与 Kueue：先做配额准入，再允许建群
 
-### 10.3 与 Kueue：先做配额准入，再允许建群
+Kueue 原生支持 RayJob、RayCluster 和 RayService。工作负载先在 LocalQueue 等待，获得 ClusterQueue 配额后再解除 suspend，避免 Ray Pod 零散占用 GPU。
 
-Kueue 对 RayJob、RayCluster 和 RayService 有原生集成。它可以让工作负载在 LocalQueue 中等待，获得 ClusterQueue 配额后再解除 suspend，避免一批 Ray Pod 先零散占住 GPU。
-
-Kueue 更偏向“这份工作何时获准消耗配额”，Volcano 同时提供自己的 Queue 和 Pod 级调度器。生产环境通常应为同一工作负载选定清晰的准入和调度所有权，不要让两套 Queue/Gang 策略在没有设计的情况下叠加。
-
-再次提醒：使用 RayJob `clusterSelector` 复用已有集群时，没有专属 RayCluster 可供 Kueue 或 Volcano 为该 Job 做完整 Gang 管理。共享集群适合提高复用率，专属集群适合隔离、配额和生命周期闭环，二者是明确取舍。
+Kueue 管“何时获准使用配额”，Volcano 还负责 Pod 级调度。同一工作负载应明确两者的所有权，避免 Queue/Gang 策略无设计地叠加。使用 `clusterSelector` 时没有专属 RayCluster，也就无法为该 Job 完整管理 Gang 生命周期。
 
 ## 11. 安装 KubeRay Operator v1.6.2
 
@@ -511,14 +454,7 @@ helm upgrade kuberay-operator kuberay/kuberay-operator \
 
 先在测试环境核对升级路径与兼容矩阵。如果 server-side apply 报 field manager 冲突，应先检查冲突字段与现有 CRD 管理方式，不要直接追加 `--force-conflicts`；如果跨越多个版本，还应以对应版本的官方升级说明为准。官方指南中的 `kubectl replace -k` 只适用于目标清单里的 CRD 都已经存在的情况。
 
-生产安装还应检查：
-
-- KubeRay 与 Kubernetes 的版本兼容范围；
-- Operator image、Chart 和 CRD 是否来自同一版本；
-- 升级前是否先更新 CRD；
-- Operator 的 watch namespace、RBAC、leader election 和资源限制；
-- Ray 镜像、Python 依赖、GPU Driver 与 CUDA 版本组合；
-- 是否需要 Volcano/Kueue，以及它们各自的兼容矩阵。
+生产安装还要核对 Kubernetes 兼容范围，确保 Operator image、Chart 与 CRD 同版本，并检查 RBAC、watch namespace、资源限制、Ray/CUDA 依赖及 Volcano/Kueue 兼容性。
 
 ## 12. 动手跑一个两节点、两张 RTX 3080 Ti 的 RayJob
 
@@ -535,9 +471,7 @@ GPU Worker 1：请求 1 × nvidia.com/gpu
 Python Driver：同时提交两个 num_gpus=1 的 Ray Task
 ```
 
-> **实验声明：**下面是按 KubeRay v1.6.2 / Ray 2.57.0 API 编写的待验证实验方案，不冒充已经在当前两台虚拟机上执行过的结果。实际能否成功还取决于节点名称与状态、GPU Operator、NVIDIA Driver、镜像仓库、CUDA 兼容性、CPU/内存余量和网络。`rayproject/ray:2.57.0-gpu` 体积较大，首次拉取可能耗时较长。
->
-> **当前实测进度（2026-08-16）：**同一两节点集群已经安装 KubeRay Operator v1.6.2，并用 Ray 2.57.0 完成 CPU RayJob 端到端烟测，状态为 `SUCCEEDED / Complete`。节点直连 Docker Hub 超时，因此烟测使用 DaoCloud 镜像代理。两张 GPU 当时都被既有 `volcano-model-demo` Pod 占用，未擅自停止，所以本节双 GPU 结果仍属于待验证项。可重复的 CPU 清单和交接记录见 [`examples/kuberay`](./examples/kuberay/README.md)。
+> **验证状态（2026-08-16）：**两节点集群已用 KubeRay v1.6.2 / Ray 2.57.0 完成 CPU RayJob 烟测，状态为 `SUCCEEDED / Complete`。双 GPU 方案尚未执行，因为两张 GPU 当时正被已有 Pod 使用。实际运行还取决于驱动、CUDA、镜像、资源余量和网络；CPU 清单见 [`examples/kuberay`](./examples/kuberay/README.md)。
 
 ### 12.1 创建 namespace
 
@@ -875,78 +809,29 @@ kubectl exec -n NAMESPACE HEAD_POD -- serve status
 
 集群 Ready 与 Serve application Ready 是两道不同门槛。
 
-## 14. 应该选 RayCluster、RayJob 还是 RayService
+## 14. 什么时候不需要 KubeRay
 
-可以按“谁拥有生命周期”来判断：
-
-| 场景 | 对象 | 生命周期所有者 | 主要风险 |
-| --- | --- | --- | --- |
-| Notebook、研发调试、共享计算池 | RayCluster | 平台或团队 | 资源长期闲置、租户相互影响 |
-| 一次训练、评估、离线推理 | RayJob + 专属 RayCluster | 单次作业 | 冷启动、重复执行、清理策略 |
-| 多个短任务共用暖集群 | RayJob + `clusterSelector` | 共享平台 | 隔离较弱，不支持专属 Gang 生命周期 |
-| 长期模型服务 | RayService | 在线服务 | 升级容量、在途请求、状态外置 |
-| 定时批任务 | 稳定工作流系统，或经评估的 RayCronJob | 调度系统 | v1.6 RayCronJob 仍为 Alpha |
-
-如果只是单 Pod Python 程序，没有分布式 Task、Actor、Serve 或 Ray 生态库，直接使用 Kubernetes Job 往往更简单。引入 KubeRay 会增加 CRD、Operator、镜像、升级和排障成本。
-
-如果已经使用 Ray，但只在一台开发机上临时运行，`ray start` 或本地模式也可能足够。只有当生命周期需要被 Kubernetes 持续声明、自动化和治理时，Operator 的价值才真正显现。
+如果只是单 Pod Python 程序，没有分布式 Task、Actor 或 Serve，直接使用 Kubernetes Job 更简单；单机临时开发也可以使用本地 Ray。只有需要由 Kubernetes 持续管理 Ray 生命周期时，Operator 才值得引入。
 
 ## 15. KubeRay 不能替你做什么
 
-为了避免把一个 Operator 想象成整套 AI 平台，需要明确它的边界。
-
-KubeRay 不会：
-
-- 安装或修复 NVIDIA Driver、Container Toolkit 和 Device Plugin；
-- 替代 Kubernetes Scheduler、Volcano 或 Kueue；
-- 替 Ray 应用选择正确的 Task、Actor 和 Placement Group 资源；
-- 自动让不幂等的训练程序安全重试；
-- 把内存中的模型状态自动变成持久 Checkpoint；
-- 自动配置 NCCL、RoCE、InfiniBand、PFC、ECN 或交换机拓扑；
-- 保证镜像中的 CUDA、PyTorch 和宿主机 Driver 一定兼容；
-- 因为 Pod 能重建就保证 Head、Driver 和在途请求无损恢复；
-- 自动解决多租户认证、Secret、网络隔离和供应链安全；
-- 仅凭 GPU 利用率替你做完整的三层容量规划。
-
-它最擅长的是：把 Ray 领域中的集群、作业和服务生命周期，转换成 Kubernetes 可以持续对账的声明式对象。
+KubeRay 不负责 GPU 驱动和 CUDA 兼容，不替代 Kubernetes Scheduler、Volcano 或 Kueue，也不会自动解决应用幂等、Checkpoint、NCCL/RDMA 网络、多租户安全和容量规划。它只把 Ray 集群、作业和服务的生命周期转换成 Kubernetes 可持续对账的声明式对象。
 
 ## 16. 总结
 
-理解 KubeRay，可以记住七句话：
+Kubernetes 调度 Ray Pod，Ray runtime 调度 Task 与 Actor，KubeRay 管理两者之间的 Ray 生命周期。GPU 需要同时满足 Kubernetes 与 Ray 两层资源契约；扩缩容跨应用、Worker Pod 和 Node 三层；Pod 重建、GCS 恢复、Ray retry 与业务幂等也属于不同故障边界。
 
-1. Kubernetes 知道怎样运行 Pod，但不知道一套 Ray 集群、作业或 Serve 服务的完整生命周期。
-2. KubeRay Operator 管 Head、Worker、Service、作业提交、扩缩容目标、升级和清理；它不是调度器。
-3. Kubernetes 调度 Ray Pod，Ray runtime 调度 Task 与 Actor；Volcano 可选地处理 Gang、Queue 与 Pod 放置，Kueue 可选地处理工作负载准入和配额。
-4. GPU 必须同时满足 Kubernetes `nvidia.com/gpu` 与 Ray `num_gpus` 两层契约。
-5. 扩缩容至少跨应用、Ray Worker Pod 和 Kubernetes Node 三层，任何一层都不能凭空替代另一层。
-6. Worker 重建、Head/GCS 恢复、Ray Task retry 和业务幂等属于不同故障边界。
-7. 批任务优先考虑 RayJob，在线 Ray Serve 优先使用 RayService，共享开发集群才直接使用 RayCluster；RayCronJob 在 v1.6 仍应按 Alpha 对待。
-
-所以，KubeRay 并不是“帮你少写几段 Pod YAML”。它真正补上的，是 Kubernetes 对 Ray 领域状态的理解：
-
-> **不只保证几个容器活着，还要知道这套分布式计算什么时候算就绪、程序怎样进入、资源怎样变化、服务怎样换代，以及工作完成后应该留下什么。**
+批任务优先使用 RayJob，在线 Serve 使用 RayService，共享开发集群使用 RayCluster；RayCronJob 在 v1.6 仍按 Alpha 能力对待。
 
 ## 参考资料
 
-- [KubeRay 官方仓库](https://github.com/ray-project/kuberay)
-- [KubeRay v1.6.2 Release](https://github.com/ray-project/kuberay/releases/tag/v1.6.2)
-- [Ray 2.57.0 Release](https://github.com/ray-project/ray/releases/tag/ray-2.57.0)
-- [KubeRay v1.6.2 Operator Helm values](https://github.com/ray-project/kuberay/blob/v1.6.2/helm-chart/kuberay-operator/values.yaml)
-- [KubeRay v1.6.2 CRD 目录](https://github.com/ray-project/kuberay/tree/v1.6.2/helm-chart/kuberay-operator/crds)
+- [KubeRay 官方仓库与 v1.6.2 Release](https://github.com/ray-project/kuberay/releases/tag/v1.6.2)
 - [KubeRay API Reference](https://ray-project.github.io/kuberay/reference/api/)
-- [Ray on Kubernetes](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
-- [KubeRay Getting Started](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started.html)
-- [Deploy a KubeRay Operator](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/kuberay-operator-installation.html)
-- [Upgrade KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)
-- [RayCluster Configuration](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/config.html)
+- [KubeRay 安装与升级](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)
 - [RayJob Quickstart](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayjob-quick-start.html)
 - [RayService Quickstart](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayservice-quick-start.html)
-- [KubeRay Autoscaling](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html)
-- [Using GPUs with KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/gpu.html)
-- [GCS fault tolerance in KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html)
-- [KubeRay integration with Volcano](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html)
-- [Kueue: Run RayJob](https://kueue.sigs.k8s.io/docs/tasks/run/rayjobs/)
-- [Ray Resource Scheduling](https://docs.ray.io/en/latest/ray-core/scheduling/resources.html)
-- [Ray Fault Tolerance](https://docs.ray.io/en/latest/ray-core/fault_tolerance/index.html)
-- [NVIDIA GPU Operator Documentation](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/)
-- [Kubernetes Device Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)
+- [KubeRay Autoscaling 与 GPU](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html)
+- [GCS fault tolerance](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html)
+- [KubeRay 与 Volcano](https://docs.ray.io/en/latest/cluster/kubernetes/k8s-ecosystem/volcano.html)
+- [Kueue：运行 RayJob](https://kueue.sigs.k8s.io/docs/tasks/run/rayjobs/)
+- [Ray 资源调度与故障恢复](https://docs.ray.io/en/latest/ray-core/fault_tolerance/index.html)
