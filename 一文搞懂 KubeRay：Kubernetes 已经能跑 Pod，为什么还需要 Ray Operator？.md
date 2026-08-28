@@ -1,29 +1,14 @@
 # 一文搞懂 KubeRay：Kubernetes 已经能跑 Pod，为什么还需要 Ray Operator？
 
-假设你要在 Kubernetes 上运行一个 Ray 程序：一个 Head、两个 GPU Worker，并行处理两份推理任务。写出三个 Pod 不难，难的是管理整套工作负载：Worker 如何找到 Head，集群何时算就绪，程序由谁提交，资源怎样扩缩，服务如何升级，失败后由哪一层恢复。
+假设你要在 Kubernetes 上运行一个 Ray 程序：一个 Head、两个 GPU Worker，并行处理两份推理任务。三个 Pod 不难写，难的是让 Worker 注册、判断集群就绪、提交程序，并处理扩缩容、升级和故障恢复。
 
-Kubernetes 能维护 Pod，却不理解 Ray 集群、作业和 Serve 服务的生命周期。只用 Pod、Service 和 Job，这些控制逻辑就要散落在脚本、流水线和人工操作中。
+Kubernetes 的原生控制器能维护 Pod、Service 和 Job，却不理解 Ray 集群、作业与 Serve 服务。KubeRay 把这些生命周期规则写进 Operator，免得控制逻辑散落在脚本、流水线和人工操作中。
 
-KubeRay 把 RayCluster、RayJob 和 RayService 的领域逻辑写进 Operator，让 Kubernetes 持续维护完整的 Ray 工作负载，而不只是几个容器。
+> 版本说明：本文以 **KubeRay v1.6.2、Ray 2.57.0 和 `ray.io/v1` API** 为基线。KubeRay v1.6.2 的端到端测试清单主要固定 Ray 2.52.0，因此文中的版本组合仍需在自己的 Kubernetes、GPU 驱动和镜像环境中验证。
 
-> 版本说明：本文以 **KubeRay v1.6.2、Ray 2.57.0 和 `ray.io/v1` API** 为技术基线。KubeRay v1.6.2 Helm Chart 的 CRD bundle 包含 `RayCluster`、`RayJob`、`RayService` 和 `RayCronJob`；其中 `RayCronJob` 在 v1.6 仍是 Alpha 能力，`RayCronJob` feature gate 默认关闭，不能因为 CRD 已安装就把它当作默认稳定能力。
->
-> KubeRay v1.6.2 仓库的端到端测试清单主要固定 Ray 2.52.0。Ray 2.57.0 虽是正式版本，本文所用组合仍应在自己的 Kubernetes、GPU 驱动和镜像环境中完成验证，不能视为 KubeRay 已对所有路径做过完整认证。
+## 1. 先分清三层职责
 
-## 1. 先用一句话认识 KubeRay
-
-[KubeRay](https://github.com/ray-project/kuberay) 是在 Kubernetes 上部署和管理 Ray 的官方推荐 Operator。它通过 CRD 描述期望状态，再由控制器维护 Head、Worker、Service、提交器 Job 和 Ray Serve 流量入口。
-
-先区分四个角色：
-
-| 层次 | 典型组件 | 它真正决定什么 |
-| --- | --- | --- |
-| 容器编排 | Kubernetes API、kubelet、默认调度器 | Pod 是否存在、放到哪台 Node、容器如何重启 |
-| Ray 生命周期 | KubeRay Operator | Ray 集群、作业和服务应该创建、扩缩、升级还是删除 |
-| 分布式执行 | Ray runtime | Task、Actor 和 Placement Group 在哪些 Ray Node 上运行 |
-| 批量资源治理（可选） | Volcano 或 Kueue | Pod Gang/放置，或工作负载准入与配额 |
-
-> **Kubernetes 管 Pod，KubeRay 管 Ray 工作负载生命周期，Ray runtime 调度 Task 和 Actor；Volcano 补充 Pod 批调度，Kueue 补充工作负载准入与配额。**
+[KubeRay](https://github.com/ray-project/kuberay) 是在 Kubernetes 上部署和管理 Ray 的官方推荐 Operator。Kubernetes 负责创建、放置和重启 Pod；KubeRay 维护 Ray 集群、作业和服务的生命周期；Ray runtime 在已经就绪的 Ray Node 上调度 Task、Actor 和 Placement Group。Volcano、Kueue 等批量资源组件属于可选的下一层能力，第 10 节再展开。
 
 ## 2. 为什么几个普通 Pod 还不等于一个 Ray 集群
 
@@ -39,7 +24,7 @@ KubeRay 把 RayCluster、RayJob 和 RayService 的领域逻辑写进 Operator，
 
 Worker 不是“只要容器 Running 就能工作”。它必须知道 Head 地址，等待 GCS 可用，启动 `ray start`，再成功注册进 Ray 集群。
 
-KubeRay 会为这些对象注入约定、标签、启动参数和等待逻辑，并通过调谐循环（reconcile loop）不断比较“用户声明的集群”与“当前真实集群”。
+这些成员关系和就绪条件，普通 Deployment 或 StatefulSet 不会自动理解。
 
 ### 2.2 两套状态机需要衔接
 
@@ -63,9 +48,7 @@ Serve application 还没有健康副本
 
 Pod `Running` 只表示容器进程已经启动，不等于 Ray 集群 Ready，更不等于作业成功或在线服务可接流量。
 
-### 2.3 生命周期不只是“创建后一直运行”
-
-生命周期也不同：开发集群长期存在；离线作业完成后应释放临时集群；在线服务需要稳定入口和升级切换；周期作业则按时间表生成新的 RayJob。
+KubeRay 用不同 CRD 表达这些生命周期差异。
 
 ## 3. KubeRay v1.6.2 的四个 CRD
 
@@ -73,39 +56,21 @@ Pod `Running` 只表示容器进程已经启动，不等于 Ray 集群 Ready，�
 
 `RayCluster` 适合长期集群、交互式开发、共享计算池，或者需要由其他系统自行提交 Ray Job 的场景。
 
-它主要描述：
-
-- Ray 版本；
-- Head Pod 模板和启动参数；
-- 一个或多个异构 Worker Group；
-- 每组 Worker 的期望副本数、下限和上限；
-- 是否启用 Ray Autoscaler；
-- Pod 资源、卷、亲和性、污点容忍和网络配置。
-
-KubeRay 根据它维护一个 Head、对应的 Service 和各 Worker Group。删除 RayCluster，通常会通过 OwnerReference 级联删除它管理的资源。
+它描述 Ray 版本、Head 和 Worker Group 模板、扩缩容边界，以及资源、存储、调度和网络配置。KubeRay 据此维护 Head、Service 和 Worker Pod；删除 RayCluster 时，受控资源通常会按 OwnerReference 级联删除。
 
 ### 3.2 RayJob：把“一次程序”与“一套集群”绑在一起
 
-`RayJob` 面向有明确开始和结束的批处理任务。它可以创建专属 RayCluster、提交入口程序、追踪终态并按策略清理资源。RayJob 不等同于 Kubernetes Job：默认 `K8sJobMode` 创建的 Kubernetes Job 只是提交器，用户程序由 Ray Jobs API 接收并在 Ray 集群内执行。
+`RayJob` 面向有明确起止的批处理任务，可以创建专属 RayCluster、提交入口程序、追踪终态并清理资源。默认 `K8sJobMode` 中，Kubernetes Job 只是提交器，用户程序仍由 Ray Jobs API 接收并在 Ray 集群内执行。
 
-RayJob 也支持用 `clusterSelector` 选择一套已有 RayCluster。这样可以复用共享集群，却会失去“一次作业拥有一套集群”的隔离和清理语义；KubeRay 的 Volcano/Kueue Gang 集成也不支持这种复用模式，因此不能一边使用 `clusterSelector`，一边期待 Operator 为这次作业新建整组 Pod 并完成 Gang 准入。
+它也能用 `clusterSelector` 复用已有 RayCluster，但会失去专属集群的隔离和清理语义；Volcano/Kueue 的限制见第 10 节。
 
 ### 3.3 RayService：管理 Ray Serve 的长期在线服务
 
-`RayService` 同时描述：
-
-- 一套 RayCluster 配置；
-- `serveConfigV2` 中的 Ray Serve applications 和 deployments；
-- 面向请求的稳定 Kubernetes Service；
-- 集群更新时的升级策略。
-
-它适合模型服务和其他长期 Ray Serve 工作负载。其核心价值不是简单“多创建一个 Service”，而是把 Ray 集群健康、Serve 应用健康、稳定入口和升级流程放在同一个控制循环里。
+`RayService` 组合 RayCluster 配置、`serveConfigV2`、稳定的 Kubernetes Service 和升级策略，适合模型服务等长期 Ray Serve 工作负载。Operator 会同时检查集群与 Serve 应用健康，再决定何时切换流量。
 
 ### 3.4 RayCronJob：按时间表创建 RayJob
 
-KubeRay v1.6.2 的 Helm CRD 目录已经包含 `RayCronJob`，API 也是 `ray.io/v1`。但它在 v1.6 仍是 Alpha，Operator Chart 中对应 feature gate 默认是 `false`。
-
-能看到 CRD 不代表控制器默认会处理它。生产使用前必须评估并启用 feature gate，同时接受 Alpha API 的兼容性风险。
+KubeRay v1.6.2 Helm Chart 的 CRD bundle 包含 `ray.io/v1` 的 `RayCronJob`，但该能力仍是 Alpha，Operator Chart 中的 feature gate 默认关闭。生产使用前需要显式评估并启用，不能只凭 CRD 已存在就认为控制器会处理它。
 
 四种对象可以这样选：
 
@@ -114,7 +79,7 @@ KubeRay v1.6.2 的 Helm CRD 目录已经包含 `RayCronJob`，API 也是 `ray.io
 | 开发、调试、共享 Ray 计算池 | `RayCluster` | 集群生命周期独立于单次程序 |
 | 训练、评估、批推理、ETL | `RayJob` | 自动建群、提交、追踪终态和清理 |
 | Ray Serve 在线推理 | `RayService` | 稳定入口、Serve 健康与升级编排 |
-| Alpha 阶段的定时 Ray 作业 | `RayCronJob` | 由时间表生成 RayJob，但默认关闭 |
+| Alpha 阶段的定时 Ray 作业 | `RayCronJob` | 由时间表生成 RayJob |
 
 ## 4. KubeRay 到底在集群里做了什么
 
@@ -177,7 +142,7 @@ KubeRay v1.6.2 中，RayJob 默认使用 `submissionMode: K8sJobMode`：
 5. Ray 创建 Driver，再由 Driver 提交 Task 和 Actor；
 6. Operator 同步 Ray Job 状态到 RayJob CR。
 
-另外还有 `HTTPMode`、`InteractiveMode` 和 `SidecarMode`。它们改变“谁以什么路径提交”，不会改变 Ray runtime 仍负责执行这一事实。生产选型应以网络边界、身份权限、可观测性和失败语义为准，不要只为了少一个 Pod 改模式。
+`HTTPMode`、`InteractiveMode` 和 `SidecarMode` 只改变提交路径，执行仍由 Ray runtime 负责。生产选型要比较网络边界、权限、可观测性和失败语义。
 
 ### 5.2 两个 backoffLimit 不是一回事
 
@@ -188,11 +153,9 @@ spec:
   backoffLimit: 1
 ```
 
-它控制 RayJob 进入 `jobDeploymentStatus: Failed` 后的整作业重试次数。每次重试会删除旧的专属 RayCluster 和 submitter Job，再创建新集群；Head Service 通常保留并更新 selector。集群未 Ready、Service 更新失败或 Dashboard 暂时不可达，一般只会重新入队，不一定消耗重试次数。
+它控制 RayJob 进入 `jobDeploymentStatus: Failed` 后的整作业重试次数。每次重试会删除旧的专属 RayCluster 和 submitter Job，再创建新集群；Head Service 通常只更新 selector。集群暂未 Ready、Service 更新失败或 Dashboard 暂时不可达一般只会重新入队，不一定消耗次数。
 
-而 `submitterConfig.backoffLimit` 控制的是 submitter Kubernetes Job 的重试。Ray Task 和 Actor 的失败重试则由 Ray 的 `max_retries`、`max_restarts` 等应用级选项控制。
-
-把这三层重试混在一起，很容易让一次错误产生远超预期的重复计算。
+`submitterConfig.backoffLimit` 只重试 submitter Kubernetes Job，Task 和 Actor 则受 Ray 的 `max_retries`、`max_restarts` 控制。
 
 ### 5.3 结束后究竟删除什么
 
@@ -204,43 +167,21 @@ spec:
   ttlSecondsAfterFinished: 300
 ```
 
-Ray Job 到达成功或失败终态后，Operator 等待 300 秒，再删除专属 RayCluster。RayJob CR、submitter Kubernetes Job 与 RayJob 持有的 Head Service 默认仍保留，便于查看终态和日志；删除 RayJob 时，这些受控对象才会级联清理。只有显式开启 Operator 的 `DELETE_RAYJOB_CR_AFTER_JOB_FINISHES`，RayJob 及其受控资源才会在结束后自动删除。挂在外部的 ConfigMap、PVC、对象存储数据也不会因为集群删除而自动消失。
+作业到达终态 300 秒后，Operator 删除专属 RayCluster，但默认保留 RayJob CR、submitter Job 和 Head Service，直到 RayJob 被删除。外部 ConfigMap、PVC 和对象存储数据不在级联清理范围内。若开启 `DELETE_RAYJOB_CR_AFTER_JOB_FINISHES`，RayJob 及其受控资源才会随终态自动删除。
 
-v1.6.2 还提供 `deletionStrategy.deletionRules`，可按 `SUCCEEDED`、`FAILED` 或部署失败分别选择 `DeleteCluster`、`DeleteWorkers`、`DeleteSelf`、`DeleteNone`，并设置每条规则自己的 TTL。该能力受默认已开启的 `RayJobDeletionPolicy` feature gate 控制。
-
-规则模式不能与 `shutdownAfterJobFinishes`、全局 `ttlSecondsAfterFinished` 混用。`DeleteSelf` 会删除 RayJob 自身及其受控资源，适合彻底回收；但审计依赖 CR 状态时，不应过早删除。
+v1.6.2 也支持 `deletionStrategy.deletionRules`，可按不同终态选择 `DeleteCluster`、`DeleteWorkers`、`DeleteSelf` 或 `DeleteNone` 并分别设置 TTL。它受默认开启的 `RayJobDeletionPolicy` feature gate 控制，不能与 `shutdownAfterJobFinishes`、全局 `ttlSecondsAfterFinished` 混用。需要保留 CR 审计时，不要过早使用 `DeleteSelf`。
 
 ## 6. RayService：为什么升级不是改一个 Deployment 镜像
 
-Ray Serve 在线服务通常同时依赖集群状态和应用状态。仅更新 Pod 镜像，可能导致 Head 与 Worker 版本混杂、Serve 副本尚未恢复就开始接流量，或新旧应用配置发生短暂不一致。
+Ray Serve 同时依赖集群和应用状态。仅更新 Pod 镜像，可能造成 Head 与 Worker 版本混杂，或 Serve 副本尚未恢复就开始接流量。RayService 默认采用新集群升级：有效的 RayCluster 配置哈希变化后创建 pending RayCluster，等新集群及 Serve applications Ready，再切换稳定 Service 并清理旧集群。
 
-RayService 默认采用新集群升级：有效的 RayCluster 配置哈希变化后，Operator 创建 pending RayCluster；新集群和 Serve applications Ready 后，稳定 Service 切换到新集群，再清理旧集群。
-
-```text
-Active RayCluster（继续接流量）
-          ↓ 配置发生需要换集群的变化
-Pending RayCluster（启动并部署 Serve）
-          ↓ 集群与 Serve 都 Ready
-稳定 Service 切换 selector
-          ↓
-旧 RayCluster 删除
-```
-
-这是一种服务级的零停机目标，不是数学意义上的绝对零失败：切换期间的在途请求、连接耗尽、模型热身、外部状态兼容和容量翻倍都仍要由架构设计保证。
+这只能提供服务级的零停机目标。在途请求、连接耗尽、模型热身、外部状态兼容和升级期间的双份容量仍要单独设计。
 
 ### 6.1 不是任何字段变化都会创建新集群
 
-RayService v1.6 的默认 NewCluster 升级依赖“有效 spec 哈希”。该哈希会忽略 Worker Group 的 `replicas`、`minReplicas`、`maxReplicas`、`scaleStrategy.workersToDelete`，Head/Worker Pod Template 的 `tolerations`、`schedulingGates`，以及 RayCluster 的 `upgradeStrategy`。这些字段可能由 Autoscaler、Kueue 等组件调整，或属于不应触发换集群的控制字段，因此仅修改它们不会自动走完整的新集群切换流程。
+默认 NewCluster 升级依赖有效 spec 哈希。哈希会忽略 Worker Group 的 `replicas`、`minReplicas`、`maxReplicas`、`scaleStrategy.workersToDelete`，Pod Template 的 `tolerations`、`schedulingGates`，以及 RayCluster 的 `upgradeStrategy`；这些扩缩容或控制字段不会触发换集群。`serveConfigV2` 也通常在当前集群原地更新。
 
-`serveConfigV2` 的变化通常在当前集群上原地提交给 Ray Serve，也不会因为应用配置变化就必然创建一套新 RayCluster。
-
-所以排查“改了 YAML 为什么没有蓝绿升级”时，要先判断变更属于：
-
-- 需要新 RayCluster 的基础配置变化；
-- 当前 RayCluster 的扩缩或可变字段；
-- Ray Serve 的原地应用更新。
-
-v1.6.2 还带有 `RayServiceIncrementalUpgrade`，但它仍是 Alpha，feature gate 默认关闭。不要把它与默认 NewCluster 行为混写，更不要在没有容量和回滚验证时直接用于生产。
+因此，排查“改了 YAML 为什么没有蓝绿升级”时，先区分基础集群配置、扩缩容字段和 Serve 应用配置。v1.6.2 的 `RayServiceIncrementalUpgrade` 仍是默认关闭的 Alpha 能力，不要与 NewCluster 行为混用。
 
 ## 7. GPU 必须同时满足两层资源契约
 
@@ -258,13 +199,7 @@ resources:
     nvidia.com/gpu: "1"
 ```
 
-这一层负责：
-
-- 只有存在可分配 GPU 的 Node 才能接收 Pod；
-- kubelet 和 NVIDIA Device Plugin 把指定设备注入容器；
-- Kubernetes 资源账本记录这张 GPU 已被该 Pod 占用。
-
-KubeRay 根据主 Ray 容器（`ray-head` 或 `ray-worker`）的 GPU **limit** 向 Ray 宣告逻辑 GPU 容量；同一 Pod 中其他 sidecar 容器的 GPU limit 不会累加到这份自动推导结果中。GPU request 不参与这项自动推导，因此实践中应把 request 与 limit 设成相同值。不要让 `rayStartParams.num-gpus` 与容器 limit 相互矛盾，除非你非常清楚自己正在建立怎样的逻辑资源模型。
+Kubernetes 据此把 Pod 放到有可分配 GPU 的 Node，由 kubelet 和 NVIDIA Device Plugin 注入设备并占用资源账本。KubeRay 则根据主 Ray 容器（`ray-head` 或 `ray-worker`）的 GPU **limit** 推导 Ray 逻辑 GPU 容量，不累计 sidecar 的 limit，也不使用 GPU request。实践中应让 request 与 limit 相同，并避免让 `rayStartParams.num-gpus` 与容器 limit 冲突。
 
 ### 7.2 第二层：Ray 的 `num_gpus`
 
@@ -276,12 +211,7 @@ def infer_one_shard(shard):
     ...
 ```
 
-这一层负责让 Ray Scheduler：
-
-- 只把任务放到宣告了 GPU 的 Ray Node；
-- 在任务运行期间预留一单位 Ray 逻辑 GPU；
-- 设置 `CUDA_VISIBLE_DEVICES`，限制任务看到 Ray 分配的设备；
-- 把未满足的逻辑资源需求反馈给 Ray Autoscaler。
+Ray Scheduler 据此选择有逻辑 GPU 的 Ray Node，在任务期间预留资源、设置 `CUDA_VISIBLE_DEVICES`，并把未满足的需求反馈给 Ray Autoscaler。
 
 两层契约缺一不可：
 
@@ -326,9 +256,7 @@ flowchart LR
 
 ### 8.3 基础设施层：增加 Kubernetes Node
 
-Worker Pod 创建后，若现有 Node 没有足够 CPU、内存、GPU 或不满足亲和性，它会 Pending。只有另行部署并正确配置的 Cluster Autoscaler、Karpenter 或云厂商节点池能力，才可能增加 Kubernetes Node。
-
-KubeRay 不购买云主机，也不会启动机房里的关机服务器。裸金属环境没有节点自动供给时，Ray Worker 上限写得再大也只会产生更多 Pending Pod。
+Worker Pod 创建后，若现有 Node 缺少 CPU、内存、GPU 或不满足亲和性，它会 Pending。增加 Node 依赖另行部署的 Cluster Autoscaler、Karpenter 或云厂商节点池；裸金属环境没有节点供给能力时，调高 Ray Worker 上限只会产生更多 Pending Pod。
 
 缩容同样需要分层协调。长期 Actor、对象存储中的唯一副本、Placement Group 和正在处理的请求都可能阻止 Ray Worker 安全缩容；Node Autoscaler 还要判断节点是否可驱逐。不要把三层 idle timeout 都设得极短，否则会出现频繁拉起镜像和抖动。
 
@@ -339,20 +267,18 @@ Operator 模式很容易给人一种错觉：只要 Pod 能重建，分布式程
 | 故障 | KubeRay / Kubernetes 通常能做什么 | 仍需应用或外部系统负责什么 |
 | --- | --- | --- |
 | Operator Pod 失败 | Deployment 重建 Operator；leader election 后继续 reconcile | 运行中的 Ray 数据面通常暂时继续，但期间没有生命周期对账 |
-| Worker Pod 失败 | 按期望副本补一个 Worker Pod | Ray Task 重试、Actor 重启、对象重建和业务幂等 |
-| Kubernetes Node 失败 | 在其他可用 Node 上重建受控 Pod | 数据卷可用性、Checkpoint、网络和剩余容量 |
+| Worker Pod 失败 | 容器是否重启由 kubelet 按 `restartPolicy` 决定；终态或不可重启的 Worker Pod 由 KubeRay 在后续调谐中按副本目标替换 | Ray Task 重试、Actor 重启、对象重建和业务幂等 |
+| Kubernetes Node 失败 | 原 Pod 被驱逐或删除且存在可调度容量后，控制器创建替代 Pod | 数据卷可用性、Checkpoint、网络和剩余容量 |
 | 普通 RayCluster Head 失败 | kubelet 可按 restartPolicy 重启容器；满足重建条件时 KubeRay 可补建 Head Pod | 没有 GCS fault tolerance 时，重启或重建进程不等于恢复原集群控制状态 |
 | RayJob 专属 Head 失败 | 恢复行为取决于提交模式、Pod `restartPolicy` 和 RayJob 状态；`SidecarMode` 的集群首次 Provision 后，Head 消失时默认不再原地补建，其他提交模式没有这一统一限制 | 顶层 `backoffLimit` 仅在 RayJob 被判定为 Failed 后才会整集群重试；入口程序幂等、外部输出去重和 Checkpoint |
 | Task 或 Actor 异常 | Ray 按配置尝试 Task retry 或 Actor restart | 外部副作用、不可重建内存状态和业务补偿 |
-| RayService 集群不健康 | 根据 RayService 状态与配置重建/切换服务集群 | 在途请求、持久会话、模型状态和外部依赖 |
+| RayService 异常 | 持续维护 Serve 配置、状态和稳定入口；初始化、有效集群配置变化或受管集群缺失时可准备 pending cluster，单纯 Serve 不健康不保证换群 | 在途请求、持久会话、模型状态和外部依赖 |
 
 ### 9.1 Head 是特殊故障域
 
 Head 不只是一个普通 Worker。GCS 保存集群元数据和控制状态。若需要 Head 恢复后保留 GCS 状态，应按官方 GCS fault tolerance 方案配置外部 Redis 等持久后端，并验证存储本身的高可用。
 
-即使 GCS 可恢复，Driver 的本地内存、用户进程的临时状态和未落盘模型也不会自动变成持久数据。
-
-GCS fault tolerance、kubelet 容器重启、KubeRay 重建 Head Pod 和 RayJob 整集群重试是四种不同机制，覆盖的故障窗口与恢复语义各不相同，不能相互替代。
+即使 GCS 可恢复，Driver 本地内存、用户进程临时状态和未落盘模型也不会自动持久化。GCS fault tolerance、容器重启、Head Pod 重建和 RayJob 整集群重试覆盖不同的故障窗口，不能相互替代。
 
 ### 9.2 重试意味着可能重复执行
 
@@ -389,7 +315,7 @@ RayJob 从 v1.6 起也有原生路径：PodGroup owner 是 RayJob；submitter �
 
 Kueue 原生支持 RayJob、RayCluster 和 RayService。工作负载先在 LocalQueue 等待，获得 ClusterQueue 配额后再解除 suspend，避免 Ray Pod 零散占用 GPU。
 
-Kueue 管“何时获准使用配额”，Volcano 还负责 Pod 级调度。同一工作负载应明确两者的所有权，避免 Queue/Gang 策略无设计地叠加。使用 `clusterSelector` 时没有专属 RayCluster，也就无法为该 Job 完整管理 Gang 生命周期。
+Kueue 管“何时获准使用配额”，Volcano 还负责 Pod 级调度。同一工作负载应明确两者的所有权，避免 Queue/Gang 策略无设计地叠加。v1.6.2 的 Volcano batch scheduling 会跳过使用 `clusterSelector` 的 RayJob；该字段也不支持与 `suspend` 共用，无法走标准 Kueue 准入流程。不要期待这种模式为作业创建专属 PodGroup 或管理专属集群配额。
 
 ## 11. 安装 KubeRay Operator v1.6.2
 
@@ -435,8 +361,6 @@ kubectl get crd \
   raycronjobs.ray.io
 ```
 
-看到四个 CRD 只说明 API 已注册。默认 values 的 `featureGates` 列表中，`name: RayCronJob` 对应的 `enabled` 仍为 `false`。
-
 ### 11.3 从旧版本升级时，先升级 CRD
 
 Helm 不会自动升级 Chart `crds/` 目录中已经安装的 CRD。若集群里已有旧版 KubeRay，应先按官方升级指南更新 CRD，再升级 Operator；否则新字段可能被 API Server 拒绝或裁剪。
@@ -478,8 +402,6 @@ Python Driver：同时提交两个 num_gpus=1 的 Ray Task
 ```bash
 kubectl create namespace kuberay-lab
 ```
-
-如果 namespace 已存在，命令会提示 AlreadyExists，可以继续。
 
 ### 12.2 保存 ConfigMap 与 RayJob
 
@@ -636,14 +558,7 @@ spec:
                   sizeLimit: 1Gi
 ```
 
-这份配置有几个刻意设计的点：
-
-1. Head 没有 `nvidia.com/gpu`，并设置 `NVIDIA_VISIBLE_DEVICES=void`；`num-cpus: "0"` 则避免普通 Ray Task 跑到 Head。
-2. 每个 Worker 的 GPU request 与 limit 都是 1，KubeRay 据此向 Ray 宣告每个 Worker 有 1 个逻辑 GPU。
-3. `replicas=minReplicas=maxReplicas=2` 固定两个 Worker；本文实验不同时引入 Autoscaler 变量。
-4. 必需的 `podAntiAffinity` 强制两个带实验标签的 Worker 位于不同 Kubernetes Node；Downward API 再把各 Pod 的 `spec.nodeName` 注入任务环境。
-5. 两个 `.remote()` 都在 `ray.get()` 之前调用，因此会同时进入 Ray 的待调度队列；每个 Task 独占一单位 Ray GPU。
-6. 脚本只验证 Ray GPU 分配、可见设备和跨主机放置，不运行 CUDA 算子或性能测试。
+配置把 Head 排除在应用资源池外，并固定两个各占一张 GPU 的 Worker，避免引入 Autoscaler 变量。`podAntiAffinity` 强制 Worker 跨 Node，Downward API 记录实际节点；两个 `.remote()` 在 `ray.get()` 前并发提交，每个 Task 独占一单位逻辑 GPU。脚本不运行 CUDA 算子或性能测试。
 
 ### 12.3 先 dry-run，再提交
 
@@ -659,7 +574,7 @@ kubectl get rayjob -n kuberay-lab -w
 kubectl get raycluster,pod,job,svc -n kuberay-lab -o wide
 ```
 
-第一条命令会持续 watch；看到需要的状态后按 `Ctrl-C`，再执行后续检查。
+第一条命令会持续 watch；请另开终端执行后续命令，或在获得终态后按 `Ctrl-C`。
 
 检查两个 Worker 是否落在不同 Node：
 
@@ -691,36 +606,20 @@ SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes
 
 两个 Worker 里的 `CUDA_VISIBLE_DEVICES` 都可能显示 `0`。这是各容器内部重新编号后的本地设备 ID，不表示两个 Task 使用同一张物理卡。`pod_hostname` 默认是 Pod 名，只能辅助定位 Pod；跨节点结论来自 Downward API 注入的 `spec.nodeName`、上面的 Pod 查询结果，以及 Kubernetes 的 GPU 分配账本。
 
-### 12.4 这个实验不验证什么
+### 12.4 实验边界
 
-即使上述输出成功，也只能说明：
-
-- KubeRay 能创建专属集群并提交 RayJob；
-- Kubernetes 能给两个 Worker 各分配一张 GPU；
-- Ray 能把两个 `num_gpus=1` Task 放到两个不同 Worker；
-- 清理计时可以在 Job 终态后启动。
-
-它不代表已经验证：
-
-- PyTorch、TensorFlow 或 vLLM 与 CUDA 的完整兼容性；
-- 两节点 RTX 3080 Ti 的 NCCL 性能；
-- RDMA、RoCE、PFC 或 ECN；
-- Head/GCS 故障恢复；
-- Volcano/Kueue Gang；
-- Ray 2.57.0 与 KubeRay 1.6.2 的所有功能组合。
+成功输出只验证专属 RayJob 的创建与提交、两张 GPU 的 Pod 分配，以及两个 `num_gpus=1` Task 的跨 Worker 放置；终态后的清理计时还要继续观察资源对象。实验不覆盖框架与 CUDA 兼容性、NCCL 性能、RDMA/RoCE 网络、Head/GCS 恢复、Volcano 批调度、Kueue 准入，或 Ray 2.57.0 与 KubeRay 1.6.2 的其他组合。
 
 ### 12.5 清理实验
 
-配置了 300 秒 TTL 后，专属 RayCluster 应在终态后自动删除；RayJob CR、submitter Kubernetes Job 和 RayJob 持有的 Head Service 默认仍会保留。本例的代码 ConfigMap 是被 Pod 引用的外部对象，不归 RayJob 所有，也不会随 RayCluster 删除。TTL 到期前先保存需要的 Head 日志和状态；删除 RayJob CR 后，submitter Job 与 Head Service 才会随 owner reference 级联清理，ConfigMap 需单独删除。
-
-手工清理本次对象：
+第 5.3 节已说明通用清理规则。本例的 TTL 只自动删除专属 RayCluster；要清理保留的受控对象和外部 ConfigMap，执行：
 
 ```bash
 kubectl delete rayjob ray-two-gpu -n kuberay-lab
 kubectl delete configmap ray-two-gpu-code -n kuberay-lab
 ```
 
-确认 namespace 内没有其他资源后，才考虑删除整个实验 namespace：
+确认 namespace 内没有其他资源后，也可以删除整个实验 namespace：
 
 ```bash
 kubectl get all,configmap,secret,pvc,raycluster,rayjob,rayservice -n kuberay-lab
@@ -729,7 +628,7 @@ kubectl delete namespace kuberay-lab
 
 ## 13. RayJob 或 RayCluster 卡住时怎样排障
 
-排障的关键不是从头到尾盯一个 Pod，而是先判断问题属于哪一层。
+排障时先判断问题属于哪一层，不要从头到尾只盯一个 Pod。
 
 ### 13.1 第一层：CR 有没有被 Operator 接管
 
@@ -809,19 +708,11 @@ kubectl exec -n NAMESPACE HEAD_POD -- serve status
 
 集群 Ready 与 Serve application Ready 是两道不同门槛。
 
-## 14. 什么时候不需要 KubeRay
+## 14. 边界与结论
 
-如果只是单 Pod Python 程序，没有分布式 Task、Actor 或 Serve，直接使用 Kubernetes Job 更简单；单机临时开发也可以使用本地 Ray。只有需要由 Kubernetes 持续管理 Ray 生命周期时，Operator 才值得引入。
+单 Pod Python 程序直接用 Kubernetes Job 更简单，单机临时开发也可以使用本地 Ray。只有需要 Kubernetes 持续维护 Ray 的成员关系、作业或 Serve 生命周期时，KubeRay 才值得引入。
 
-## 15. KubeRay 不能替你做什么
-
-KubeRay 不负责 GPU 驱动和 CUDA 兼容，不替代 Kubernetes Scheduler、Volcano 或 Kueue，也不会自动解决应用幂等、Checkpoint、NCCL/RDMA 网络、多租户安全和容量规划。它只把 Ray 集群、作业和服务的生命周期转换成 Kubernetes 可持续对账的声明式对象。
-
-## 16. 总结
-
-Kubernetes 调度 Ray Pod，Ray runtime 调度 Task 与 Actor，KubeRay 管理两者之间的 Ray 生命周期。GPU 需要同时满足 Kubernetes 与 Ray 两层资源契约；扩缩容跨应用、Worker Pod 和 Node 三层；Pod 重建、GCS 恢复、Ray retry 与业务幂等也属于不同故障边界。
-
-批任务优先使用 RayJob，在线 Serve 使用 RayService，共享开发集群使用 RayCluster；RayCronJob 在 v1.6 仍按 Alpha 能力对待。
+KubeRay 也不负责 GPU 驱动、CUDA 兼容、Pod 调度、应用幂等、Checkpoint、NCCL/RDMA 网络、多租户安全或容量规划。它解决的是 Kubernetes 与 Ray runtime 之间的生命周期编排：批任务用 RayJob，在线 Serve 用 RayService，长期或共享集群用 RayCluster。
 
 ## 参考资料
 
