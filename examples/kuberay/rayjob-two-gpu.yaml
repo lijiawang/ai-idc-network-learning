@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ray-two-gpu-code
+  namespace: kuberay-lab
+data:
+  two_gpu.py: |
+    import os
+    import socket
+    import time
+
+    import ray
+
+    ray.init()
+
+    @ray.remote(num_cpus=0.1, num_gpus=1)
+    def gpu_task(index: int):
+        started = time.time()
+        # 两个任务在 ray.get() 前已同时提交，保持资源一小段时间。
+        time.sleep(10)
+        return {
+            "task": index,
+            "pod_hostname": socket.gethostname(),
+            "kubernetes_node": os.environ.get("K8S_NODE_NAME"),
+            "ray_gpu_ids": ray.get_gpu_ids(),
+            "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+            "started": started,
+            "finished": time.time(),
+        }
+
+    results = ray.get([gpu_task.remote(i) for i in range(2)])
+
+    for result in sorted(results, key=lambda item: item["task"]):
+        print(result, flush=True)
+
+    node_names = {result["kubernetes_node"] for result in results}
+    assert all(result["kubernetes_node"] for result in results), results
+    assert len(node_names) == 2, f"expected two Kubernetes nodes, got: {node_names}"
+    assert all(result["ray_gpu_ids"] for result in results), results
+    print("SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes", flush=True)
+---
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: ray-two-gpu
+  namespace: kuberay-lab
+spec:
+  submissionMode: K8sJobMode
+  entrypoint: python /home/ray/app/two_gpu.py
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 0
+  submitterConfig:
+    backoffLimit: 0
+
+  rayClusterSpec:
+    rayVersion: "2.57.0"
+
+    headGroupSpec:
+      rayStartParams:
+        num-cpus: "0"
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ray-head
+              # 此实验环境通过 DaoCloud 代理拉取 Docker Hub 镜像。
+              image: m.daocloud.io/docker.io/rayproject/ray:2.57.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: NVIDIA_VISIBLE_DEVICES
+                  value: void
+              ports:
+                - name: gcs-server
+                  containerPort: 6379
+                - name: dashboard
+                  containerPort: 8265
+                - name: client
+                  containerPort: 10001
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
+                limits:
+                  cpu: "1"
+                  memory: 2Gi
+              volumeMounts:
+                - name: app-code
+                  mountPath: /home/ray/app
+                - name: ray-shm
+                  mountPath: /dev/shm
+          volumes:
+            - name: app-code
+              configMap:
+                name: ray-two-gpu-code
+            - name: ray-shm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 1Gi
+
+    workerGroupSpecs:
+      - groupName: gpu-workers
+        replicas: 2
+        minReplicas: 2
+        maxReplicas: 2
+        rayStartParams: {}
+        template:
+          metadata:
+            labels:
+              kuberay-two-gpu-worker: "true"
+          spec:
+            restartPolicy: Never
+            affinity:
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  - labelSelector:
+                      matchLabels:
+                        kuberay-two-gpu-worker: "true"
+                    topologyKey: kubernetes.io/hostname
+            containers:
+              - name: ray-worker
+                # 运行前确认镜像代理已同步该 GPU tag；完成实测后固定 digest。
+                image: m.daocloud.io/docker.io/rayproject/ray:2.57.0-gpu
+                imagePullPolicy: IfNotPresent
+                env:
+                  - name: K8S_NODE_NAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: spec.nodeName
+                resources:
+                  requests:
+                    cpu: "1"
+                    memory: 2Gi
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "1"
+                    memory: 2Gi
+                    nvidia.com/gpu: "1"
+                volumeMounts:
+                  - name: ray-shm
+                    mountPath: /dev/shm
+            volumes:
+              - name: ray-shm
+                emptyDir:
+                  medium: Memory
+                  sizeLimit: 1Gi
