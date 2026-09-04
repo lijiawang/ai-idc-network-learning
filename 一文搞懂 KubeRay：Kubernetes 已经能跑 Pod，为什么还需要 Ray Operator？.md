@@ -4,7 +4,9 @@ Kubernetes 能把 Head 和 Worker Pod 跑起来，却不知道 Worker 有没有�
 
 KubeRay 用 Kubernetes 控制器管理这部分 Ray 生命周期。Kubernetes 管 Pod，Ray 管 Task、Actor 和 Placement Group，KubeRay 负责让两套状态持续对上。
 
-![KubeRay 在 Kubernetes 上编排 Ray 集群](./images/kuberay/07-kuberay-hero.png)
+![Pod Running 不等于 Ray Ready，KubeRay 负责把 Head 和 Worker 调谐成可用集群](./images/kuberay/07-kuberay-hero-v2.png)
+
+*左边只是 Pod 进程已启动；右边才是 Head、Worker 完成连接后的 Ray Ready。*
 
 ## 1. 三层职责和对象选择
 
@@ -45,7 +47,9 @@ KubeRay 用 Kubernetes 控制器管理这部分 Ray 生命周期。Kubernetes �
 
 ## 3. KubeRay 的控制回路
 
-![Kubernetes、KubeRay 与 Ray runtime 的三层关系](./images/kuberay/08-kuberay-three-layers.png)
+![Kubernetes、KubeRay 与 Ray runtime 的职责边界](./images/kuberay/08-kuberay-three-layers-v2.png)
+
+*Kubernetes 管节点、Pod 和资源；KubeRay 管 RayCluster、RayJob、RayService 生命周期；Ray runtime 调度 Task、Actor 和 Placement Group。*
 
 Operator 会持续读取 CR 的期望状态，补齐或删除受控资源，再把观察到的状态写回 `status`。手工删掉一个受控 Worker Pod，通常只会被重新创建。
 
@@ -62,7 +66,9 @@ Task 和 Actor 的调度在 Ray runtime 内完成。KubeRay 不会为每个 Pyth
 3. 集群可提交后，Operator 创建 Kubernetes submitter Job。
 4. Submitter 执行 `ray job submit`；Ray Jobs API 启动 Driver，Driver 再提交 Task 和 Actor。
 
-![RayJob 生命周期：声明、建集群、提交任务和回收](./images/kuberay/09-rayjob-lifecycle.png)
+![RayJob 从声明、建集群、提交任务到终态、重试和回收的完整生命周期](./images/kuberay/09-rayjob-lifecycle-v2.png)
+
+*失败时，顶层 `backoffLimit` 会新建集群重跑；终态后，TTL 只回收专属 RayCluster，其他对象受删除策略控制。*
 
 三个名字很像，实际职责不同：
 
