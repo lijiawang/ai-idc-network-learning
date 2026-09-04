@@ -4,6 +4,8 @@ Kubernetes 能把 Head 和 Worker Pod 跑起来，却不知道 Worker 有没有�
 
 KubeRay 用 Kubernetes 控制器管理这部分 Ray 生命周期。Kubernetes 管 Pod，Ray 管 Task、Actor 和 Placement Group，KubeRay 负责让两套状态持续对上。
 
+![KubeRay 在 Kubernetes 上编排 Ray 集群](./images/kuberay/07-kuberay-hero.png)
+
 ## 1. 三层职责和对象选择
 
 | 层 | 负责什么 | 不负责什么 |
@@ -43,16 +45,7 @@ KubeRay 用 Kubernetes 控制器管理这部分 Ray 生命周期。Kubernetes �
 
 ## 3. KubeRay 的控制回路
 
-```mermaid
-flowchart LR
-    CR["RayCluster / RayJob / RayService"] --> OP["KubeRay Operator"]
-    OP --> HS["Head Service"]
-    OP --> HP["Head Pod"]
-    OP --> WP["Worker Pods"]
-    HP --> RAY["Ray runtime"]
-    WP --> RAY
-    RAY --> WORK["Tasks / Actors / Placement Groups"]
-```
+![Kubernetes、KubeRay 与 Ray runtime 的三层关系](./images/kuberay/08-kuberay-three-layers.png)
 
 Operator 会持续读取 CR 的期望状态，补齐或删除受控资源，再把观察到的状态写回 `status`。手工删掉一个受控 Worker Pod，通常只会被重新创建。
 
@@ -68,6 +61,8 @@ Task 和 Actor 的调度在 Ray runtime 内完成。KubeRay 不会为每个 Pyth
 2. RayCluster Controller 创建 Head、Service 和 Worker。
 3. 集群可提交后，Operator 创建 Kubernetes submitter Job。
 4. Submitter 执行 `ray job submit`；Ray Jobs API 启动 Driver，Driver 再提交 Task 和 Actor。
+
+![RayJob 生命周期：声明、建集群、提交任务和回收](./images/kuberay/09-rayjob-lifecycle.png)
 
 三个名字很像，实际职责不同：
 
