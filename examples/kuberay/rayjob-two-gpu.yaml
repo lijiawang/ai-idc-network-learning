@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -35,9 +36,14 @@ data:
 
     node_names = {result["kubernetes_node"] for result in results}
     assert all(result["kubernetes_node"] for result in results), results
-    assert len(node_names) == 2, f"expected two Kubernetes nodes, got: {node_names}"
+    assert len(node_names) == 2, (
+        f"expected two Kubernetes nodes, got: {node_names}"
+    )
     assert all(result["ray_gpu_ids"] for result in results), results
-    print("SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes", flush=True)
+    print(
+        "SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes",
+        flush=True,
+    )
 ---
 apiVersion: ray.io/v1
 kind: RayJob
