@@ -49,4 +49,3 @@ SECTION 3 heading "③ 终态后回收". Compact left-to-right sequence: "成功
 Important facts: submitter failure can enter top-level retry before Driver exists; activeDeadlineSeconds covers the full RayJob lifetime, not just Driver runtime. Cleanup requires true, not automatic by default.
 Constraints: reproduce Chinese text legibly and exactly, prefer short deliberate line breaks, no extra text, no fictional stages, no crossing wires, no unlabeled branches, no wrong arrow direction. No extra arrow out of retry diamond beyond exactly labelled 是/否. Clean flat publication diagram, not 3D.
 ```
-
