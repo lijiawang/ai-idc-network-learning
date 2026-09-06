@@ -4,7 +4,7 @@ Kubernetes 能让 Head 和 Worker Pod 持续运行，却不知道 Worker 是否�
 
 KubeRay Operator（下文简称 Operator）用控制回路管理 Ray 集群、作业和服务的生命周期。Kubernetes 管 Pod，Ray runtime 调度 Task、Actor 和 Placement Group，Operator 让两边状态保持一致。
 
-![Pod Running 不等于 Ray 集群业务可用，业务验收还要检查 GCS、Worker 注册和逻辑资源](./images/kuberay/07-kuberay-hero-v3.png)
+![左侧检查 Pod 状态，右侧通过 ray status 和小任务验收 GCS、Worker 注册及逻辑资源](./images/kuberay/07-kuberay-hero-v4.png)
 
 *左侧只是 Pod phase=`Running`；右侧是业务可用性验收，不等同于 `RayCluster.status.state=Ready`。GCS 指 Global Control Service。*
 
@@ -12,7 +12,7 @@ KubeRay Operator（下文简称 Operator）用控制回路管理 Ray 集群、�
 
 | 层 | 负责什么 | 不负责什么 |
 | --- | --- | --- |
-| Kubernetes | 创建、放置、重启 Pod；分配 CPU、内存、GPU | 不理解 Ray 集群成员和 Task |
+| Kubernetes | 调度 Pod、重启容器，由控制器补建 Pod；分配 CPU、内存、GPU | 不理解 Ray 集群成员和 Task |
 | KubeRay Operator | RayCluster、RayJob、RayService 的生命周期 | 不逐个调度 Ray Task |
 | Ray runtime | Task、Actor、Placement Group 和对象存储 | 不把 Pod 放到 Kubernetes Node |
 
@@ -58,7 +58,7 @@ Operator 读取 CR（Custom Resource，自定义资源）的 `spec`，通过 Kub
 
 `RayJob` 默认使用 `K8sJobMode`。Operator 先根据 `rayClusterSpec` 创建专属 RayCluster；集群 Ready 后再创建 submitter Job，由它调用 Ray Jobs API 启动 Driver。
 
-![RayJob 从声明、建集群、提交任务到条件重试和终态回收的完整生命周期](./images/kuberay/09-rayjob-lifecycle-v3.png)
+![RayJob 的正常执行、提交或运行失败后的重试，以及显式开启的终态回收](./images/kuberay/09-rayjob-lifecycle-v4.png)
 
 几个容易混淆的名字：
 
@@ -69,15 +69,17 @@ Operator 读取 CR（Custom Resource，自定义资源）的 `spec`，通过 Kub
 | Ray job | Ray Jobs API 中一次应用运行及其状态 |
 | Driver | 执行入口程序，并向集群提交 Task 和 Actor 的进程 |
 
-顶层 `backoffLimit` 控制整次 RayJob 的重试，默认值为 0；`submitterConfig.backoffLimit` 只控制 submitter Job。`activeDeadlineSeconds` 导致的 `DeadlineExceeded` 不重试。Task 和 Actor 的失败仍由 Ray 的 `max_retries`、`max_restarts` 处理。
+顶层 `backoffLimit` 控制整次 RayJob 的重试，默认值为 0；提交器失败、Ray 作业失败等都可能进入这一流程。`submitterConfig.backoffLimit` 只控制 submitter Job。`activeDeadlineSeconds` 覆盖建集群、提交和运行阶段，超时产生的 `DeadlineExceeded` 不重试。Task 和 Actor 的失败仍由 Ray 的 `max_retries`、`max_restarts` 处理。
 
-在默认删除配置下，`shutdownAfterJobFinishes: true` 配合 `ttlSecondsAfterFinished` 会在终态后回收专属 RayCluster。RayJob CR 和 submitter Job 是否保留，取决于删除策略和 Operator 配置。
+`shutdownAfterJobFinishes` 默认是 `false`。本文清单将它设为 `true`，配合 `ttlSecondsAfterFinished` 在终态后回收专属 RayCluster。自定义删除策略可改变回收行为；RayJob CR 和 submitter Job 是否保留也取决于删除策略和 Operator 配置。
 
 Head Pod 消失后，不要依赖原地重建恢复当前作业；若 RayJob 触发失败重试，Operator 会新建集群。入口程序、外部写入和 Checkpoint 都应支持重复执行。
 
 ### RayService
 
-RayService 同时管理 RayCluster 和 Serve 应用。集群配置变化时，默认升级策略会创建待切换集群，等新集群和 Serve 应用健康后，再切换稳定 Service。
+RayService 同时管理 RayCluster 和 Serve 应用。修改 `spec.rayClusterConfig` 通常会触发默认 `NewCluster` 升级：创建待切换集群，等新集群和 Serve 应用健康后，再切换稳定 Service。
+
+例外是 Autoscaler 管理的 `replicas`、`minReplicas`、`maxReplicas` 和 `scaleStrategy.workersToDelete`：单独修改这些字段既不触发升级，也不会从 RayService 同步到已有 RayCluster。
 
 这类升级通常需要一段双份容量。GPU 池没有余量时，升级会卡在新集群无法就绪，而不会凭空做到零停机。`serveConfigV2` 的应用配置更新通常可以在现有集群内完成。
 
@@ -129,11 +131,11 @@ Kubernetes 根据 `nvidia.com/gpu` 把 Pod 放到有设备的 Node；KubeRay 根
 | Head 失败 | 容器可能重启；RayJob 可通过重试重建专属集群 | GCS 状态、Driver 内存、外部副作用 |
 | Task / Actor 失败 | Ray 按配置重试或重启 | 事务、去重和业务补偿 |
 
-需要保留 GCS 状态时，可评估基于 Redis 的 GCS 容错。KubeRay 官方完整支持 Ray Serve 使用这套方案；其他工作负载需要自行验证兼容性和恢复语义。
+基于 Redis 的 GCS 容错可保留 GCS 状态。官方建议在 RayService 上启用；其他工作负载不推荐，且不保证兼容性。
 
 NVIDIA GPU Operator 负责驱动和 Device Plugin；需要配额与队列时用 Kueue，需要 Gang（成组调度）和 Pod 级批调度时用 Volcano。没有这些需求就不必引入。
 
-生产环境还要保护 Ray Dashboard 和 Jobs API。KubeRay v1.6+ 支持 token authentication；token 不加密流量，仍应配合 TLS、受限 Ingress、NetworkPolicy 或可信网络。不要把 Dashboard 直接暴露到公网。
+生产环境还要保护 Ray Dashboard 和 Jobs API。KubeRay v1.6+ 配合 Ray 2.52+，可通过 `authOptions` 启用 token authentication；token 不加密流量，仍应配合 TLS、受限 Ingress、NetworkPolicy 或可信网络。不要把 Dashboard 直接暴露到公网。
 
 ## 7. 版本和实验
 
@@ -178,6 +180,8 @@ kubectl apply -f examples/kuberay/rayjob-two-gpu.yaml
 - [KubeRay v1.6.2 Release](https://github.com/ray-project/kuberay/releases/tag/v1.6.2)
 - [KubeRay v1.6.0 Release 和 RayJob 行为变更](https://github.com/ray-project/kuberay/releases/tag/v1.6.0)
 - [KubeRay v1.6.2 样例与 Helm Chart](https://github.com/ray-project/kuberay/tree/v1.6.2)
+- [RayService 升级与例外字段（Ray 2.57.0）](https://github.com/ray-project/ray/blob/ray-2.57.0/doc/source/cluster/kubernetes/user-guides/rayservice.md)
+- [Kubernetes Pod 与容器的生命周期](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
 - [KubeRay 安装与升级](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)
 - [KubeRay token authentication](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html)
 - [GCS fault tolerance](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html)
