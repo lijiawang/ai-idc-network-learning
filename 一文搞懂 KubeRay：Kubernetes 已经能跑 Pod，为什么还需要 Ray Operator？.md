@@ -88,14 +88,19 @@ kubectl apply -f rayjob-cpu-smoke.yaml
 kubectl get rayjob,raycluster,pod,job -n kuberay-lab
 ```
 
-`--dry-run=server` 只做服务端校验，不证明程序能跑通。提交后，等待流程完成，再查看提交器日志。
+`--dry-run=server` 只做服务端校验，不证明程序能跑通。提交后，持续观察 RayJob 状态：
 
 ```bash
-kubectl wait -n kuberay-lab \
-  --for=jsonpath='{.status.jobDeploymentStatus}'=Complete \
-  rayjob/ray-cpu-smoke --timeout=20m
+kubectl get rayjob ray-cpu-smoke -n kuberay-lab -w
+```
+
+看到 `Complete`、`Failed` 或 `ValidationFailed` 后，按 `Ctrl+C` 结束观察，不会停止作业。成功状态须同时满足 `jobStatus=SUCCEEDED` 和 `jobDeploymentStatus=Complete`，还要核对提交器日志中的成功标记：
+
+```bash
 kubectl logs -n kuberay-lab job/ray-cpu-smoke --all-containers=true
 ```
+
+如果失败或长时间没有进展，用 `kubectl describe rayjob ray-cpu-smoke -n kuberay-lab` 查看状态、失败原因和事件；提交器尚未创建时没有对应日志，继续按运维部分排查 Operator 和 Pod。
 
 仓库中的这份 CPU 清单已在两节点 Kubernetes 环境执行成功，结果为 `SUCCEEDED / Complete`，日志中出现 `KUBERAY_CPU_SMOKE_OK`。它开启了终态回收，实测十分钟后专属 RayCluster、Head Pod 和 Worker Pod 已删除。
 
@@ -110,6 +115,8 @@ kubectl logs -n kuberay-lab job/ray-cpu-smoke --all-containers=true
 ### 再尝试 GPU 作业
 
 Worker Pod 用 `nvidia.com/gpu` 申请设备，Ray Task 用 `num_gpus` 声明计算需求。这两层配置要对得上。
+
+下面两段是示意片段，不能独立执行：`resources` 写在 Worker 的主 Ray 容器配置下，Python 片段属于 Ray 程序。实际运行请用下方完整清单。
 
 ```yaml
 # Worker Pod 申请物理 GPU
@@ -142,9 +149,18 @@ Kubernetes 给 Pod 分配设备，KubeRay 默认根据主 Ray 容器的 GPU limi
 ```bash
 kubectl apply --dry-run=server -f rayjob-two-gpu.yaml
 kubectl apply -f rayjob-two-gpu.yaml
+kubectl get rayjob ray-two-gpu -n kuberay-lab -w
 ```
 
-这份 GPU 清单尚未实机执行。预期成功时，两个任务打印不同的 `kubernetes_node`，最后输出 `SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes`。
+与 CPU 示例一样，观察到终态后按 `Ctrl+C`，再查看日志。失败或长时间没有进展时，用 `describe` 查看原因：
+
+```bash
+kubectl logs -n kuberay-lab job/ray-two-gpu --all-containers=true
+# 需要排障时执行
+kubectl describe rayjob ray-two-gpu -n kuberay-lab
+```
+
+这份 GPU 清单尚未实机执行。预期验收结果为 `SUCCEEDED / Complete`，两个任务打印不同的 `kubernetes_node`，最后输出 `SUCCESS: two Ray GPU tasks ran on two different Kubernetes nodes`。
 
 它只检查 GPU 调度和跨节点放置，不验证 CUDA 算子或 NCCL 性能。检查 CUDA 可用性时，应换成目标框架镜像，并在 Task 中运行真实 GPU 算子。
 
