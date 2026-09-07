@@ -143,9 +143,9 @@ NVIDIA GPU Operator 负责驱动和 Device Plugin；需要配额与队列时用 
 
 按 [官方安装与升级指南](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html) 安装 Operator。旧版本升级时先更新 CRD；Helm 不会自动更新已经安装的 `crds/`。
 
-CPU 烟测见 [`examples/kuberay/rayjob-cpu-smoke.yaml`](./examples/kuberay/rayjob-cpu-smoke.yaml)。
+CPU 烟测见 [CPU RayJob 清单](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-cpu-smoke.yaml)。
 
-双 GPU 实验的完整清单见 [`examples/kuberay/rayjob-two-gpu.yaml`](./examples/kuberay/rayjob-two-gpu.yaml)。它固定两个各占一张 GPU 的 Worker，用 Pod 反亲和强制跨 Node，并让两个 `num_gpus=1` Task 并发运行。
+双 GPU 实验的完整清单见 [双 GPU RayJob 清单](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-two-gpu.yaml)。它固定两个各占一张 GPU 的 Worker，用 Pod 反亲和强制跨 Node，并让两个 `num_gpus=1` Task 并发运行。
 
 ```bash
 kubectl create namespace kuberay-lab --dry-run=client -o yaml | kubectl apply -f -
