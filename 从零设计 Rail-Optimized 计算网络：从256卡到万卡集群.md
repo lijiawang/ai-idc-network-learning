@@ -4,7 +4,7 @@
 
 真正需要掌握的是一套计算顺序：**先数服务器计算网口，再分配交换机端口，最后根据最终规模决定接线与预留。** 设备数量算够之后，还要检查连接关系是否成立。
 
-本文以 H100、400G InfiniBand 和 64 口交换机为例，从一台服务器开始，推导 SU、Pod、Spine 和 Core 的设计。目标是计算网络正常状态下逐层 1:1，并讨论如何分期建设、减少旧链路改接。
+本文以 H100、400G RDMA 计算网络和 64 口交换机为例，从一台服务器开始，推导 SU、Pod、Spine 和 Core 的设计。网络可以选择 **RoCEv2 或 InfiniBand（IB）**：在端口速率、可用端口数和连接结构相同的前提下，本文的端口与带宽计算方法对两者都适用。目标是计算网络正常状态下逐层 1:1，并讨论如何分期建设、减少旧链路改接。
 
 先用一句话认识标题里的 **Rail-Optimized（轨道优化）**：把每台服务器的多个计算网口按一致的硬件位置分组接入，让不同服务器的对应网口沿着相同的网络轨道通信。在本文方案中，同一个 SU 内所有服务器的 NIC0 接到 Leaf 0，NIC1 接到 Leaf 1，依此类推。同 Rail 的本地通信因此可以只经过一台 Leaf，具体接法和适用边界在第 4 节展开。
 
@@ -29,8 +29,8 @@
 | 项目 | 本文假设 |
 |---|---|
 | 单台服务器 | 8 张 H100 GPU |
-| 计算网络接口 | 每台提供 8 个 400G IB 端口 |
-| 交换机 | 每台提供 64 个 400G 逻辑端口 |
+| 计算网络接口 | 每台提供 8 个 400G RDMA 端口，选择 RoCEv2 或 IB |
+| 交换机 | 所选网络制式下，每台提供 64 个可同时使用的 400G 逻辑端口 |
 | Leaf 端口分配 | 32 个下联、32 个上联 |
 | 网络目标 | 正常状态下逐层 1:1，不超售计算带宽 |
 | SU | 32 台服务器，256 张 GPU |
@@ -40,7 +40,23 @@
 
 本文的 Pod 是项目交付模块，不是 Kubernetes Pod，也不是各厂商统一规定的固定容量单位。
 
-所有设备与链路计算先只统计计算业务端口，不包含 UFM 等辅助节点接入、备件和故障后满带宽冗余。实际采购时需要另行安排，不能在满配端口表上直接追加。
+所有设备与链路计算先只统计计算业务端口，不包含管理与控制节点接入、备件和故障后满带宽冗余。例如 IB 方案中的 UFM／Subnet Manager 主机可能需要占用 IB 数据端口；RoCEv2 方案也需要单独规划自动化与监控系统的管理连接。实际采购时按所选方案安排，不能在满配端口表上直接追加。
+
+### RoCEv2 和 IB：计算方法相同，设备与配置不同
+
+两者都可以承载 RDMA，都可以采用 Rail 对齐及 Leaf—Spine—Core 拓扑，但应在具体计算 Fabric 内选定匹配的网卡模式、交换机和光互连方案。不能因为接口外形或标称速率相同，就把 RoCEv2 链路与 IB 链路直接互接。
+
+| 对比项 | RoCEv2 | InfiniBand（IB） |
+|---|---|---|
+| 承载网络 | 以太网，RDMA 数据通过 UDP/IP 封装 | 原生 InfiniBand 网络 |
+| 交换设备 | 满足所选 RoCE 方案性能与 QoS 要求的以太网交换机 | IB 交换机 |
+| 路径组织 | 本文多层互通方案通常采用三层 IP Fabric，结合路由与 ECMP 或设备支持的负载均衡机制 | 由 Subnet Manager 等管理组件配置 Fabric 转发表，按能力选择路由与自适应路由 |
+| 流控与拥塞处理 | 典型方案联合配置 ECN、端侧拥塞控制，以及无损优先级上的 PFC；具体取决于厂商方案 | 原生信用流控，结合设备支持的 IB 拥塞控制机制 |
+| 需要共同验证 | 端口容量、GPU—NIC 亲和性、多路径利用率与集合通信性能 | 端口容量、GPU—NIC 亲和性、多路径利用率与集合通信性能 |
+
+RoCEv2 的 PFC、ECN、缓冲区和端侧拥塞控制需要协同设计，不能理解成开启 PFC 就完成了 RDMA 网络配置；采用其他有损或无 PFC 方案时，应按对应的端到端能力验证。[5] IB 的 Subnet Manager 负责发现和配置 Fabric，具体功能取决于使用的管理软件与设备能力。[6]
+
+下文引用的 NVIDIA H100 SuperPOD 设备数量来自 IB 参考架构。RoCEv2 可以借鉴其中的容量计算，但还需要独立验证以太网设备与路由实现，不能把它视为已经认证的 RoCEv2 配置清单。
 
 ## 2. 一台服务器怎样接入计算网络
 
@@ -402,8 +418,8 @@ Core 容量下限 = 320 × 32 ÷ 64 = 160 台
 | GPU—NIC 映射 | GPU、PCIe／NUMA、HCA、物理端口和 Rail 的对应关系 |
 | 两端端口表 | 每条链路的源设备／端口、目的设备／端口、速率及预留用途 |
 | 光模块与布线 BOM | 物理接口、兼容性、模块型号、线长、配线架、标签和备件 |
-| 管理节点接入 | UFM／Subnet Manager 等所需端口、主备方式和可达性 |
-| 路由与拥塞控制 | 根据真实拓扑选择 IB 路由、路径分配与拥塞管理方案 |
+| 管理节点接入 | IB 的 UFM／Subnet Manager 接入与主备，或 RoCEv2 的管理自动化与监控连接 |
+| 路由与拥塞控制 | RoCEv2 验证 IP 路径分配、QoS 与端侧拥塞控制；IB 验证 Fabric 路由与对应拥塞管理机制 |
 | 通信软件验证 | NCCL 实际选择的 HCA、GPU Direct RDMA 状态与链路利用率 |
 | 分级性能验收 | 单链路、单 SU、单 Pod、跨 Pod 的 RDMA 与集合通信测试 |
 | 故障验收 | 断链路、断 Spine、断 Core 后的剩余容量、告警和作业恢复 |
@@ -412,11 +428,11 @@ Core 容量下限 = 320 × 32 ÷ 64 = 160 台
 
 NCCL 的网卡选择和 `NCCL_CROSS_NIC` 等设置需要结合拓扑与版本验证，不能把环境变量当成物理网络设计的替代品。[4]
 
-如果使用 RoCE，才需要按对应方案规划以太网路由以及 PFC／ECN 等机制。本文计算案例是 IB，不能把 eBGP、PFC 配置直接套到 IB 交换机上。
+RoCEv2 方案应检查 IP 可达性、MTU、优先级映射、ECN／PFC（适用时）及端侧拥塞控制的一致性；IB 方案应检查 Subnet Manager 状态、分区、SL／VL、链路速率与路由。端口算术可以共用，配置与验收项必须按实际网络制式区分。
 
 ### 逻辑链路不等于成品线缆
 
-QM9700／QM9790 提供 64 个 400G NDR 逻辑端口，但面板是 32 个 OSFP 插槽，每个插槽承载两个 400G 端口。[3]
+以 IB 设备为例，QM9700／QM9790 提供 64 个 400G NDR 逻辑端口，但面板是 32 个 OSFP 插槽，每个插槽承载两个 400G 端口。[3] 这是特定 IB 型号的接口组织，不能直接作为 RoCEv2 交换机的规格；以太网方案应另外核对原生端口、拆分能力、模块与总交换容量。
 
 因此，文中的“16 条 400G”说的是逻辑链路。它对应多少光模块、多少根成品线缆，要由双端口模块、服务器接口、线缆组合和距离共同决定。
 
@@ -477,5 +493,7 @@ Core 端口容量下限 = ceil(Spine 总数 × S_up ÷ C)
 2. [NVIDIA DGX H100 SuperPOD：Architecture](https://docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-h100/latest/dgx-superpod-architecture.html)。用于核对 128、256、512 台等规模的交换机数量。本文详细分组及十 Pod 优化为推导示例，不冒充官方施工接线。
 3. [NVIDIA QM97XX：Cable Installation](https://networking-docs.nvidia.com/qm97x0hw/cable-installation)。用于区分 400G 逻辑端口与 OSFP 物理插槽。
 4. [NCCL 2.30.3：Environment Variables](https://docs.nvidia.com/deeplearning/nccl/archives/nccl_2303/user-guide/docs/env.html)。用于理解多 NIC、Rail 和通信库选路的关系。
+5. [NVIDIA Cumulus Linux：RDMA over Converged Ethernet](https://docs.nvidia.com/networking-ethernet-software/cumulus-linux/Layer-1-and-Switch-Ports/Quality-of-Service/RDMA-over-Converged-Ethernet-RoCE/)。用于理解 RoCE 的 QoS、ECN 与 PFC 配置；具体取值须按部署版本和硬件验证。
+6. [NVIDIA UFM：Subnet Manager](https://networking-docs.nvidia.com/ufmsdnappswum/41814/subnet-manager-tab)。用于理解 IB Fabric 的发现和配置职责。
 
 本文整理自拓扑设计讨论，并参考以上官方资料。用户提供的飞书文档正文未能成功读取，因此本文不作为该文档的逐段摘要或已核验复述。
