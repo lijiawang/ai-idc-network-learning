@@ -2,9 +2,9 @@
 
 ## 1. 认识 KubeRay，以及它和 Ray 的关系
 
-KubeRay 是用于在 Kubernetes 上部署和管理 Ray 应用的开源项目，核心组件是 KubeRay Operator。它负责集群的创建、作业的提交、服务的升级，以及按配置回收资源。[项目说明](https://github.com/ray-project/kuberay/blob/v1.6.2/README.md)
+KubeRay 是用于在 Kubernetes 上部署和管理 Ray 应用的开源项目，核心组件是 KubeRay Operator。它负责集群的创建、作业的提交、服务的升级，以及按配置回收资源。[项目说明：https://github.com/ray-project/kuberay/blob/v1.6.2/README.md](https://github.com/ray-project/kuberay/blob/v1.6.2/README.md)
 
-Ray 是运行分布式程序的计算框架。开发者把计算写成 Task（任务）或 Actor（有状态的计算进程），Ray 将它们调度到有资源的节点上执行。Ray 可以在本机、虚拟机或 Kubernetes 上运行，并不依赖 KubeRay。[Ray 介绍](https://github.com/ray-project/ray/blob/ray-2.57.0/README.rst)
+Ray 是运行分布式程序的计算框架。开发者把计算写成 Task（任务）或 Actor（有状态的计算进程），Ray 将它们调度到有资源的节点上执行。Ray 可以在本机、虚拟机或 Kubernetes 上运行，并不依赖 KubeRay。[Ray 介绍：https://github.com/ray-project/ray/blob/ray-2.57.0/README.rst](https://github.com/ray-project/ray/blob/ray-2.57.0/README.rst)
 
 例如批量处理图片，可以把不同批次交给多个 Task 并行执行；反复使用已加载模型的对象，可以写成 Actor。程序怎样拆分仍要开发者设计，部署 Ray 或 KubeRay 不会自动改写业务代码。
 
@@ -44,7 +44,7 @@ CPU 示例的 Head 和 Worker 各申请 1 CPU、2 GiB 内存，还要给 Operato
 
 ### 安装并验收 Operator
 
-以下是首次安装命令，依据 [v1.6.2 官方 Helm Chart](https://github.com/ray-project/kuberay/blob/v1.6.2/helm-chart/kuberay-operator/README.md)。如果集群已经装过 Operator，不要重复安装，升级注意事项见运维部分。
+以下是首次安装命令，依据 [v1.6.2 官方 Helm Chart：https://github.com/ray-project/kuberay/blob/v1.6.2/helm-chart/kuberay-operator/README.md](https://github.com/ray-project/kuberay/blob/v1.6.2/helm-chart/kuberay-operator/README.md)。如果集群已经装过 Operator，不要重复安装，升级注意事项见运维部分。
 
 ```bash
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/
@@ -80,7 +80,7 @@ RayCluster 的生命周期独立于某一次程序。RayJob 则把建集群、�
 
 ### 先跑一个 CPU 作业
 
-从 GitHub 打开 [CPU RayJob 清单](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-cpu-smoke.yaml)，下载到当前目录，保存为 `rayjob-cpu-smoke.yaml`。它包含一份 Python 程序和一份 RayJob 配置，创建一个 Head、一个 Worker，执行返回值为 42 的 Task。
+从 GitHub 打开 [CPU RayJob 清单：https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-cpu-smoke.yaml](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-cpu-smoke.yaml)，下载到当前目录，保存为 `rayjob-cpu-smoke.yaml`。它包含一份 Python 程序和一份 RayJob 配置，创建一个 Head、一个 Worker，执行返回值为 42 的 Task。
 
 ```bash
 kubectl apply --dry-run=server -f rayjob-cpu-smoke.yaml
@@ -142,7 +142,7 @@ Kubernetes 给 Pod 分配设备，KubeRay 默认根据主 Ray 容器的 GPU limi
 
 还有一个常见误区。两个 Worker 各有一张 GPU，不代表单个 Task 能请求两张。一个 Task 必须放进同一个 Ray Node，不能把不同 Pod 的卡拼起来使用。
 
-从 GitHub 打开 [双 GPU RayJob 清单](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-two-gpu.yaml)，下载到当前目录，保存为 `rayjob-two-gpu.yaml`。它固定两个各占一张 GPU 的 Worker，用 Pod 反亲和强制放到不同 Kubernetes Node，再并发运行两个单 GPU Task，没有启用自动扩缩容。
+从 GitHub 打开 [双 GPU RayJob 清单：https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-two-gpu.yaml](https://github.com/lijiawang/ai-idc-network-learning/blob/main/examples/kuberay/rayjob-two-gpu.yaml)，下载到当前目录，保存为 `rayjob-two-gpu.yaml`。它固定两个各占一张 GPU 的 Worker，用 Pod 反亲和强制放到不同 Kubernetes Node，再并发运行两个单 GPU Task，没有启用自动扩缩容。
 
 运行前确认 GPU 有余量，驱动、Device Plugin、CUDA 与镜像兼容，GPU 节点的 taint 有对应 toleration，并确认镜像代理已同步 GPU tag。
 
@@ -200,7 +200,7 @@ Autoscaler 管理的 `replicas`、`minReplicas`、`maxReplicas` 和 `scaleStrate
 
 换集群期间需要容纳新旧两套资源。GPU 池没有余量，新集群就可能一直等卡，升级也会卡住。
 
-升级 Operator 前要按[官方升级指南](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)先更新 CRD，Helm 不会自动更新已经安装的 `crds/`。示例镜像完成实测后应固定 digest，避免同名 tag 的内容变化。
+升级 Operator 前要按[官方升级指南：https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)先更新 CRD，Helm 不会自动更新已经安装的 `crds/`。示例镜像完成实测后应固定 digest，避免同名 tag 的内容变化。
 
 ### 看状态与排障
 
@@ -226,13 +226,13 @@ KubeRay v1.6.2 的 `RayCluster.status.state=Ready` 主要检查期望数量的 R
 
 ## 参考资料
 
-- [KubeRay 概览](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
-- [KubeRay v1.6.2 Release 与版本说明](https://github.com/ray-project/kuberay/releases/tag/v1.6.2)
-- [KubeRay v1.6.0 Release 和 RayJob 行为变更](https://github.com/ray-project/kuberay/releases/tag/v1.6.0)
-- [RayJob 配置与执行](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayjob-quick-start.html)
-- [RayService 升级与例外字段（Ray 2.57.0）](https://github.com/ray-project/ray/blob/ray-2.57.0/doc/source/cluster/kubernetes/user-guides/rayservice.md)
-- [Kubernetes Pod 与容器的生命周期](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
-- [KubeRay GPU 配置](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/gpu.html)
-- [KubeRay 安装与升级](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)
-- [KubeRay token authentication](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html)
-- [GCS fault tolerance](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html)
+- [KubeRay 概览：https://docs.ray.io/en/latest/cluster/kubernetes/index.html](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
+- [KubeRay v1.6.2 Release 与版本说明：https://github.com/ray-project/kuberay/releases/tag/v1.6.2](https://github.com/ray-project/kuberay/releases/tag/v1.6.2)
+- [KubeRay v1.6.0 Release 和 RayJob 行为变更：https://github.com/ray-project/kuberay/releases/tag/v1.6.0](https://github.com/ray-project/kuberay/releases/tag/v1.6.0)
+- [RayJob 配置与执行：https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayjob-quick-start.html](https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayjob-quick-start.html)
+- [RayService 升级与例外字段（Ray 2.57.0）：https://github.com/ray-project/ray/blob/ray-2.57.0/doc/source/cluster/kubernetes/user-guides/rayservice.md](https://github.com/ray-project/ray/blob/ray-2.57.0/doc/source/cluster/kubernetes/user-guides/rayservice.md)
+- [Kubernetes Pod 与容器的生命周期：https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
+- [KubeRay GPU 配置：https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/gpu.html](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/gpu.html)
+- [KubeRay 安装与升级：https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/upgrade-guide.html)
+- [KubeRay token authentication：https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html)
+- [GCS fault tolerance：https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html)
