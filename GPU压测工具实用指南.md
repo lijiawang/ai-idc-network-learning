@@ -275,11 +275,78 @@ cd cuda-samples-v12.8
 
 参考：[旧版源码](https://github.com/NVIDIA/cuda-samples/blob/v12.8/Samples/1_Utilities/bandwidthTest/bandwidthTest.cu)、[移除说明](https://github.com/NVIDIA/cuda-samples/blob/master/CHANGELOG.md)。
 
-## 8. Field Diagnostics：交给对应硬件支持流程
+## 8. NVIDIA Field Diagnostics：底层硬件诊断
 
-它用于更深入的硬件诊断，不能用 DCGM 的通过结果替代，也不适合套用统一的 apt 安装命令。向 NVIDIA 或服务器 OEM 获取适配 GPU/平台的软件包，按随包说明准备维护环境、运行并保存完整报告。安装步骤、运行参数、耗时及 RMA 判定以对应版本和厂商流程为准。
+### 干什么
 
-参考：[NVIDIA Field Diagnostics](https://docs.nvidia.com/deploy/hw-field-diag/index.html)。
+Field Diagnostics（常称 fieldiag）用于深入检查 GPU 硬件和相关互联，是厂商故障分析与 RMA（返厂维修）流程中的重要诊断材料。是否符合 RMA 条件，由 NVIDIA/OEM 根据对应产品流程判断，不能只凭一个错误码定论。
+
+不同 GPU 形态、代际和 HGX 平台可能使用不同工具包。它的 Level I/II **不是 DCGM 的 Level 1/2**，不能混用两套分级。
+
+### 测哪些模块
+
+以下模块名称来自参考截图所示工具包，用来说明检查范围；其他版本可能采用不同名称、组合或实现。
+
+| 模块示例 | 检查方向 |
+|---|---|
+| `skucheck` | GPU 型号、基本配置和信息是否符合预期 |
+| `connectivity` | 平台连接关系及互联状态 |
+| `gpumem` | 显存相关功能和数据完整性 |
+| `cudacores` | GPU 计算核心功能 |
+| `pcie` | PCIe 链路与传输表现；是否包含眼图测试取决于工具包 |
+| `nvlink` / `nvswitch` | NVLink/NVSwitch 互联；具体子测试按平台确定 |
+| `gpustress` | GPU 持续负载稳定性 |
+| `power` | 供电相关压力测试 |
+| `thermal` | 热负载、温度及散热表现 |
+
+参考截图给出的时间量级为：SIT 约半小时、Level I 约 2 小时、Level II 约 4–5.5 小时。截图中 Level II 自身也有不同时间描述，因此这些数字仅供预留维护窗口，不能作为统一耗时标准；实际以随包说明和执行进度为准。
+
+### 怎么获取和准备
+
+1. 向 NVIDIA 或服务器 OEM 获取适配机型、GPU 和固件的软件包或启动镜像，核对版本及随包文档。
+2. 停止业务，按文档进入指定维护环境。部分工具包使用独立启动系统，部分有特定驱动或内核模块要求。
+3. 如果提供 ISO，按厂商说明制作启动 U 盘或使用 BMC 虚拟介质。写 U 盘会覆盖目标盘内容；GPT、DD 模式等选项按镜像要求选择，不是所有包都采用相同设置。
+4. 进入工具目录并先查看帮助。截图中的 `/var/diags` 是一个环境示例，不是统一安装路径。
+5. 测试结束后，导出完整日志、报告及相关 BMC 事件，再按文档恢复系统。
+
+### 怎么用、看哪些参数
+
+下面保留参考截图中的 `fieldiag.sh` 用法。**仅适用于随包帮助确认支持这些参数的版本**，不应直接套用到其他 fieldiag 程序：
+
+```bash
+# 先进入实际工具目录
+./fieldiag.sh --help
+
+# 以下为分别选择的测试入口，不必顺序全部执行
+./fieldiag.sh --sit           # 系统简易检查
+./fieldiag.sh --level1        # Level I 综合测试
+./fieldiag.sh --level2        # Level II 综合测试
+./fieldiag.sh --test gpumem   # 指定模块；名称以帮助为准
+```
+
+| 参数 | 重点确认 |
+|---|---|
+| `--help` | 当前包支持哪些平台、选项和模块 |
+| `--sit` | 快速检查覆盖哪些部件，有无前置条件 |
+| `--level1` / `--level2` | 各级覆盖范围、预计耗时、是否包含热测试 |
+| `--test` | 指定模块的准确名称及是否支持单独运行 |
+
+### 结果和报错怎么看
+
+优先检查最终状态、失败模块、GPU 序列号/PCI 地址、错误全文和日志路径。部分版本存在 `RETEST`，表示需要按提示处理前置环境后重测；状态和退出码以该工具包文档为准。保留原始日志，不能只提交终端截图。
+
+下列报错文字来自参考截图，**编号含义尚未通过对应工具包文档核实，也不要直接当作 NVIDIA Xid 编号**：
+
+| 截图中的报错 | 排查方向，不是直接故障判定 |
+|---|---|
+| `540 NVRM Fatal error: unrecoverable HW state` | 查看前后日志、温度、风扇及 BMC 事件；不能仅凭此文字认定过热或 GPU 损坏 |
+| `140 NvLink bus error` | 检查 NVLink/NVSwitch 拓扑、关联链路和端点，按厂商流程隔离问题 |
+| `143 PCI Express bus error` | 检查 PCIe 错误记录、链路状态、连接器和转接板等路径 |
+| `PEX ERROR` | 核对具体平台的 PCIe Switch/PEX 相关日志，不能仅凭名称认定交换板损坏 |
+
+如需换槽、交叉测试或重新插接，应按厂商维护规范断电操作；不要把截图里的“重插单压”等简写作为操作步骤。重点判断异常是否随 GPU、槽位或互联路径迁移，并保留每次测试条件。
+
+参考：[NVIDIA Field Diagnostics 公开文档](https://docs.nvidia.com/deploy/hw-field-diag/index.html)。该公开页面描述较老平台，能说明工具定位和日志处理，但不能用于证明现代 HGX 工具包的脚本参数、模块耗时或上述错误码。现代平台以随包文档和 OEM 指引为准。
 
 ## 9. 压测时统一记录什么
 
