@@ -2,7 +2,7 @@
 
 GPU 验收需要分别验证硬件健康、持续负载稳定性、数据搬运和集群通信。GPU 利用率达到 100%，并不代表这些项目全部合格。
 
-本文以 Ubuntu 22.04/24.04、x86_64、裸机 NVIDIA GPU 服务器为例。命令按官方资料整理，未在本文环境进行 GPU 实机测试；版本变化时以工具的 `--help` / `-h` 为准。正式压测请在 GPU 空闲时执行。
+本文以 Ubuntu 22.04/24.04、x86_64、裸机 NVIDIA GPU 服务器为例。命令按官方资料整理，其中 gpu-burn 源码编译步骤已由作者在 A800 上验证，其余步骤未在本文环境进行 GPU 实机测试；版本变化时以工具的 `--help` / `-h` 为准。正式压测请在 GPU 空闲时执行。
 
 ## 1. 工具怎么选
 
@@ -101,12 +101,26 @@ dcgmi diag -r 3 -j > dcgm.json   # 保存 JSON 结果
 
 ### 怎么安装、怎么用
 
+以下源码编译步骤已在 A800 上验证。前提是已安装 CUDA Toolkit，`nvcc` 可用；以下安装依赖的命令以 root 用户执行，普通用户需加 `sudo`。
+
 ```bash
+apt update
+apt install -y git gcc g++ make
+
 cd "$HOME/gpu-tools"
 git clone https://github.com/wilicc/gpu-burn.git
 cd gpu-burn
-make -j"$(nproc)" CUDAPATH=/usr/local/cuda
 
+# 编译，指定 A800 架构 compute_80
+make COMPUTE=80
+
+# 查看帮助，验证编译产物可运行
+./gpu_burn -h
+```
+
+编译完成后，在 gpu-burn 目录运行：
+
+```bash
 ./gpu_burn -l
 ./gpu_burn 60             # 先运行 60 秒验证
 ./gpu_burn 3600           # 持续 1 小时
@@ -114,7 +128,7 @@ make -j"$(nproc)" CUDAPATH=/usr/local/cuda
 ./gpu_burn -i 0 -m 80% 600 # GPU 0，使用可用显存的 80%，运行 600 秒
 ```
 
-如需指定编译架构，使用 `make COMPUTE=80` 等参数；80 是 A100 示例，应按实际 GPU 及 Toolkit 支持情况调整。
+`COMPUTE=80` 对应这里的 A800 编译示例；其他 GPU 应按实际架构及 Toolkit 支持情况调整。CUDA 不在默认路径时，可追加 `CUDAPATH=/实际/CUDA/路径`。
 
 | 参数 | 意义 |
 |---|---|
@@ -124,6 +138,7 @@ make -j"$(nproc)" CUDAPATH=/usr/local/cuda
 | `-tc` | 尝试使用 Tensor Core |
 | `-d` | 使用双精度计算 |
 | `-l` | 列出 GPU |
+| `-h` | 显示帮助 |
 
 重点看 **errors 是否为 0、各卡 GFLOP/s 是否异常偏低、是否中途失败**。同时观察温度、功耗和时钟；吞吐只能在相同精度、参数和硬件条件下比较。达到 100% 利用率不等于达到整机最大功耗。
 
