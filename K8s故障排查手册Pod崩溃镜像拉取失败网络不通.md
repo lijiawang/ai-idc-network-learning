@@ -233,7 +233,6 @@ kubectl port-forward -n <ns> svc/<svc> 8080:<service-port>
 
 ## 参考资料
 
-- [原文章](https://mp.weixin.qq.com/s/QutFzrFYAkoWY-wxLv0rWQ)
 - [Kubernetes 官方文档：调试运行中的 Pod](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/)
 - [Kubernetes 官方文档：调试 Service](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/)
 - [Kubernetes 官方文档：节点压力驱逐](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)
