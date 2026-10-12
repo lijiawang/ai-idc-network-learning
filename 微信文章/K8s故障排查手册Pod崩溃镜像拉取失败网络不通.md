@@ -8,6 +8,8 @@
 
 ## 先把故障缩小到一个对象
 
+![K8s 故障排查的五步顺序：看状态、看事件、看日志、看连接、看资源](./images/01-k8s-five-step-workflow.png)
+
 | 顺序 | 要回答的问题 | 从哪里看起 |
 | --- | --- | --- |
 | 1. 看状态 | 哪个 Pod 或 Node 异常？它现在处于什么状态？ | `kubectl get pods -A -o wide`、`kubectl get nodes` |
@@ -35,6 +37,8 @@ kubectl events -n production --for pod/payment-api-7c9d
 重点读 `Events`、容器的 `State` / `Last State`、`Reason`、`Exit Code`、探针配置和资源限制。`kubectl events` 不可用时，可以用 `kubectl get events -n production` 查看同一命名空间的事件。
 
 ## Pod 反复重启：先找上一次怎么退出
+
+![常见 Pod 故障状态：反复重启、拉取失败、内存终止、等待调度、创建卡住](./images/02-pod-failure-types.png)
 
 ### CrashLoopBackOff
 
@@ -121,6 +125,8 @@ crictl ps -a
 如果事件指出某个 Secret 或 ConfigMap 不存在，再检查那个对象。这样比把整个命名空间的配置逐个翻一遍快。
 
 ## Pod 正常，但请求不通：沿请求路径逐段查
+
+![请求路径：客户端经 Ingress 和 Service 到后端 Pod，Pod 运行在 Node 上](./images/03-request-path.png)
 
 ### Service 不通
 
