@@ -8,7 +8,7 @@
 
 ## 先把故障缩小到一个对象
 
-![K8s 故障排查的五步顺序：看状态、看事件、看日志、看连接、看资源](./images/01-k8s-five-step-workflow.png)
+![K8s 故障排查的五步顺序：看状态、看事件、看日志、看连接、看资源](./images/k8s-troubleshooting/01-k8s-five-step-workflow.png)
 
 | 顺序 | 要回答的问题 | 从哪里看起 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ kubectl events -n production --for pod/payment-api-7c9d
 
 ## Pod 反复重启：先找上一次怎么退出
 
-![常见 Pod 故障状态：反复重启、拉取失败、内存终止、等待调度、创建卡住](./images/02-pod-failure-types.png)
+![常见 Pod 故障状态：反复重启、拉取失败、内存终止、等待调度、创建卡住](./images/k8s-troubleshooting/02-pod-failure-types.png)
 
 ### CrashLoopBackOff
 
@@ -126,7 +126,7 @@ crictl ps -a
 
 ## Pod 正常，但请求不通：沿请求路径逐段查
 
-![请求路径：客户端经 Ingress 和 Service 到后端 Pod，Pod 运行在 Node 上](./images/03-request-path.png)
+![请求路径：客户端经 Ingress 和 Service 到后端 Pod，Pod 运行在 Node 上](./images/k8s-troubleshooting/03-request-path.png)
 
 ### Service 不通
 
