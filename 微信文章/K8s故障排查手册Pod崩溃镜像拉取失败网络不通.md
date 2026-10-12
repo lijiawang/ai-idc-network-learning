@@ -1,408 +1,233 @@
-# K8s 故障排查手册：Pod 崩溃、镜像拉取失败、网络不通
+# K8s 出故障时，我会按这五步找原因
 
-> 原文：[微信公众号文章](https://mp.weixin.qq.com/s/QutFzrFYAkoWY-wxLv0rWQ)
+业务入口突然返回 502，群里很快会出现几种猜测：镜像没拉下来、Pod 崩了、Service 没后端，或者节点出了问题。这些猜测可能都对，但排查时先给故障贴标签，容易绕远路。
 
-## 开篇场景
+我会先确定故障卡在哪一层，再决定下一条命令。顺序固定：**看状态 → 看事件 → 看日志 → 看连接 → 看资源**。如果在前两步已经找到明确原因，就不用把后面的命令机械地跑一遍。
 
-凌晨 3 点，告警把你炸醒：
+> 文中的 `<ns>`、`<pod>`、`<svc>` 等是占位符，执行前要换成集群里的实际名称。
 
-```text
-[CRITICAL] Pod api-server-7d8f-x2k4j is CrashLoopBackOff
-[CRITICAL] Pod worker-cron-9abc-m3n1p is ImagePullBackOff
-[WARNING] Node node-03 status: NotReady
-```
+## 先把故障缩小到一个对象
 
-你打开终端，面对十几个命名空间、上百个 Pod，脑子还是糊的——**从哪开始查？**
+| 顺序 | 要回答的问题 | 从哪里看起 |
+| --- | --- | --- |
+| 1. 看状态 | 哪个 Pod 或 Node 异常？它现在处于什么状态？ | `kubectl get pods -A -o wide`、`kubectl get nodes` |
+| 2. 看事件 | 调度器、kubelet 或控制器报告了什么？ | `kubectl describe pod <pod> -n <ns>` |
+| 3. 看日志 | 容器启动后做了什么，退出前留下了什么？ | `kubectl logs <pod> -n <ns> --previous` |
+| 4. 看连接 | 请求走到 Pod、Service、Ingress 的哪一段失败？ | `kubectl exec`、`curl`、`nslookup` |
+| 5. 看资源 | CPU、内存、磁盘或进程数是否碰到限制？ | `kubectl top`、`kubectl describe node`、`df -h` |
 
-K8s 故障排查的痛点不是"没有工具"，而是工具太多、信息太散。`kubectl describe` 输出几百行，Events 一堆 Warning 不知哪个关键，日志跨多个容器……**你需要的是一套排查框架，而不是一堆零散命令。**
-
-这篇文章给你一个**从症状到根因的排查路径**，外加一份可以收藏的速查表。
-
-## 一、故障排查方法论：5 步排查框架
-
-遇到 K8s 故障，不要急着一头扎进日志。按这个顺序走：
-
-| 步骤          | 做什么             | 核心命令                              |
-| ----------- | --------------- | --------------------------------- |
-| **1. 看状态** | Pod/Node 处于什么状态 | `kubectl get pods, nodes` |
-| **2. 看事件** | K8s 记录了什么异常事件 | `kubectl describe pod <name>` |
-| **3. 看日志** | 容器内部输出了什么 | `kubectl logs <name> [--previous]` |
-| **4. 看连接** | 网络/Service 是否通 | `kubectl exec ... curl/nslookup` |
-| **5. 看资源** | CPU/内存/磁盘是否耗尽 | `kubectl top` / `df -h` |
-
-> **核心原则**：先看状态码，再看日志，最后进容器。大部分故障在前两步就能定位。
-
-![K8s 五步排查框架](./images/k8s-troubleshooting-framework.png)
-
-### 一个典型的排查路径
+先执行两条总览命令，记下异常对象所在的命名空间和节点：
 
 ```bash
-# Step 1: 发现问题 Pod
-kubectl get pods -n production
-# NAME                      READY   STATUS             RESTARTS   AGE
-# api-server-7d8f-x2k4j    0/1     CrashLoopBackOff   7          12m
-
-# Step 2: 看事件，找根因
-kubectl describe pod api-server-7d8f-x2k4j -n production | grep -A5 Events
-# Last State: Terminated with exit code 137 (OOMKilled)
-
-# Step 3: 看日志确认
-kubectl logs api-server-7d8f-x2k4j -n production --previous | tail -20
-# java.lang.OutOfMemoryError: GC overhead limit exceeded
-
-# Step 4: 修复 → 提高内存限制
-kubectl set resources deploy api-server -n production \
-  --limits=memory=1Gi --requests=memory=512Mi
+kubectl get pods -A -o wide
+kubectl get nodes
 ```
 
-**5 分钟定位，1 条命令修复。** 这就是框架的价值。
+`STATUS` 只是入口。比如 `CrashLoopBackOff` 说明容器在反复启动，原因仍要看上一次退出状态和日志；`Pending` 要先看调度事件；`ImagePullBackOff` 时容器还没启动，查应用日志没有用。
 
-## 二、Pod 常见故障与排查
-
-### 2.1 CrashLoopBackOff（最常见）
-
-**症状**：Pod 反复启动 → 崩溃 → 重启，`RESTARTS` 计数不断增长。
-
-**常见原因**：
-
-- 应用启动崩溃（配置错误、依赖缺失）
-- **OOMKilled**（内存不足被杀）
-- 健康检查失败（Liveness Probe 太激进）
-- 启动依赖未就绪（数据库没起来，应用就挂了）
-
-**排查命令**：
+找到对象后，把范围收紧。假设出问题的是 `production` 里的 `payment-api-7c9d`：
 
 ```bash
-# 1. 查看上次崩溃的日志（--previous 是关键！）
-kubectl logs <pod-name> --previous
-
-# 2. 查看退出码
-kubectl describe pod <pod-name> | grep -A5 "Last State"
-# 退出码对照：
-# 0 = 正常退出（可能是健康检查问题）
-# 1 = 应用错误
-# 137 = OOMKilled（被 SIGKILL）
-# 139 = 段错误（SIGSEGV）
-# 143 = 被 SIGTERM（正常关闭信号）
-
-# 3. 查看资源使用
-kubectl top pod <pod-name>
+kubectl describe pod payment-api-7c9d -n production
+kubectl events -n production --for pod/payment-api-7c9d
 ```
 
-**修复参考**：
+重点读 `Events`、容器的 `State` / `Last State`、`Reason`、`Exit Code`、探针配置和资源限制。`kubectl events` 不可用时，可以用 `kubectl get events -n production` 查看同一命名空间的事件。
 
-| 退出码     | 根因                | 修复方向                       |
-| ------- | ----------------- | -------------------------- |
-| **137** | OOMKilled         | 提高 resources.limits.memory |
-| **1**   | 应用异常              | 查日志修复代码/配置                 |
-| **0**   | Liveness Probe 失败 | 调大 initialDelaySeconds     |
+## Pod 反复重启：先找上一次怎么退出
 
-### 2.2 ImagePullBackOff / ErrImagePull
+### CrashLoopBackOff
 
-**症状**：Pod 卡在 `ImagePullBackOff`，容器根本没启动。
+这个状态描述的是**重试结果**，不等于根因。应用配置错误、依赖服务不可用、内存不足、启动探针或存活探针设置不合适，都可能走到这里。
 
 ```bash
-kubectl describe pod <pod-name> | grep -A3 "Failed"
-# Failed to pull image "my-registry/app:v2": rpc error:
-# code = Unknown desc = Error response from daemon: manifest unknown
+kubectl describe pod <pod> -n <ns>
+kubectl logs <pod> -n <ns> --previous --tail=100
+kubectl logs <pod> -n <ns> -c <container> --previous --tail=100
 ```
 
-| 原因         | 排查                                                           | 修复                  |
-| ---------- | ------------------------------------------------------------ | ------------------- |
-| 镜像名/Tag 写错 | `kubectl get pod -o jsonpath='{.spec.containers[*].image}'` | 修正镜像名 |
-| 镜像仓库需要认证 | `kubectl describe pod \| grep -i secret` | 创建 imagePullSecrets |
-| 私有仓库不可达 | 在 Node 上 `curl <registry>` | 检查网络/DNS |
-| 镜像太大拉取超时   | Events 中看 Timed out                                          | 配置更大的拉取超时           |
+多容器 Pod 要用 `-c` 指定容器。`--previous` 取的是上一次容器实例的日志，排查刚重启的进程通常比看当前日志更有用。
 
-### 2.3 OOMKilled
+我会按这几个线索继续分支：
 
-**症状**：Pod 运行一段时间后突然被杀，重启计数 +1。
+| 线索 | 接下来查什么 |
+| --- | --- |
+| 日志里有配置或连接错误 | 对照 ConfigMap、Secret、环境变量和依赖地址 |
+| `Last State` 显示 `OOMKilled` | 看容器内存限制和实际使用，再查内存增长原因 |
+| 事件里有 `Unhealthy` | 检查探针路径、端口、超时和启动宽限时间 |
+| 容器很快以非零码退出 | 核对启动命令、参数和镜像内文件 |
+
+**不要只凭退出码 137 判定 OOM。** 它表示进程收到 `SIGKILL`，还要结合 `Reason: OOMKilled`、事件及节点记录确认。退出码 1 通常需要回到应用日志；143 对应 `SIGTERM`，也可能出现在正常终止过程中。
+
+### OOMKilled
+
+确认 `Reason` 后，再看是限制过低，还是程序内存确实在持续增长：
 
 ```bash
-# 确认是否 OOM
-kubectl describe pod <pod-name> | grep -E "(State|Reason|Exit Code)"
-# Reason: OOMKilled
-# Exit Code: 137
-
-# 查看 Pod 内存限制
-kubectl get pod <pod-name> -o jsonpath='{.spec.containers[0].resources}' | jq .
-
-# 实时监控内存
-kubectl top pod <pod-name> --containers
+kubectl describe pod <pod> -n <ns>
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[*].resources}'
+kubectl top pod <pod> -n <ns> --containers
 ```
 
-> **常见坑**：JVM 不认识 cgroup 限制，默认用 1/4 物理内存做堆。用 `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`（Java 10+）。Sidecar 容器和主容器共享 Pod 内存限制，Sidecar 泄漏会拖垮主容器。
+`kubectl top` 只能看到当下的使用量，短时峰值需要结合监控曲线。多容器 Pod 还应逐个核对容器的资源配置。确定是合理峰值超过限制，才调整 `limits.memory`；如果内存一直往上爬，先查泄漏或缓存策略。
 
-### 2.4 Pending（调度失败）
+如果 `kubectl top` 报错，先确认集群是否提供指标 API；拿不到实时指标不代表资源没有问题。
 
-**症状**：Pod 一直 `Pending`，根本没被分配到节点。
+## Pod 没起来：事件通常比日志更有用
+
+### ImagePullBackOff / ErrImagePull
+
+容器尚未启动，先读拉取镜像的失败事件：
 
 ```bash
-kubectl describe pod <pod-name> | tail -10
-# Events:
-# Warning FailedScheduling ... 0/5 nodes are available:
-# 3 Insufficient memory, 2 node(s) had untolerated taint
+kubectl describe pod <pod> -n <ns>
+kubectl get pod <pod> -n <ns> -o jsonpath='{.spec.containers[*].image}'
 ```
 
-| 原因      | 关键词                       | 修复                   |
-| ------- | ------------------------- | -------------------- |
-| 资源不足    | Insufficient memory/cpu   | 扩节点 or 降 requests    |
-| 污点容忍    | untolerated taint         | 加 toleration or 去污点  |
-| 调度约束    | nodeSelector/affinity 不匹配 | 检查标签                 |
-| PVC 未就绪 | pod has unbound claims    | 检查 StorageClass / PV |
+`manifest unknown` 往往指向镜像名或标签；`unauthorized` 先看仓库凭据和 `imagePullSecrets`；超时、DNS 或 TLS 错误则要从负责拉取镜像的 **Node** 到仓库这条链路查起。这里的网络路径和业务 Pod 访问 Service 的路径不同。
 
-### 2.5 ContainerCreating 卡住
+### Pending
 
-**症状**：Pod 通过了调度，但一直卡在 `ContainerCreating`。
+先在 `Events` 找 `FailedScheduling`。调度器通常已经写出了它为什么选不到节点。
+
+| 事件线索 | 核对位置 |
+| --- | --- |
+| `Insufficient cpu` / `Insufficient memory` | Pod 的 `requests`、节点可分配资源 |
+| `untolerated taint` | 节点污点和 Pod 的 tolerations |
+| affinity 或 selector 不匹配 | Pod 约束与节点标签 |
+| unbound PVC | PVC、PV、StorageClass 及相关事件 |
 
 ```bash
-# 重点检查：
-# 1. Secret/ConfigMap 是否存在
-kubectl get secret <secret-name> -n <ns>
-kubectl get configmap <cm-name> -n <ns>
-
-# 2. PVC 是否 Bound
+kubectl describe pod <pod> -n <ns>
+kubectl get nodes --show-labels
 kubectl get pvc -n <ns>
-
-# 3. 登录 Node 看 kubelet 日志
-journalctl -u kubelet --since "10 min ago" | grep <pod-name>
-crictl ps -a | grep <pod-name>
 ```
 
-![Pod 常见故障状态与排查](./images/pod-troubleshooting.png)
+别只看节点上的实时空闲内存。调度主要依据 Pod 的资源请求和节点可分配量；一个看起来还很空的节点，也可能因为请求量已占满而拒绝新 Pod。
 
-## 三、Service / Ingress 网络故障排查
+### ContainerCreating 卡住
 
-### 3.1 Service 无法访问
-
-**症状**：Pod 正常运行，但通过 Service IP 访问不通。
+Pod 已经分配节点，却迟迟没有进入运行状态时，先看 `FailedMount`、创建 Pod sandbox 失败、CNI 报错等事件，再去对应节点查 kubelet 与容器运行时。
 
 ```bash
-# Step 1: 确认 Service 有 Endpoints
-kubectl get endpoints <svc-name> -n <ns>
-# 如果 Endpoints 是空的，说明 Selector 没匹配到 Pod
+kubectl get pod <pod> -n <ns> -o wide
+kubectl describe pod <pod> -n <ns>
+kubectl get pvc -n <ns>
+# 登录该 Pod 所在节点后执行
+journalctl -u kubelet --since '15 min ago'
+crictl ps -a
+```
 
-# Step 2: 检查 Selector 是否匹配
+如果事件指出某个 Secret 或 ConfigMap 不存在，再检查那个对象。这样比把整个命名空间的配置逐个翻一遍快。
+
+## Pod 正常，但请求不通：沿请求路径逐段查
+
+### Service 不通
+
+先确认 Service 选中了谁，再确认这些后端是否 Ready。下面的 `EndpointSlice` 是当前排查 Service 后端时很有用的对象；旧的 `Endpoints` 也可以一起看。
+
+```bash
+kubectl get svc <svc> -n <ns> -o yaml
 kubectl get pods -n <ns> --show-labels
-kubectl get svc <svc-name> -n <ns> -o jsonpath='{.spec.selector}'
-
-# Step 3: 确认 Pod 健康（只有 Ready 的 Pod 才进 Endpoints）
-kubectl get pods -n <ns> -o wide
-
-# Step 4: 从另一个 Pod 内部测试
-kubectl exec -it <debug-pod> -- curl -v http://<svc-name>:<port>
+kubectl get endpoints <svc> -n <ns>
+kubectl get endpointslices -n <ns> -l kubernetes.io/service-name=<svc>
 ```
 
-| 原因             | 现象                 | 修复                               |
-| -------------- | ------------------ | -------------------------------- |
-| Selector 写错    | Endpoints 为空       | 对比 Pod labels 和 Service selector |
-| targetPort 不匹配 | 连接被拒绝              | 检查 containerPort 和 targetPort    |
-| Pod 没 Ready    | Endpoints 缺少部分 Pod | 检查 Readiness Probe               |
-| kube-proxy 异常  | Service IP 不通      | 检查 Node 上 kube-proxy 状态          |
+- **没有后端**：核对 Service 的 selector、Pod 标签和 Ready 状态。
+- **有后端但连接被拒绝**：核对 Service 的 `port`、`targetPort` 和应用实际监听端口。
+- **直接访问 Pod IP 正常，走 Service IP 失败**：再检查节点上的 Service 转发组件、CNI 和网络策略。
 
-### 3.2 Ingress 502 / 503
+从同一命名空间的调试 Pod 发起请求，分别访问 Pod IP 和 Service 名，能把问题缩到其中一段：
 
 ```bash
-# 1. 检查 Ingress 是否有后端
-kubectl describe ingress <name> -n <ns>
+kubectl exec -n <ns> <debug-pod> -- curl -sv http://<pod-ip>:<target-port>
+kubectl exec -n <ns> <debug-pod> -- curl -sv http://<svc>:<service-port>
+```
 
-# 2. 检查 Ingress Controller 日志
-kubectl logs -n ingress-nginx <ingress-controller-pod> | tail -30
-# 常见错误：
-# "connect() failed (111: Connection refused)" → 后端 Pod 没启动
-# "upstream timed out" → 后端响应太慢
+### Ingress 返回 502 / 503
 
-# 3. 确认 Ingress 引用的 Service 存在且有 Endpoints
+按 **Ingress → Service → 后端 Pod** 的顺序走。先看 Ingress 指向哪个 Service，再看该 Service 有没有可用后端，最后读 Ingress Controller 的日志。
+
+```bash
+kubectl describe ingress <ingress> -n <ns>
 kubectl get svc <backend-svc> -n <ns>
-kubectl get endpoints <backend-svc> -n <ns>
+kubectl get endpointslices -n <ns> -l kubernetes.io/service-name=<backend-svc>
+kubectl logs -n <controller-ns> <controller-pod> --tail=100
 ```
 
-### 3.3 DNS 解析失败
+Controller 日志里的连接拒绝、超时和找不到上游，分别指向不同方向。不要看到 502 就直接重启 Ingress Controller。
+
+### DNS 解析失败
+
+先区分是集群内 Service 名解析失败，还是外部域名解析失败：
 
 ```bash
-# 在 Pod 内测试 DNS
-kubectl exec -it <pod-name> -- nslookup kubernetes.default.svc.cluster.local
-kubectl exec -it <pod-name> -- nslookup <external-domain>
-
-# 检查 CoreDNS
+kubectl exec -n <ns> <debug-pod> -- nslookup kubernetes.default.svc.cluster.local
+kubectl exec -n <ns> <debug-pod> -- nslookup <external-domain>
 kubectl get pods -n kube-system -l k8s-app=kube-dns
-kubectl logs -n kube-system <coredns-pod> --tail=20
+kubectl logs -n kube-system <coredns-pod> --tail=100
 ```
 
-> **提示**：短域名解析失败时用完整 FQN `<svc>.<ns>.svc.cluster.local`。CoreDNS Pod 异常时重启或检查 ConfigMap。
+短名称解析不通时，用 `<svc>.<ns>.svc.cluster.local` 复测，并核对 Pod 的 DNS 配置。CoreDNS Pod 异常时再查它的日志和 ConfigMap。
 
-## 四、节点级故障排查
+## 一批 Pod 同时异常：把视线移到节点
 
-### 4.1 Node NotReady
-
-**症状**：节点状态变成 `NotReady`，Pod 被驱逐。
+当多个无关的 Pod 恰好落在同一节点上，而且同时出问题，就该检查 Node。`NotReady` 说明节点健康状态异常；Pod 是否以及何时被驱逐，还受容忍配置等因素影响。
 
 ```bash
-kubectl describe node node-03 | grep -A10 "Conditions:"
-# 重点关注：
-# MemoryPressure = True → 内存不足
-# DiskPressure = True → 磁盘不足
-# PIDPressure = True → 进程数过多
-# Ready = Unknown → kubelet 失联
-```
-
-**排查步骤**：
-
-```bash
-# 1. SSH 到问题节点，检查 kubelet
+kubectl describe node <node>
+kubectl get pods -A -o wide --field-selector spec.nodeName=<node>
+# 登录节点后执行
 systemctl status kubelet
-journalctl -u kubelet --since "30 min ago" | tail -30
-
-# 2. 检查容器运行时
+journalctl -u kubelet --since '30 min ago'
 crictl info
-systemctl status containerd  # 或 docker
-
-# 3. 检查磁盘
-df -h  # 重点看 /var（镜像/容器存储）和 /var/lib/kubelet
-
-# 4. 检查资源压力
+systemctl status containerd
+df -h
 free -h
-top -b -n1 | head -20
 ```
 
-### 4.2 资源压力与驱逐
+`MemoryPressure`、`DiskPressure`、`PIDPressure` 和 `Ready` 是优先看的条件。磁盘满要继续区分镜像存储、容器日志和 kubelet 数据目录；kubelet 或容器运行时失联，则要看它们自己的日志。
 
-K8s 在节点资源紧张时会**主动驱逐 Pod**。触发阈值：
+Linux 节点常见的默认硬驱逐阈值包括 `memory.available<100Mi`、`nodefs.available<10%`、`imagefs.available<15%`。这些是默认配置，集群可以改；排查时以节点实际 kubelet 配置和事件为准。磁盘压力下 kubelet 会先尝试回收资源，回收不够才可能驱逐 Pod。
 
-| 资源     | 硬驱逐阈值                    | 行为                            |
-| ------ | ------------------------ | ----------------------------- |
-| **内存** | memory.available < 100Mi | 立即驱逐 BestEffort/Burstable Pod |
-| **磁盘** | nodefs.available < 10%   | 驱逐直到恢复                        |
-| **磁盘** | imagefs.available < 15%  | 删除未使用镜像                       |
+## 值班时可以照着走的速查表
 
-### 4.3 Kubelet 常见异常
+| 看到的现象 | 第一条有效线索 | 后续方向 |
+| --- | --- | --- |
+| `CrashLoopBackOff` | `Last State` 和 `logs --previous` | 应用、配置、探针、OOM |
+| `ImagePullBackOff` | Pod 的拉取镜像事件 | 镜像标签、仓库认证、节点到仓库的网络 |
+| `OOMKilled` | `Reason`、限制和内存曲线 | 合理峰值还是持续增长 |
+| `Pending` | `FailedScheduling` | 请求量、污点、调度约束、PVC |
+| `ContainerCreating` | Pod 事件 | 挂载、CNI、kubelet、容器运行时 |
+| Service 不通 | EndpointSlice 和 Pod Ready 状态 | selector、端口、转发链路 |
+| Ingress 502 / 503 | Controller 日志与 Service 后端 | 上游连接、端口、超时 |
+| DNS 不通 | 集群域名与外部域名的解析结果 | Pod DNS 配置、CoreDNS |
+| Node `NotReady` | Node Conditions 与 kubelet 日志 | 节点资源、运行时、API 连接 |
 
-| 症状              | 可能原因                    | 排查命令                                  |
-| --------------- | ----------------------- | ------------------------------------- |
-| Node 状态 Unknown | kubelet 停止或崩溃           | systemctl status kubelet              |
-| Pod 无法创建        | kubelet 无法连接容器运行时       | crictl info                           |
-| Pod 状态不更新       | kubelet 与 API Server 失联 | `journalctl -u kubelet \| grep "error"` |
+退出码可以帮忙缩小范围，但最终仍要和 `Reason`、事件及日志一起看：
 
-## 五、高效排查工具箱
+| 退出码 | 常见含义 | 排查提醒 |
+| --- | --- | --- |
+| 0 | 进程正常退出 | 对常驻服务，继续查为何没有保持运行 |
+| 1 | 应用返回错误 | 看启动日志和配置 |
+| 137 | 收到 `SIGKILL` | 核对是否 `OOMKilled`，不要只看数字 |
+| 139 | 段错误 | 查原生库、内存访问和崩溃转储 |
+| 143 | 收到 `SIGTERM` | 对照滚动更新、删除操作和探针事件 |
 
-### 5.1 kubectl 排查命令速查
+事件里的 `FailedScheduling`、`FailedMount`、`Unhealthy`、`BackOff` 和 `Evicted` 也值得优先看。它们分别把排查方向指向调度、挂载、探针、重试和节点驱逐。
+
+业务镜像里没有 shell 或 `curl` 时，可以给运行中的 Pod 加临时调试容器；想单独测试 Service，也可以先做端口转发：
 
 ```bash
-# ===== 基础信息 =====
-kubectl get pods -n <ns> -o wide                  # Pod 状态 + 所在节点
-kubectl get events -n <ns> --sort-by=.lastTimestamp  # 按时间排序事件
-kubectl top pods -n <ns>                          # CPU/内存使用
-kubectl top nodes                                 # 节点资源
-
-# ===== 深入排查 =====
-kubectl describe pod <name> -n <ns>               # 事件 + 状态 + 探针配置
-kubectl logs <name> -n <ns> --previous             # 上次崩溃的日志（关键！）
-kubectl logs <name> -n <ns> -c <container>         # 指定容器
-kubectl logs <name> -n <ns> --tail=50 -f           # 实时跟踪
-
-# ===== 调试 =====
-kubectl exec -it <name> -n <ns> -- /bin/sh         # 进入容器
-kubectl debug node/<node-name> -it --image=busybox # 调试节点
-kubectl port-forward svc/<svc> 8080:<port>        # 本地访问 Service
+kubectl debug -it <pod> -n <ns> --image=nicolaka/netshoot --target=<container>
+kubectl port-forward -n <ns> svc/<svc> 8080:<service-port>
 ```
 
-### 5.2 临时容器与端口转发
+最后留一个习惯：**先记下状态和事件，再改配置。** 重启或扩容也许能暂时恢复服务，但如果没留下退出原因、事件和时间点，下次故障还得从头猜。
 
-当 Pod 没有调试工具（比如 distroless 镜像）时，用 `kubectl debug` 注入临时容器：
+## 参考资料
 
-```bash
-# 给运行中的 Pod 注入调试容器
-kubectl debug -it <pod-name> --image=nicolaka/netshoot --target=<container-name>
-# netshoot 包含 tcpdump, curl, dig, nslookup, iptables 等网络调试工具
-
-# 端口转发：不需要 Ingress 也能本地访问集群服务
-kubectl port-forward svc/my-service 8080:80 -n production
-```
-
-### 5.3 实用单行命令
-
-```bash
-# 查看所有非 Running 的 Pod
-kubectl get pods -A --field-selector=status.phase!=Running
-
-# 查看所有重启过的 Pod
-kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\t"}{.status.containerStatuses[0].restartCount}{"\n"}{end}' | grep -v "^.\+\t0$"
-
-# 找到占用 CPU 最高的 Pod
-kubectl top pods -A --sort-by=cpu | head -10
-
-# 查看最近 1 小时的 Warning 事件
-kubectl get events -A --field-selector type=Warning --since=1h
-```
-
-## 六、排查速查表（建议收藏）
-
-![故障排查速查表](./images/troubleshooting-cheatsheet.png)
-
-### 症状 → 命令 → 可能原因
-
-| 症状                       | 第一步命令                                               | 最可能原因                      |
-| ------------------------ | --------------------------------------------------- | -------------------------- |
-| **CrashLoopBackOff** | `kubectl logs <pod> --previous` | 应用崩溃 / OOM / 配置错误 |
-| **ImagePullBackOff** | `kubectl describe pod \| grep Failed` | 镜像名错误 / 仓库认证失败 |
-| **OOMKilled** | `kubectl describe pod \| grep OOM` | 内存限制太小 / 内存泄漏 |
-| **Pending** | `kubectl describe pod \| tail -5` | 资源不足 / 污点 / 调度约束 |
-| **ContainerCreating 卡住** | `kubectl describe pod \| grep Events` | PVC/Secret/CNI 问题 |
-| **Service 不通** | `kubectl get endpoints <svc>` | Selector 不匹配 / Pod 没 Ready |
-| **Ingress 502** | `kubectl logs <ingress-controller> \| tail` | 后端 Pod 异常 / 端口不匹配 |
-| **DNS 解析失败** | `kubectl get pods -n kube-system -l k8s-app=kube-dns` | CoreDNS 异常 |
-| **Node NotReady** | `kubectl describe node \| grep Conditions` | 资源耗尽 / kubelet 异常 |
-| **Pod 被驱逐** | `kubectl get events --field-selector reason=Evicted` | 节点磁盘/内存压力 |
-
-### 退出码对照表
-
-| 退出码     | 含义      | 常见原因                          |
-| ------- | ------- | ----------------------------- |
-| **0**   | 正常退出    | 生命周期结束 / Probe 失败被杀           |
-| **1**   | 应用错误    | 代码异常 / 配置错误                   |
-| **137** | SIGKILL | OOMKilled / kubectl delete 强杀 |
-| **139** | SIGSEGV | 段错误 / 内存非法访问                  |
-| **143** | SIGTERM | 优雅关闭 / 滚动更新                   |
-
-### Events 关键关键词
-
-| 关键词              | 含义          | 优先级  |
-| ---------------- | ----------- | ---- |
-| FailedScheduling | 调度失败        | 🔴 高 |
-| BackOff          | 容器反复失败      | 🔴 高 |
-| Unhealthy        | Probe 失败    | 🟡 中 |
-| Evicted          | Pod 被驱逐     | 🔴 高 |
-| FailedMount      | Volume 挂载失败 | 🔴 高 |
-| NodeNotReady     | 节点失联        | 🔴 高 |
-
-## 系列总结：从零到精通的 37 篇回顾
-
-写到这里，「从零开始学 Kubernetes」系列就正式完结了。回顾这 37 篇，我们一起走过了一条完整的 K8s 学习之路：
-
-| 模块        | 篇目    | 核心内容                                              |
-| --------- | ----- | ------------------------------------------------- |
-| **基础入门**  | 1-5   | 容器基础、K8s 架构、环境搭建、第一个 Pod                          |
-| **工作负载**  | 6-12  | Deployment/StatefulSet/DaemonSet、滚动更新、HPA         |
-| **网络**    | 13-18 | Service、Ingress、DNS、网络策略、CNI                      |
-| **存储**    | 19-23 | Volume、PV/PVC、StorageClass、StatefulSet 存储         |
-| **配置与安全** | 24-29 | ConfigMap/Secret、RBAC、ServiceAccount、Pod Security |
-| **调度与管理** | 30-33 | 调度原理、Taint/Toleration、资源管理、QoS                    |
-| **可观测性**  | 34    | 日志、监控、告警、追踪                                       |
-| **生态工具链** | 35-37 | Operator、Helm、多集群管理、故障排查                          |
-
-### 学习建议
-
-**K8s 不是学出来的，是用出来的。** 几个建议：
-
-1. 动手搭集群：kind / minikube / 云托管 K8s，自己跑一遍比看十遍文档管用。
-2. 关注官方变更：K8s 每年发 3 个版本，关注 Release Notes 的 Deprecation 部分。
-3. 建立排查肌肉记忆：把本文的速查表存在手机里，出故障时按框架走。
-4. 深入一两个生态工具：Helm 负责部署、Prometheus 负责监控，先从这两个切入。
-
-> K8s 生态很大，没人能掌握所有东西。**先把核心概念吃透，遇到问题知道查什么，就超过大多数人了。**
-
----
-
-从第 1 篇的「什么是容器」到第 37 篇的「故障排查」，这个系列覆盖了 K8s 从入门到生产实战的完整路径。
-
-感谢每一位读到这里的朋友 🚀
+- [原文章](https://mp.weixin.qq.com/s/QutFzrFYAkoWY-wxLv0rWQ)
+- [Kubernetes 官方文档：调试运行中的 Pod](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/)
+- [Kubernetes 官方文档：调试 Service](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/)
+- [Kubernetes 官方文档：节点压力驱逐](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)
