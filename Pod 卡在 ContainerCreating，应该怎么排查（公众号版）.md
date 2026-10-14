@@ -8,12 +8,10 @@ Pod 创建了十几分钟，状态始终是 `ContainerCreating`。有人怀疑�
 
 ## 一、如何确认 Pod 所在节点
 
-先把命名空间和 Pod 名称换成实际值：
+以下以 `production` 命名空间中的 `payment-api-7c9d` 为例。执行时把示例名称换成实际值：
 
 ```bash
-NS=production
-POD=payment-api-7c9d
-kubectl -n "$NS" get pod "$POD" -o wide
+kubectl -n production get pod payment-api-7c9d -o wide
 ```
 
 重点看输出中的 `NODE` 列：
@@ -26,15 +24,15 @@ payment-api-7c9d   0/1     ContainerCreating   worker-03
 这里的 `worker-03` 就是后续查节点日志、网络插件和存储插件时要锁定的节点。也可以直接读取 Pod 的节点字段：
 
 ```bash
-NODE=$(kubectl -n "$NS" get pod "$POD" -o jsonpath='{.spec.nodeName}')
-printf 'Pod 所在节点：%s\n' "$NODE"
+kubectl -n production get pod payment-api-7c9d \
+  -o jsonpath='{.spec.nodeName}{"\n"}'
 ```
 
 如果输出为空，Pod 尚未绑定节点。此时先看是否有 `FailedScheduling`，核对资源请求、污点、节点选择规则及相关 PVC。若已有节点名，再检查该节点：
 
 ```bash
-kubectl get node "$NODE"
-kubectl describe node "$NODE"
+kubectl get node worker-03
+kubectl describe node worker-03
 ```
 
 节点显示 `Ready` 只能说明节点通过了相应的健康检查，不能证明卷、CNI 和容器运行时都正常。
@@ -44,7 +42,7 @@ kubectl describe node "$NODE"
 先查看 Pod 描述，滚动到末尾的 `Events`：
 
 ```bash
-kubectl -n "$NS" describe pod "$POD"
+kubectl -n production describe pod payment-api-7c9d
 ```
 
 不要只看 `Reason` 一列。`Reason` 是错误类别；`Message` 往往包含真正需要追查的组件、调用和底层错误。例如：
@@ -61,20 +59,20 @@ plugin type="calico" failed ...
 如果表格太窄，想看事件对象里的完整字段，可以使用：
 
 ```bash
-kubectl -n "$NS" events --for "pod/$POD" -o yaml
+kubectl -n production events --for pod/payment-api-7c9d -o yaml
 ```
 
 重点找每条事件的 `reason`，以及 `message` 或 `note` 字段；同时看发生时间和重复次数。想持续观察新事件：
 
 ```bash
-kubectl -n "$NS" events --for "pod/$POD" --watch
+kubectl -n production events --for pod/payment-api-7c9d --watch
 ```
 
 如果当前 `kubectl` 不支持 `events --for`，可用：
 
 ```bash
-kubectl -n "$NS" get events \
-  --field-selector "involvedObject.kind=Pod,involvedObject.name=$POD" \
+kubectl -n production get events \
+  --field-selector involvedObject.kind=Pod,involvedObject.name=payment-api-7c9d \
   -o yaml
 ```
 
@@ -96,7 +94,7 @@ kubectl -n "$NS" get events \
 ```bash
 sudo journalctl -u kubelet --since '30 minutes ago'
 sudo journalctl -u containerd --since '30 minutes ago'
-sudo crictl pods --name "$POD"
+sudo crictl pods --name payment-api-7c9d
 ```
 
 运行时若不是 containerd，应改查实际使用的服务。`crictl` 可用于检查 CRI 运行时中的 Pod sandbox 和容器，参见 [Kubernetes crictl 排障文档](https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/)。
