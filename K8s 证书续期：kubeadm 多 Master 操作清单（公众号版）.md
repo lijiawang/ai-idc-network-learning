@@ -20,8 +20,6 @@
 
 kubeadm 默认签发的客户端证书有效期通常为一年，CA 默认更长，但实际有效期以集群配置和检查结果为准。尤其不要看到 `kube-proxy` 就断定它也需要手工续证书：标准部署与遗留、定制部署可能不同。
 
-![证书清点、到期时间检查与安全备份](images/k8s-cert-renewal/02-check-and-backup.png)
-
 ## 第一步：续期前检查
 
 先确认集群当前状态，留下一份操作前的记录：
@@ -91,8 +89,6 @@ sudo etcdutl snapshot status "$BACKUP_DIR/etcd.db" -w table
 ## 第三步：HA 多 Master 滚动续期
 
 操作顺序只有一条原则：**一次处理一台 Master；这台恢复并验收通过，再碰下一台。**
-
-![三台控制面节点中仅一台进入维护，另外两台继续工作](images/k8s-cert-renewal/03-rolling-renewal.png)
 
 先在 Master 1 执行：
 
