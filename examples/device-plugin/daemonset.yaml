@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: learning-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: learning-device-plugin
+  template:
+    metadata:
+      labels:
+        app: learning-device-plugin
+    spec:
+      containers:
+        - name: plugin
+          image: learning-device-plugin:local
+          imagePullPolicy: Never
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: Directory

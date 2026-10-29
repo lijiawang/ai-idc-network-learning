@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: learning-device-consumer
+spec:
+  restartPolicy: Never
+  containers:
+    - name: consumer
+      image: busybox:1.36
+      command: ["sh", "-c", "echo allocated=$DEMO_DEVICE_IDS"]
+      resources:
+        limits:
+          example.com/learning-device: "1"
